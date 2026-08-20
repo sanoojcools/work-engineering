@@ -33,4 +33,5 @@ export const GLOSSARY: Record<string, { simple: string; technical: string; examp
   "Acceptance check": { simple: "Is object DONE?", technical: "Post-state check", example: "Welcome mail status = delivered" },
   "Object State": { simple: "Current status of the thing we work on.", technical: "Value of business object state", example: "draft, signed, delivered" },
   "ALLOW / DENY": { simple: "Green = you can do work. Red = blocked, here's why and how to fix.", technical: "Spec API enforcement decision", example: "ALLOW" },
+  "Bulk Upload Excel": { simple: "Upload many Work Units at once from HR_Work_Units_Bulk.xlsx template", technical: "Parses .xlsx rows and POSTs each to /api/work-units with X-Spec-Key. Duplicate codes are reported as already exists.", example: "Created 11, 1 already exists (WU-ONB-04)" },
 };

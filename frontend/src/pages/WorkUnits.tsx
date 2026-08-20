@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, errorMessage } from "../api";
+import { ApiError, api, errorMessage, getSpecKey } from "../api";
 import { EducationalNudge } from "../components/EducationalNudge";
 import { LabelWithInfo } from "../components/InfoTooltip";
 import { useApi } from "../hooks";
+import { parseWorkUnitWorkbook, summarizeUpload, workUnitPayload } from "../lib/excelUpload";
 import { bulkCreatePassingRuns, isPromotionFriction, passedCountFor } from "../lib/runs";
 import type { EntityType, Page, VerificationRun, WorkUnit } from "../types";
 import { ACTOR_TYPES, METHODS, PROVENANCE } from "../types";
@@ -24,6 +25,9 @@ export default function WorkUnits() {
   const [createdNudge, setCreatedNudge] = useState(false);
   const [friction, setFriction] = useState<{ title: string; message: string; toVerify?: boolean } | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const items = list.data?.items ?? [];
   const selected = items.find((u) => u.id === selectedId) ?? null;
@@ -63,6 +67,89 @@ export default function WorkUnits() {
     }
   }
 
+  async function ensureBusinessObject(name: string, cache: Map<string, number>): Promise<number> {
+    const key = name.trim() || "Employee";
+    const cached = cache.get(key.toLowerCase());
+    if (cached) return cached;
+    const known = (types.data?.items ?? []).find((t) => t.name.toLowerCase() === key.toLowerCase());
+    if (known) {
+      cache.set(key.toLowerCase(), known.id);
+      return known.id;
+    }
+    try {
+      const created = await api.post<EntityType>("/ontology/types", {
+        name: key,
+        kind: "business_object",
+        description: `${key} (bulk upload)`,
+        state_machine: '["draft","pre_joining","active","on_hold","offboarded","exited"]',
+      });
+      cache.set(key.toLowerCase(), created.id);
+      return created.id;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        types.reload();
+        const page = await api.get<Page<EntityType>>("/ontology/types");
+        const match = page.items.find((t) => t.name.toLowerCase() === key.toLowerCase());
+        if (match) {
+          cache.set(key.toLowerCase(), match.id);
+          return match.id;
+        }
+      }
+      throw err;
+    }
+  }
+
+  async function uploadExcel(file: File) {
+    setError(null);
+    setInfo(null);
+    setFriction(null);
+    setUploadBusy(true);
+    try {
+      const rows = parseWorkUnitWorkbook(await file.arrayBuffer());
+      if (rows.length === 0) {
+        setError("No Work Unit rows found in that workbook.");
+        return;
+      }
+      const specKey = getSpecKey();
+      const typeCache = new Map<string, number>();
+      const known = new Set(items.map((u) => u.code));
+      const existing: string[] = [];
+      const failed: string[] = [];
+      let created = 0;
+      setUploadProgress({ current: 0, total: rows.length });
+      for (let i = 0; i < rows.length; i += 1) {
+        const row = rows[i];
+        setUploadProgress({ current: i + 1, total: rows.length });
+        if (known.has(row.code)) {
+          existing.push(row.code);
+          continue;
+        }
+        try {
+          const typeId = await ensureBusinessObject(row.business_object, typeCache);
+          await api.post<WorkUnit>("/work-units/", workUnitPayload(row, typeId), specKey);
+          known.add(row.code);
+          created += 1;
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 409) {
+            existing.push(row.code);
+            known.add(row.code);
+          } else {
+            failed.push(row.code);
+          }
+        }
+      }
+      setInfo(summarizeUpload(created, existing, failed));
+      list.reload();
+      types.reload();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setUploadBusy(false);
+      setUploadProgress(null);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  }
+
   return (
     <>
       <h2>
@@ -99,8 +186,32 @@ export default function WorkUnits() {
         <button className="primary" data-tour="new-work-unit" onClick={() => setShowCreate((v) => !v)}>
           {showCreate ? "Close form" : "New Work Unit"}
         </button>
+        <button type="button" disabled={uploadBusy} onClick={() => fileInput.current?.click()}>
+          Bulk Upload Excel
+        </button>
+        <LabelWithInfo label="Bulk Upload Excel" />
+        <input
+          ref={fileInput}
+          className="file-hidden"
+          type="file"
+          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void uploadExcel(file);
+          }}
+        />
         <span className="muted">{list.data?.total ?? 0} in inventory</span>
       </div>
+      {uploadProgress && (
+        <div className="upload-progress" aria-live="polite">
+          <div className="upload-progress-label">
+            Creating {uploadProgress.current} of {uploadProgress.total}
+          </div>
+          <div className="upload-bar">
+            <span style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }} />
+          </div>
+        </div>
+      )}
       {showCreate && (
         <section className="card">
           <h3>New contract</h3>

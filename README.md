@@ -97,6 +97,20 @@ npm run dev
 
 Vite serves http://localhost:5173 and proxies `/api` to http://localhost:8000.
 
+### Bulk ingest from Excel
+
+There is no bulk HTTP endpoint. From the repo root, with the API on :8000:
+
+```bash
+python -m pip install openpyxl
+python bulk_ingest.py --init-template
+python bulk_ingest.py --file HR_Work_Units_Bulk.xlsx --api http://localhost:8000
+```
+
+`--init-template` writes a starter workbook (including WU-ONB-04). Point `--file` at your own sheet if you already have one. Column names match the time-motion mapping: Code, Title, Business Object, Owner / Authority, Owner Type, Current/Desired Condition, Acceptance, Evidence, Verification Method, Do/Verify time.
+
+Do not use `python bulk_ingest.py` from a folder that does not contain the script. `--key` is unused: Work Unit create is not the Spec API.
+
 ## Repository layout
 
 ```

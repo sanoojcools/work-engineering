@@ -53,10 +53,36 @@ button, input, select, textarea { font: inherit; color: var(--ink); }
 .health { font-size: 13px; color: var(--muted); }
 .health strong { color: var(--accent); font-weight: 600; }
 
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
 .toolbar a {
   padding: 7px 12px;
   border: 1px solid var(--line);
   background: var(--panel);
+}
+.file-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+.upload-progress { margin-bottom: 16px; }
+.upload-progress-label { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.upload-bar {
+  height: 8px;
+  background: var(--line);
+  overflow: hidden;
+}
+.upload-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
 }
 button {
   background: var(--panel);
