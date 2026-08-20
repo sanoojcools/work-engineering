@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api, errorMessage } from "../api";
 import { useApi } from "../hooks";
 import type { CostProfile, EconomicsProjection, Page, WorkUnit } from "../types";
+import { LabelWithInfo } from "../components/InfoTooltip";
 import { Banner, DataTable, Field, Form, Loading } from "../ui";
 
 export default function Economics() {
@@ -16,10 +17,13 @@ export default function Economics() {
 
   return (
     <>
-      <h2>Economics</h2>
+      <h2>
+        <LabelWithInfo label="Economics">Economics</LabelWithInfo>
+      </h2>
       <p className="lede">
         Four costing disciplines: include cost to verify, exceptions, ontology maintenance, then
         filter by attribution credibility. Cost per verified unit only where the count is credible.
+        Example: 2 minutes × 50 hires/month = 100 minutes.
       </p>
       {error && <Banner kind="error">{error}</Banner>}
       {profiles.error && <Banner kind="error">{profiles.error}</Banner>}
@@ -114,7 +118,9 @@ export default function Economics() {
             </select>
           </Field>
           <Field label="Executions / month"><input name="executions_per_month" type="number" defaultValue={100} /></Field>
-          <Field label="Minutes to do"><input name="minutes_per_execution" type="number" defaultValue={6} /></Field>
+          <Field label={<LabelWithInfo label="Economics">Minutes to do</LabelWithInfo>}>
+            <input name="minutes_per_execution" type="number" defaultValue={6} />
+          </Field>
           <Field label="Minutes to verify"><input name="verification_minutes" type="number" defaultValue={3} /></Field>
           <Field label="Failure rate 0–1"><input name="failure_rate" type="number" step="0.01" defaultValue={0.05} /></Field>
           <Field label="Minutes per exception"><input name="exception_minutes" type="number" defaultValue={20} /></Field>

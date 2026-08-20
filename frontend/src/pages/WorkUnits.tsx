@@ -1,44 +1,102 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api, errorMessage } from "../api";
+import { EducationalNudge } from "../components/EducationalNudge";
+import { LabelWithInfo } from "../components/InfoTooltip";
 import { useApi } from "../hooks";
-import type { EntityType, Page, WorkUnit } from "../types";
+import { bulkCreatePassingRuns, isPromotionFriction, passedCountFor } from "../lib/runs";
+import type { EntityType, Page, VerificationRun, WorkUnit } from "../types";
 import { ACTOR_TYPES, METHODS, PROVENANCE } from "../types";
 import { Badge, Banner, DataTable, Field, Form, Loading } from "../ui";
+
+const LEVELS = [1, 2, 3, 4, 5, 6];
 
 export default function WorkUnits() {
   const list = useApi<Page<WorkUnit>>("/work-units/");
   const types = useApi<Page<EntityType>>("/ontology/types");
+  const runs = useApi<Page<VerificationRun>>("/verification/runs");
+  const nav = useNavigate();
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [createdNudge, setCreatedNudge] = useState(false);
+  const [friction, setFriction] = useState<{ title: string; message: string; toVerify?: boolean } | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
-  const selected = (list.data?.items ?? []).find((u) => u.id === selectedId) ?? null;
+  const items = list.data?.items ?? [];
+  const selected = items.find((u) => u.id === selectedId) ?? null;
+  const employeeType = (types.data?.items ?? []).find((t) => t.name.toLowerCase() === "employee");
+  const passed = selected ? passedCountFor(runs.data?.items ?? [], selected.id) : 0;
+
+  useEffect(() => {
+    if (!highlightedId) return;
+    const row = document.querySelector(`[data-row-id="${highlightedId}"]`);
+    if (row) row.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightedId, items.length]);
 
   async function act(fn: () => Promise<unknown>, ok?: string) {
     setError(null);
     setInfo(null);
+    setFriction(null);
     try {
       await fn();
       if (ok) setInfo(ok);
       list.reload();
+      runs.reload();
     } catch (err) {
-      setError(errorMessage(err));
+      const message = errorMessage(err);
+      if (isPromotionFriction(message)) {
+        setFriction({
+          title: message.toLowerCase().includes("one level")
+            ? "Promotion moves one level at a time"
+            : "Needs 5 verification runs",
+          message: message.toLowerCase().includes("one level")
+            ? "For safety you can only go L1 to L2, then L2 to L3. Use the stepper."
+            : `Promotion needs proof. You have ${passed}/5. Bulk create 5 passing runs.`,
+          toVerify: !message.toLowerCase().includes("one level"),
+        });
+        return;
+      }
+      setError(message);
     }
   }
 
   return (
     <>
-      <h2>Work Units</h2>
+      <h2>
+        <LabelWithInfo label="Work Unit">Work Units</LabelWithInfo>
+      </h2>
       <p className="lede">
         Independently accountable commitments. All 18 contract attributes must be present for
         machine-readability. Click a row for promotion, reconciliation, and missing fields.
       </p>
+      {createdNudge && (
+        <EducationalNudge
+          title="Work Unit created"
+          message="Scroll to the highlighted row, click it, then Reconcile. Next: score VERDICT."
+          nextLabel="Go to VERDICT"
+          nextAction={() => nav("/verdict")}
+          onDismiss={() => setCreatedNudge(false)}
+          type="success"
+        />
+      )}
+      {friction && (
+        <EducationalNudge
+          title={friction.title}
+          message={friction.message}
+          nextLabel={friction.toVerify ? "Create 5 runs now" : undefined}
+          nextAction={friction.toVerify ? () => nav("/verification") : undefined}
+          onDismiss={() => setFriction(null)}
+          type="warning"
+        />
+      )}
       {error && <Banner kind="error">{error}</Banner>}
       {info && <Banner kind="ok">{info}</Banner>}
       {list.error && <Banner kind="error">{list.error}</Banner>}
       <div className="toolbar">
-        <button className="primary" onClick={() => setShowCreate((v) => !v)}>
+        <button className="primary" data-tour="new-work-unit" onClick={() => setShowCreate((v) => !v)}>
           {showCreate ? "Close form" : "New Work Unit"}
         </button>
         <span className="muted">{list.data?.total ?? 0} in inventory</span>
@@ -46,12 +104,16 @@ export default function WorkUnits() {
       {showCreate && (
         <section className="card">
           <h3>New contract</h3>
+          <p className="hint">
+            Prefills WU-ONB-04 Pre-Joining Communication. Owner and authority are HR Ops SPOC, not Order Desk.
+          </p>
           <Form
+            key={employeeType?.id ?? "pending-types"}
             onSubmit={(event) => {
               const form = event.currentTarget;
               const data = new FormData(form);
               return act(async () => {
-                await api.post("/work-units/", {
+                const created = await api.post<WorkUnit>("/work-units/", {
                   code: data.get("code"),
                   name: data.get("name"),
                   business_object_type_id: Number(data.get("business_object_type_id")),
@@ -73,39 +135,62 @@ export default function WorkUnits() {
                 });
                 form.reset();
                 setShowCreate(false);
-              }, "Work Unit created");
+                setSelectedId(created.id);
+                setHighlightedId(created.id);
+                setCreatedNudge(true);
+              });
             }}
           >
-            <Field label="Code"><input name="code" required placeholder="WU-OTC-17" /></Field>
-            <Field label="Name"><input name="name" required /></Field>
-            <Field label="Business object">
-              <select name="business_object_type_id" required>
+            <Field label={<LabelWithInfo label="Work Unit">Code</LabelWithInfo>}>
+              <input name="code" required defaultValue="WU-ONB-04" placeholder="WU-ONB-04" />
+            </Field>
+            <Field label="Name">
+              <input name="name" required defaultValue="Pre-Joining Communication" />
+            </Field>
+            <Field label={<LabelWithInfo label="Business Object">Business object</LabelWithInfo>}>
+              <select name="business_object_type_id" required defaultValue={employeeType?.id ?? ""}>
                 <option value="">Select</option>
                 {(types.data?.items ?? []).map((t) => (
                   <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
             </Field>
-            <Field label="Owner"><input name="owner" /></Field>
-            <Field label="Current condition"><input name="current_condition" required /></Field>
-            <Field label="Desired condition"><input name="desired_condition" required /></Field>
-            <Field label="Context" span2><input name="context" /></Field>
-            <Field label="Trigger"><input name="trigger" /></Field>
-            <Field label="Inputs"><input name="inputs" /></Field>
-            <Field label="Authority"><input name="authority" /></Field>
-            <Field label="Actor constraints"><input name="actor_constraints" /></Field>
-            <Field label="Acceptance criteria" span2><input name="acceptance_criteria" /></Field>
-            <Field label="Evidence required" span2><input name="evidence_required" /></Field>
-            <Field label="Verification method">
+            <Field label={<LabelWithInfo label="Authority / Owner">Owner</LabelWithInfo>}>
+              <input name="owner" defaultValue="HR Ops SPOC" />
+            </Field>
+            <Field label={<LabelWithInfo label="Current Condition">Current condition</LabelWithInfo>}>
+              <input name="current_condition" required defaultValue="Offer status = signed in Zoho" />
+            </Field>
+            <Field label={<LabelWithInfo label="Desired Condition">Desired condition</LabelWithInfo>}>
+              <input name="desired_condition" required defaultValue="Welcome mail status = delivered" />
+            </Field>
+            <Field label="Context" span2>
+              <input name="context" defaultValue="Pre-joining welcome for a signed offer" />
+            </Field>
+            <Field label="Trigger"><input name="trigger" defaultValue="Offer signed in Zoho" /></Field>
+            <Field label="Inputs"><input name="inputs" defaultValue="Candidate name, joining date, offer id" /></Field>
+            <Field label={<LabelWithInfo label="Authority / Owner">Authority</LabelWithInfo>}>
+              <input name="authority" defaultValue="HR Ops SPOC" />
+            </Field>
+            <Field label="Actor constraints"><input name="actor_constraints" defaultValue="agent" /></Field>
+            <Field label={<LabelWithInfo label="Acceptance Criteria">Acceptance criteria</LabelWithInfo>} span2>
+              <input name="acceptance_criteria" defaultValue="Outlook mail log exists AND Teams invite exists" />
+            </Field>
+            <Field label={<LabelWithInfo label="Evidence / Evidence Ref">Evidence required</LabelWithInfo>} span2>
+              <input name="evidence_required" defaultValue="Outlook message ID + Teams invite ID" />
+            </Field>
+            <Field label={<LabelWithInfo label="Verification Method">Verification method</LabelWithInfo>}>
               <select name="verification_method">{METHODS.map((m) => <option key={m}>{m}</option>)}</select>
             </Field>
             <Field label="SLA hours"><input name="sla_hours" type="number" defaultValue={8} /></Field>
-            <Field label="Failure semantics" span2><input name="failure_semantics" /></Field>
-            <Field label="Provenance">
-              <select name="provenance">{PROVENANCE.map((p) => <option key={p}>{p}</option>)}</select>
+            <Field label="Failure semantics" span2>
+              <input name="failure_semantics" defaultValue="Retry send; escalate to HR Ops SPOC" />
             </Field>
-            <Field label="Actor type">
-              <select name="actor_type">{ACTOR_TYPES.map((a) => <option key={a}>{a}</option>)}</select>
+            <Field label="Provenance">
+              <select name="provenance" defaultValue="designed">{PROVENANCE.map((p) => <option key={p}>{p}</option>)}</select>
+            </Field>
+            <Field label={<LabelWithInfo label="Owner Type">Actor type</LabelWithInfo>}>
+              <select name="actor_type" defaultValue="agent">{ACTOR_TYPES.map((a) => <option key={a}>{a}</option>)}</select>
             </Field>
             <button className="primary" type="submit">Create</button>
           </Form>
@@ -115,11 +200,12 @@ export default function WorkUnits() {
         <div>
           {list.loading ? <Loading /> : (
             <DataTable
-              rows={list.data?.items ?? []}
+              rows={items}
               selectedId={selectedId}
+              highlightedId={highlightedId}
               onRowClick={(row) => setSelectedId(row.id)}
               columns={[
-                { key: "code", header: "Code" },
+                { key: "code", header: <LabelWithInfo label="Work Unit">Code</LabelWithInfo> },
                 { key: "name", header: "Name" },
                 { key: "status", header: "Status" },
                 { key: "autonomy_level", header: "L", render: (r) => `L${r.autonomy_level}` },
@@ -160,34 +246,81 @@ export default function WorkUnits() {
                 <dd>{selected.verification_method}</dd>
               </dl>
               <div className="toolbar">
-                <button onClick={() => void act(() => api.post(`/work-units/${selected.id}/reconcile`), "Reconciled")}>
+                <button data-tour="reconcile" onClick={() => void act(() => api.post(`/work-units/${selected.id}/reconcile`), "Reconciled")}>
                   Reconcile
                 </button>
                 <button onClick={() => void act(() => api.post(`/work-units/${selected.id}/authoritative`), "Authoritative")}>
                   Make authoritative
                 </button>
               </div>
-              <Form
-                onSubmit={(event) => {
-                  const data = new FormData(event.currentTarget);
-                  return act(
-                    () =>
-                      api.post(`/work-units/${selected.id}/promote`, {
-                        to_level: Number(data.get("to_level")),
-                        approved_by: data.get("approved_by"),
-                        reason: data.get("reason"),
-                      }),
-                    "Promoted",
-                  );
-                }}
-              >
-                <Field label="Promote to">
-                  <input name="to_level" type="number" min={2} max={6} defaultValue={selected.autonomy_level + 1} />
-                </Field>
-                <Field label="Approved by"><input name="approved_by" required /></Field>
-                <Field label="Reason" span2><input name="reason" /></Field>
-                <button className="primary" type="submit">Promote (human)</button>
-              </Form>
+
+              <h3>
+                <LabelWithInfo label="Promotion">Promotion (one level at a time)</LabelWithInfo>
+              </h3>
+              <div className="stepper" data-tour="promote">
+                {LEVELS.map((level, i) => (
+                  <span key={level} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    {i > 0 && <span className="step-line" />}
+                    <span
+                      className={
+                        level < selected.autonomy_level
+                          ? "step done"
+                          : level === selected.autonomy_level
+                            ? "step current"
+                            : "step"
+                      }
+                    >
+                      L{level}
+                      {level === selected.autonomy_level + 1 ? " →" : ""}
+                    </span>
+                  </span>
+                ))}
+              </div>
+              <p>
+                <span className="runs-chip">
+                  <LabelWithInfo label="Verification Run">{passed}/5 runs</LabelWithInfo>
+                </span>
+                {passed < 5 && (
+                  <span className="muted">Need 5 passing runs to promote.</span>
+                )}
+              </p>
+              <div className="toolbar">
+                <button
+                  className="primary"
+                  type="button"
+                  disabled={selected.autonomy_level >= 6}
+                  onClick={() =>
+                    void act(
+                      () =>
+                        api.post(`/work-units/${selected.id}/promote`, {
+                          to_level: selected.autonomy_level + 1,
+                          approved_by: selected.owner || selected.authority || "HR Ops SPOC",
+                          reason: `Promote L${selected.autonomy_level} to L${selected.autonomy_level + 1}`,
+                        }),
+                      `Promoted to L${selected.autonomy_level + 1}`,
+                    )
+                  }
+                >
+                  Promote to L{Math.min(6, selected.autonomy_level + 1)}
+                </button>
+                <button
+                  type="button"
+                  disabled={bulkBusy || passed >= 5}
+                  onClick={() =>
+                    void act(async () => {
+                      setBulkBusy(true);
+                      try {
+                        await bulkCreatePassingRuns(selected.id, 5);
+                      } finally {
+                        setBulkBusy(false);
+                      }
+                    }, "5 passing runs recorded")
+                  }
+                >
+                  {bulkBusy ? "Creating…" : "Bulk create 5"}
+                </button>
+              </div>
+
               <Form
                 onSubmit={(event) => {
                   const data = new FormData(event.currentTarget);

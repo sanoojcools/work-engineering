@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { ProgressTracker } from "../components/ProgressTracker";
 
 const links = [
   ["/", "Overview"],
@@ -25,9 +26,12 @@ export default function AppShell() {
           </NavLink>
         ))}
       </nav>
-      <main className="main">
-        <Outlet />
-      </main>
+      <div className="workspace">
+        <ProgressTracker />
+        <main className="main">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

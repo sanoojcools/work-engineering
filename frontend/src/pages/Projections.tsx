@@ -1,3 +1,4 @@
+import { LabelWithInfo } from "../components/InfoTooltip";
 import { useApi } from "../hooks";
 import type { AllocationItem, EconomicsProjection, GraphProjection, WorkUnit } from "../types";
 import { Banner, DataTable, Loading } from "../ui";
@@ -10,15 +11,53 @@ export default function Projections() {
   const economics = useApi<EconomicsProjection>("/projections/economics");
 
   const err = inventory.error || graph.error || verification.error || allocation.error || economics.error;
+  const onb = (inventory.data?.items ?? []).find((u) => u.code === "WU-ONB-04");
+  const onbAlloc = (allocation.data?.items ?? []).find((u) => u.code === "WU-ONB-04");
 
   return (
     <>
-      <h2>Projections</h2>
+      <h2 data-tour="projections">Projections — 5 views of the same truth</h2>
       <p className="lede">
         Five outputs, one record. These views are not a queue of artefacts — they are projections of
         the Work Unit inventory.
       </p>
       {err && <Banner kind="error">{err}</Banner>}
+
+      <div className="view-grid">
+        <section className="card">
+          <h3><LabelWithInfo label="Work Unit">Inventory</LabelWithInfo></h3>
+          <p className="muted">All {inventory.data?.total ?? "—"} Work Units with L-level. HR units such as WU-ONB-04 appear here.</p>
+        </section>
+        <section className="card">
+          <h3>Work Graph</h3>
+          <p className="muted">Dependencies between units. {graph.data?.edges.length ?? "—"} edges.</p>
+        </section>
+        <section className="card">
+          <h3><LabelWithInfo label="Verification Run">Verification</LabelWithInfo></h3>
+          <p className="muted">0/5 runs = cannot promote. After bulk create, the contract still shows here.</p>
+        </section>
+        <section className="card">
+          <h3><LabelWithInfo label="Allocation">Allocation</LabelWithInfo></h3>
+          <p className="muted">make = human, agent = robot + check, automate = fully robot, buy = external.</p>
+        </section>
+        <section className="card">
+          <h3><LabelWithInfo label="Economics">Economics</LabelWithInfo></h3>
+          <p className="muted">FTE math: do-time × volume, then verify, exceptions, and attribution.</p>
+        </section>
+      </div>
+
+      {onb && (
+        <section className="card">
+          <h3>WU-ONB-04 in this view</h3>
+          <p className="muted">
+            {onb.code} · {onb.owner || "HR Ops SPOC"} · {onb.actor_type} · authorised L{onb.autonomy_level}
+            {onbAlloc ? ` · VERDICT ${onbAlloc.recommended_level ?? "—"} · ${onbAlloc.allocation}` : ""}
+          </p>
+          <p className="hint">
+            Authorised level is what you promoted. VERDICT is the cap. The gap is remaining potential.
+          </p>
+        </section>
+      )}
 
       <div className="metrics">
         <div className="metric">

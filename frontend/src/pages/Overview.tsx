@@ -35,7 +35,7 @@ export default function Overview() {
 
   return (
     <>
-      <h2>Work Engineering</h2>
+      <h2 data-tour="overview">Work Engineering</h2>
       <p className="lede">
         Converts enterprise intent into work a machine can read, a checker can verify, and an
         organisation can allocate. The Work Unit is the primitive. This UI is the specification
