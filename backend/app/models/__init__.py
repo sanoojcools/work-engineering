@@ -1,5 +1,6 @@
 """Import every ORM model so Base.metadata is complete for create_all."""
 
+from .client import Client  # noqa: F401
 from .discovery import (  # noqa: F401
     CandidateStatus,
     ConformanceGap,

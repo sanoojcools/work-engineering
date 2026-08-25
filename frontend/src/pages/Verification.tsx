@@ -2,16 +2,20 @@ import { useEffect, useState } from "react";
 import { api, errorMessage } from "../api";
 import { EducationalNudge } from "../components/EducationalNudge";
 import { LabelWithInfo } from "../components/InfoTooltip";
+import { CompanyBanner } from "../components/CompanyBanner";
+import { useCompany } from "../company";
 import { useApi } from "../hooks";
+import { withClient } from "../lib/withClient";
 import { bulkCreatePassingRuns, passedCountFor, preferOnb04 } from "../lib/runs";
 import type { AutonomyChange, Page, VerificationRun, WorkUnit } from "../types";
 import { METHODS, OUTCOMES } from "../types";
 import { Banner, DataTable, Field, Form, Loading } from "../ui";
 
 export default function Verification() {
+  const { client } = useCompany();
   const runs = useApi<Page<VerificationRun>>("/verification/runs");
   const changes = useApi<Page<AutonomyChange>>("/verification/autonomy-changes");
-  const units = useApi<Page<WorkUnit>>("/work-units/");
+  const units = useApi<Page<WorkUnit>>(withClient("/work-units/", client?.id));
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [unitId, setUnitId] = useState("");
@@ -62,6 +66,7 @@ export default function Verification() {
         Seven methods. Independence is what makes a check worth its cost. Recording failures can
         demote autonomy automatically. Promotion still requires a human on the Work Unit page.
       </p>
+      <CompanyBanner />
       {showNeed && selected && passed < 5 && (
         <EducationalNudge
           title="Promotion needs 5 passing runs"

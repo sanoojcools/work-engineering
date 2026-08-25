@@ -7,6 +7,7 @@ The primitive is the **Work Unit**: an independently accountable commitment to m
 This repository implements Work Engineering Version 8 as a FastAPI + Postgres backend and a React + Vite UI.
 
 - Concept source of truth: [docs/Work-Engineering-V8.md](docs/Work-Engineering-V8.md)
+- Product snapshot (what is true now): [docs/STATUS.md](docs/STATUS.md)
 - How this codebase maps to V8: [ARCHITECTURE.md](ARCHITECTURE.md)
 - HTTP API: [docs/API.md](docs/API.md)
 

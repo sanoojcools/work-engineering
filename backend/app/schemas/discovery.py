@@ -31,6 +31,7 @@ class IntentCreate(BaseModel):
     title: str
     body: str = ""
     provenance: Provenance = Provenance.declared
+    client_id: int | None = None
 
 
 class IntentOut(BaseModel):
@@ -39,6 +40,7 @@ class IntentOut(BaseModel):
     title: str
     body: str
     provenance: Provenance
+    client_id: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -61,6 +63,7 @@ class CandidateOut(BaseModel):
     sampling_bias_note: str
     status: CandidateStatus
     work_unit_id: int | None
+    client_id: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -80,6 +83,7 @@ class GapOut(BaseModel):
     discovered_ref: str
     declared_ref: str
     work_unit_id: int | None
+    client_id: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -87,3 +91,11 @@ class GapOut(BaseModel):
 class SuggestIn(BaseModel):
     text: str = Field(min_length=1)
     origin: Origin = Origin.downward
+    title: str = "Intake"
+    kind: IntentKind = IntentKind.job_description
+    persist: bool = True
+    client_id: int | None = None
+
+
+class MergeIn(BaseModel):
+    work_unit_id: int

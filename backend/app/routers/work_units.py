@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Query, status
 
 from ..dependencies import DbDep
 from ..models.verification import VerificationOutcome, VerificationRun
@@ -22,8 +22,11 @@ router = APIRouter()
 
 
 @router.get("/", response_model=Page[WorkUnitOut])
-def list_work_units(db: DbDep) -> Page[WorkUnitOut]:
-    rows = db.query(WorkUnit).order_by(WorkUnit.id).all()
+def list_work_units(db: DbDep, client_id: int | None = Query(default=None)) -> Page[WorkUnitOut]:
+    q = db.query(WorkUnit)
+    if client_id is not None:
+        q = q.filter(WorkUnit.client_id == client_id)
+    rows = q.order_by(WorkUnit.id).all()
     return Page(total=len(rows), items=[wu_svc.to_out(r) for r in rows])
 
 

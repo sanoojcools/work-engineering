@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, errorMessage } from "../api";
+import { CompanyBanner } from "../components/CompanyBanner";
 import { EducationalNudge } from "../components/EducationalNudge";
 import { LabelWithInfo } from "../components/InfoTooltip";
+import { useCompany } from "../company";
 import { useApi } from "../hooks";
+import { withClient } from "../lib/withClient";
 import { preferOnb04 } from "../lib/runs";
 import type { Page, Verdict, WorkUnit } from "../types";
 import { VERDICT_KEYS } from "../types";
@@ -30,8 +33,9 @@ const DEFAULTS: Record<(typeof VERDICT_KEYS)[number], number> = {
 };
 
 export default function VerdictPage() {
-  const scores = useApi<Page<Verdict>>("/verdict/");
-  const units = useApi<Page<WorkUnit>>("/work-units/");
+  const { client } = useCompany();
+  const scores = useApi<Page<Verdict>>(withClient("/verdict/", client?.id));
+  const units = useApi<Page<WorkUnit>>(withClient("/work-units/", client?.id));
   const nav = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Verdict | null>(null);
@@ -56,7 +60,9 @@ export default function VerdictPage() {
       <p className="lede">
         Seven supply properties, 1–5, converted deterministically into an autonomy level. Four hard
         gates cap the result regardless of the mean. Lower score = harder to trust to automation.
+        Saving here <strong>confirms</strong> the score. Census re-run will not overwrite confirmed scores.
       </p>
+      <CompanyBanner />
       {showHelp && (
         <EducationalNudge
           title="VERDICT = 7 questions that decide if a robot can do this"
@@ -92,6 +98,7 @@ export default function VerdictPage() {
             { key: "uncapped_level", header: <LabelWithInfo label="UNCAPPED L">UNCAPPED</LabelWithInfo> },
             { key: "recommended_level", header: <LabelWithInfo label="CAPPED L">CAPPED L</LabelWithInfo> },
             { key: "allocation", header: <LabelWithInfo label="Allocation">Allocation</LabelWithInfo> },
+            { key: "origin", header: "Origin" },
             { key: "applied_gates", header: <LabelWithInfo label="Gates">Gates</LabelWithInfo> },
           ]}
         />
@@ -134,7 +141,7 @@ export default function VerdictPage() {
               </div>
             ))}
           </div>
-          <button className="primary" type="submit">Save & Derive Autonomy</button>
+          <button className="primary" type="submit">Save and confirm</button>
         </Form>
         <p className="muted">
           This saves the seven scores and calculates L-level. Scoring does not promote. If gates drop

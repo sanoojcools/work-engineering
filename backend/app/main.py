@@ -16,6 +16,14 @@ async def lifespan(app: FastAPI):
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         Base.metadata.create_all(bind=engine)
+        from .db import SessionLocal
+        from .services.tenants import bootstrap_tenants, ensure_schema
+        ensure_schema(engine)
+        db = SessionLocal()
+        try:
+            bootstrap_tenants(db)
+        finally:
+            db.close()
         app.state.db_ready = True
     except Exception:
         app.state.db_ready = False

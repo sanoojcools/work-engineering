@@ -33,5 +33,10 @@ export const GLOSSARY: Record<string, { simple: string; technical: string; examp
   "Acceptance check": { simple: "Is object DONE?", technical: "Post-state check", example: "Welcome mail status = delivered" },
   "Object State": { simple: "Current status of the thing we work on.", technical: "Value of business object state", example: "draft, signed, delivered" },
   "ALLOW / DENY": { simple: "Green = you can do work. Red = blocked, here's why and how to fix.", technical: "Spec API enforcement decision", example: "ALLOW" },
-  "Bulk Upload Excel": { simple: "Upload many Work Units at once from HR_Work_Units_Bulk.xlsx template", technical: "Parses .xlsx rows and POSTs each to /api/work-units with X-Spec-Key. Duplicate codes are reported as already exists.", example: "Created 11, 1 already exists (WU-ONB-04)" },
+  "Bulk Upload": { simple: "Upload many Work Units at once from an Excel (.xlsx) or CSV (.csv) file.", technical: "Parses .xlsx/.csv rows and POSTs each to /api/work-units with X-Spec-Key. Duplicate codes are reported as already exists.", example: "Created 48, 2 already exist" },
+  "Catalog": { simple: "The test lab. Mixed sample Work Units. Not a client census.", technical: "Company kind=catalog. Platform tests. Do not score as one employer.", example: "Catalog / Samples" },
+  "Client A": { simple: "One sample employer. Census is this company × one function.", technical: "Company kind=client. Clones 12 cross-industry HR units (ONB/OFF).", example: "Client A · HR & People Ops" },
+  "Census": { simple: "Count the work in one team for about 90 days.", technical: "V8 J1: one function, one authoritative record, 15–40 units, inventory + graph + VERDICT + economics + gap.", example: "Client A HR onboarding/offboarding" },
+  "Inferred": { simple: "A draft the system guessed from the contract. Not yet signed off.", technical: "origin=inferred on VERDICT or cost. Census writes this. Human save sets confirmed.", example: "Census draft L4" },
+  "Confirmed": { simple: "A human reviewed this score or cost. Census will not overwrite it.", technical: "origin=confirmed. PUT /verdict or /economics sets this.", example: "Save and confirm on VERDICT" },
 };

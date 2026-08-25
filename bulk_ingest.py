@@ -269,14 +269,17 @@ def ensure_types(api: Api, names: list[str]) -> dict[str, int]:
     return by_name
 
 
-def existing_units(api: Api) -> dict[str, dict]:
-    status, payload = api.request("GET", "/api/work-units/")
+def existing_units(api: Api, client_id: int | None = None) -> dict[str, dict]:
+    path = "/api/work-units/"
+    if client_id is not None:
+        path += f"?client_id={client_id}"
+    status, payload = api.request("GET", path)
     if status != 200 or not isinstance(payload, dict):
         raise SystemExit(f"Cannot list Work Units ({status}): {payload}")
     return {item["code"]: item for item in payload.get("items", [])}
 
 
-def ingest_row(api: Api, row: dict[str, str], types: dict[str, int], known: dict[str, dict], seed_runs: bool) -> str:
+def ingest_row(api: Api, row: dict[str, str], types: dict[str, int], known: dict[str, dict], seed_runs: bool, client_id: int | None = None) -> str:
     code = clip(col(row, "Code", "code", "ID"), 40, "code", "?")
     if not code:
         return "skip"
@@ -315,6 +318,7 @@ def ingest_row(api: Api, row: dict[str, str], types: dict[str, int], known: dict
         "provenance": "designed",
         "owner": owner,
         "actor_type": actor,
+        "client_id": client_id,
     }
     status, created = api.request("POST", "/api/work-units/", payload)
     if status == 409:
@@ -374,7 +378,7 @@ def main() -> int:
     parser.add_argument("--api", default="http://localhost:8000")
     parser.add_argument("--key", default="dev-spec-key-change-me", help="Ignored; create is not Spec API")
     parser.add_argument("--init-template", action="store_true", help="Write a starter Excel/CSV and exit")
-    parser.add_argument("--seed-runs", action="store_true", help="Also record 5 passing verification runs per unit")
+    parser.add_argument("--client", default="catalog", help="Company slug (catalog or client-a)")
     args = parser.parse_args()
 
     path = Path(args.file)
@@ -407,11 +411,18 @@ def main() -> int:
 
     objects = sorted({col(row, "Business Object", "business_object") for row in rows if col(row, "Business Object", "business_object")})
     types = ensure_types(api, objects)
-    known = existing_units(api)
+    client_id = None
+    cl_status, cl_payload = api.request("GET", "/api/clients/")
+    if cl_status == 200 and isinstance(cl_payload, dict):
+        match = next((c for c in cl_payload.get("items", []) if c.get("slug") == args.client), None)
+        if match:
+            client_id = match["id"]
+            print(f"Company: {match.get('name')} (id {client_id})")
+    known = existing_units(api, client_id)
 
     counts = {"created": 0, "skip": 0, "fail": 0}
     for row in rows:
-        result = ingest_row(api, row, types, known, args.seed_runs)
+        result = ingest_row(api, row, types, known, args.seed_runs, client_id)
         counts[result] += 1
 
     print(f"\nDone. created={counts['created']} skipped={counts['skip']} failed={counts['fail']}")

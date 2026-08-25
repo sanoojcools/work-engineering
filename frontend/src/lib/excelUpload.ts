@@ -50,8 +50,17 @@ function actorOf(raw: string): Actor {
   return "human";
 }
 
-export function parseWorkUnitWorkbook(buffer: ArrayBuffer): ExcelWorkUnitRow[] {
-  const book = XLSX.read(buffer, { type: "array" });
+export async function parseWorkUnitFile(file: File): Promise<ExcelWorkUnitRow[]> {
+  const buffer = await file.arrayBuffer();
+  if (file.name.toLowerCase().endsWith(".csv")) {
+    const text = new TextDecoder("utf-8").decode(buffer).replace(/^\uFEFF/, "");
+    return parseWorkUnitWorkbook(text, "string");
+  }
+  return parseWorkUnitWorkbook(buffer, "array");
+}
+
+export function parseWorkUnitWorkbook(data: ArrayBuffer | string, type: "array" | "string" = "array"): ExcelWorkUnitRow[] {
+  const book = XLSX.read(data, { type });
   const sheet = book.Sheets[book.SheetNames[0]];
   if (!sheet) return [];
   const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: false });
@@ -79,7 +88,7 @@ export function clip(value: string, limit: number): string {
   return value.length <= limit ? value : value.slice(0, limit);
 }
 
-export function workUnitPayload(row: ExcelWorkUnitRow, businessObjectTypeId: number) {
+export function workUnitPayload(row: ExcelWorkUnitRow, businessObjectTypeId: number, clientId?: number | null) {
   const owner = clip(row.owner, 120);
   return {
     code: clip(row.code, 40),
@@ -100,6 +109,7 @@ export function workUnitPayload(row: ExcelWorkUnitRow, businessObjectTypeId: num
     provenance: "designed",
     owner,
     actor_type: row.owner_type,
+    client_id: clientId ?? undefined,
   };
 }
 

@@ -2,13 +2,12 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 const STEPS = [
   { path: "/", label: "Overview" },
-  { path: "/ontology", label: "Ontology" },
   { path: "/work-units", label: "Work Units" },
-  { path: "/verdict", label: "VERDICT" },
-  { path: "/verification", label: "Verification" },
-  { path: "/economics", label: "Economics" },
-  { path: "/spec", label: "Spec API" },
+  { path: "/discovery", label: "Discovery" },
   { path: "/projections", label: "Projections" },
+  { path: "/verdict", label: "VERDICT" },
+  { path: "/economics", label: "Economics" },
+  { path: "/work-graph", label: "Work Graph" },
 ];
 
 export function ProgressTracker() {

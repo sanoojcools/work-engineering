@@ -1,6 +1,6 @@
 import type { FormEvent, ReactNode } from "react";
 
-export function Banner({ kind, children }: { kind: "error" | "info" | "ok"; children: ReactNode }) {
+export function Banner({ kind, children }: { kind: "error" | "info" | "ok" | "warn"; children: ReactNode }) {
   return <div className={`banner ${kind}`}>{children}</div>;
 }
 

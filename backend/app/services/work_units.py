@@ -23,13 +23,18 @@ def to_out(wu: WorkUnit) -> WorkUnitOut:
 
 
 def create_unit(db: Session, payload: WorkUnitCreate) -> WorkUnit:
-    wu = WorkUnit(**payload.model_dump())
+    from .tenants import get_or_create_catalog
+
+    data = payload.model_dump()
+    if not data.get("client_id"):
+        data["client_id"] = get_or_create_catalog(db).id
+    wu = WorkUnit(**data)
     db.add(wu)
     try:
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise ConflictError(f"Work Unit code '{payload.code}' already exists") from exc
+        raise ConflictError(f"Work Unit code '{payload.code}' already exists in this company") from exc
     db.refresh(wu)
     return wu
 
@@ -42,7 +47,7 @@ def update_unit(db: Session, wu: WorkUnit, payload: WorkUnitUpdate) -> WorkUnit:
     return wu
 
 
-def apply_verdict(db: Session, wu: WorkUnit, scores: dict) -> VerdictScore:
+def apply_verdict(db: Session, wu: WorkUnit, scores: dict, origin: str = "confirmed") -> VerdictScore:
     licensed = bool(wu.regulatory_entry and wu.regulatory_entry.requires_licensed_human)
     result = verdict_svc.derive_autonomy(
         scores,
@@ -56,6 +61,7 @@ def apply_verdict(db: Session, wu: WorkUnit, scores: dict) -> VerdictScore:
     for prop in PROPERTIES:
         setattr(row, prop, result["scores"][prop])
     persist_derivation(row, result, wu.actor_type.value)
+    row.origin = origin
     db.commit()
     db.refresh(row)
     db.refresh(wu)
@@ -75,7 +81,7 @@ def verdict_out(row: VerdictScore) -> dict:
     )
     return {
         **{k: getattr(row, k) for k in (
-            "id", "work_unit_id", *PROPERTIES, "recommended_level", "applied_gates", "allocation"
+            "id", "work_unit_id", *PROPERTIES, "recommended_level", "applied_gates", "allocation", "origin"
         )},
         "mean": derived["mean"],
         "uncapped_level": derived["uncapped_level"],

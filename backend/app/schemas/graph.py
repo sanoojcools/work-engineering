@@ -41,6 +41,7 @@ class VerdictOut(BaseModel):
     recommended_level: int
     applied_gates: str
     allocation: str
+    origin: str = "confirmed"
     mean: float | None = None
     uncapped_level: int | None = None
     level_name: str | None = None
@@ -68,6 +69,7 @@ class CostOut(BaseModel):
     exception_minutes: float
     maintenance_hours: float
     attribution_confidence: float
+    origin: str = "confirmed"
     computed: dict | None = None
 
     model_config = {"from_attributes": True}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from ..dependencies import DbDep
 from ..models.economics import CostProfile
@@ -7,6 +7,7 @@ from ..schemas.common import Page
 from ..schemas.graph import CostIn, CostOut
 from ..services.economics import from_profile
 from ..services.lookup import get_or_404
+from ..services.tenants import units_query
 
 router = APIRouter()
 
@@ -17,8 +18,11 @@ def _out(row: CostProfile) -> CostOut:
 
 
 @router.get("/", response_model=Page[CostOut])
-def list_profiles(db: DbDep) -> Page[CostOut]:
+def list_profiles(db: DbDep, client_id: int | None = Query(default=None)) -> Page[CostOut]:
+    ids = {u.id for u in units_query(db, client_id).all()} if client_id is not None else None
     rows = db.query(CostProfile).order_by(CostProfile.id).all()
+    if ids is not None:
+        rows = [r for r in rows if r.work_unit_id in ids]
     return Page(total=len(rows), items=[_out(r) for r in rows])
 
 
@@ -27,11 +31,12 @@ def upsert_profile(work_unit_id: int, payload: CostIn, db: DbDep) -> CostOut:
     get_or_404(db, WorkUnit, work_unit_id, "WorkUnit")
     row = db.query(CostProfile).filter(CostProfile.work_unit_id == work_unit_id).one_or_none()
     if row is None:
-        row = CostProfile(work_unit_id=work_unit_id, **payload.model_dump())
+        row = CostProfile(work_unit_id=work_unit_id, origin="confirmed", **payload.model_dump())
         db.add(row)
     else:
         for field, value in payload.model_dump().items():
             setattr(row, field, value)
+        row.origin = "confirmed"
     db.commit()
     db.refresh(row)
     return _out(row)

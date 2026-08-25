@@ -1,15 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, errorMessage, getSpecKey, setSpecKey } from "../api";
+import { CompanyBanner } from "../components/CompanyBanner";
 import { EducationalNudge } from "../components/EducationalNudge";
 import { LabelWithInfo } from "../components/InfoTooltip";
+import { useCompany } from "../company";
 import { useApi } from "../hooks";
+import { withClient } from "../lib/withClient";
 import { preferOnb04, simpleDeny } from "../lib/runs";
 import type { Page, SpecCheck, WorkUnit } from "../types";
 import { CHECK_TYPES } from "../types";
 import { Banner, DataTable, Field, Form } from "../ui";
 
 export default function Spec() {
-  const units = useApi<Page<WorkUnit>>("/work-units/");
+  const { client } = useCompany();
+  const units = useApi<Page<WorkUnit>>(withClient("/work-units/", client?.id));
   const [checks, setChecks] = useState<SpecCheck[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +71,7 @@ export default function Spec() {
         Execution systems consume the specification. Governance by construction: if the runtime
         cannot present authority, evidence, or the right object state, the check is denied.
       </p>
+      <CompanyBanner />
       {error && <Banner kind="error">{error}</Banner>}
       {info && <Banner kind="ok">{info}</Banner>}
       {last && (

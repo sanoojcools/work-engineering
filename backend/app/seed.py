@@ -22,6 +22,7 @@ from .models.workunit import (
 )
 from .services import verdict as verdict_svc
 from .services.contract import evidence_path_exists
+from .services.tenants import get_or_create_catalog
 from .services.verdict import persist_derivation
 
 UNITS = [
@@ -82,6 +83,8 @@ def seed(db: Session) -> None:
     if db.query(WorkUnit).filter(WorkUnit.code == "WU-OTC-01").one_or_none():
         return
 
+    catalog = get_or_create_catalog(db)
+
     order = EntityType(
         name="Order",
         kind=EntityKind.business_object,
@@ -128,6 +131,7 @@ def seed(db: Session) -> None:
     by_code: dict[str, WorkUnit] = {}
     for code, name, obj, pre, post, method, owner, actor, sla in UNITS:
         wu = WorkUnit(
+            client_id=catalog.id,
             code=code,
             name=name,
             business_object_type_id=types[obj].id,

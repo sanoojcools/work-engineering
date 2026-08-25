@@ -53,6 +53,7 @@ export type WorkUnit = {
   is_sustaining: boolean;
   machine_readable: boolean;
   missing_attributes: string[];
+  client_id?: number | null;
 };
 
 export type WorkEdge = {
@@ -75,6 +76,7 @@ export type Verdict = {
   recommended_level: number;
   applied_gates: string;
   allocation: string;
+  origin?: string | null;
   mean: number | null;
   uncapped_level: number | null;
   level_name: string | null;
@@ -90,6 +92,7 @@ export type CostProfile = {
   exception_minutes: number;
   maintenance_hours: number;
   attribution_confidence: number;
+  origin?: string;
   computed: Record<string, number | null | Record<string, number>> | null;
 };
 
@@ -181,6 +184,7 @@ export type AllocationItem = {
   recommended_level: number | null;
   allocation: string;
   gates: string;
+  origin?: string | null;
 };
 
 export type EconomicsProjection = {

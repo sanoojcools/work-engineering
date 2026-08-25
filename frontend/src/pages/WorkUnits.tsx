@@ -1,19 +1,30 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, api, errorMessage, getSpecKey } from "../api";
 import { EducationalNudge } from "../components/EducationalNudge";
 import { LabelWithInfo } from "../components/InfoTooltip";
+import { BulkUploadButton } from "../components/WorkUnits/BulkUploadButton";
+import { FunctionGroup } from "../components/WorkUnits/FunctionGroup";
+import { CompanyBanner } from "../components/CompanyBanner";
+import { useCompany } from "../company";
 import { useApi } from "../hooks";
-import { parseWorkUnitWorkbook, summarizeUpload, workUnitPayload } from "../lib/excelUpload";
+import { DEMO_HR_SOP } from "../lib/demoSop";
+import { parseWorkUnitFile, summarizeUpload, workUnitPayload } from "../lib/excelUpload";
+import { FUNCTION_ORDER, groupWorkUnits, matchesSearch } from "../lib/groupWorkUnits";
+import { withClient } from "../lib/withClient";
 import { bulkCreatePassingRuns, isPromotionFriction, passedCountFor } from "../lib/runs";
-import type { EntityType, Page, VerificationRun, WorkUnit } from "../types";
+import type { CostProfile, EntityType, Page, VerificationRun, WorkUnit } from "../types";
 import { ACTOR_TYPES, METHODS, PROVENANCE } from "../types";
-import { Badge, Banner, DataTable, Field, Form, Loading } from "../ui";
+import { Badge, Banner, Field, Form, Loading } from "../ui";
+
+const STORAGE_KEY = "workUnitsExpandedGroups";
+const DEFAULT_EXPANDED = new Set(["HR & People Ops"]);
 
 const LEVELS = [1, 2, 3, 4, 5, 6];
 
 export default function WorkUnits() {
-  const list = useApi<Page<WorkUnit>>("/work-units/");
+  const { client, reload: reloadCompanies } = useCompany();
+  const list = useApi<Page<WorkUnit>>(client ? `/work-units/?client_id=${client.id}` : null);
   const types = useApi<Page<EntityType>>("/ontology/types");
   const runs = useApi<Page<VerificationRun>>("/verification/runs");
   const nav = useNavigate();
@@ -27,12 +38,65 @@ export default function WorkUnits() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [levelFilter, setLevelFilter] = useState("");
+  const [readableFilter, setReadableFilter] = useState("");
+  const [methodFilter, setMethodFilter] = useState("");
+  const [sopText, setSopText] = useState(DEMO_HR_SOP);
+  const [censusBusy, setCensusBusy] = useState(false);
+  const [expandedFunctions, setExpandedFunctions] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return new Set(JSON.parse(raw) as string[]);
+    } catch {
+      /* ignore */
+    }
+    return new Set(DEFAULT_EXPANDED);
+  });
+  const [collapsedIndustries, setCollapsedIndustries] = useState<Set<string>>(new Set());
 
   const items = list.data?.items ?? [];
+  const profiles = useApi<Page<CostProfile>>(withClient("/economics/", client?.id));
+  const hoursByUnitId = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const row of profiles.data?.items ?? []) {
+      const gross = row.computed?.gross_hours;
+      if (typeof gross === "number") map.set(row.work_unit_id, gross);
+    }
+    return map;
+  }, [profiles.data]);
   const selected = items.find((u) => u.id === selectedId) ?? null;
   const employeeType = (types.data?.items ?? []).find((t) => t.name.toLowerCase() === "employee");
   const passed = selected ? passedCountFor(runs.data?.items ?? [], selected.id) : 0;
+
+  const filtered = useMemo(() => {
+    return items.filter((u) => {
+      if (!matchesSearch(u, search)) return false;
+      if (statusFilter && u.status !== statusFilter) return false;
+      if (levelFilter && String(u.autonomy_level) !== levelFilter) return false;
+      if (readableFilter === "yes" && !u.machine_readable) return false;
+      if (readableFilter === "no" && u.machine_readable) return false;
+      if (methodFilter && u.verification_method !== methodFilter) return false;
+      return true;
+    });
+  }, [items, search, statusFilter, levelFilter, readableFilter, methodFilter]);
+
+  const groups = useMemo(() => groupWorkUnits(filtered, hoursByUnitId), [filtered, hoursByUnitId]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...expandedFunctions]));
+  }, [expandedFunctions]);
+
+  useEffect(() => {
+    if (search.trim().length < 2) return;
+    const fns = new Set<string>();
+    for (const group of groups) {
+      if (group.units.length > 0) fns.add(group.name);
+    }
+    setExpandedFunctions(fns);
+    setCollapsedIndustries(new Set());
+  }, [search, groups]);
 
   useEffect(() => {
     if (!highlightedId) return;
@@ -105,7 +169,7 @@ export default function WorkUnits() {
     setFriction(null);
     setUploadBusy(true);
     try {
-      const rows = parseWorkUnitWorkbook(await file.arrayBuffer());
+      const rows = await parseWorkUnitFile(file);
       if (rows.length === 0) {
         setError("No Work Unit rows found in that workbook.");
         return;
@@ -126,7 +190,7 @@ export default function WorkUnits() {
         }
         try {
           const typeId = await ensureBusinessObject(row.business_object, typeCache);
-          await api.post<WorkUnit>("/work-units/", workUnitPayload(row, typeId), specKey);
+          await api.post<WorkUnit>("/work-units/", workUnitPayload(row, typeId, client?.id), specKey);
           known.add(row.code);
           created += 1;
         } catch (err) {
@@ -141,12 +205,12 @@ export default function WorkUnits() {
       setInfo(summarizeUpload(created, existing, failed));
       list.reload();
       types.reload();
+      reloadCompanies();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setUploadBusy(false);
       setUploadProgress(null);
-      if (fileInput.current) fileInput.current.value = "";
     }
   }
 
@@ -159,6 +223,7 @@ export default function WorkUnits() {
         Independently accountable commitments. All 18 contract attributes must be present for
         machine-readability. Click a row for promotion, reconciliation, and missing fields.
       </p>
+      <CompanyBanner />
       {createdNudge && (
         <EducationalNudge
           title="Work Unit created"
@@ -183,25 +248,117 @@ export default function WorkUnits() {
       {info && <Banner kind="ok">{info}</Banner>}
       {list.error && <Banner kind="error">{list.error}</Banner>}
       <div className="toolbar">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search code or name"
+          aria-label="Search Work Units"
+        />
+        <button type="button" onClick={() => setExpandedFunctions(new Set(FUNCTION_ORDER))}>
+          Expand All
+        </button>
+        <button type="button" onClick={() => { setExpandedFunctions(new Set()); setCollapsedIndustries(new Set()); }}>
+          Collapse All
+        </button>
         <button className="primary" data-tour="new-work-unit" onClick={() => setShowCreate((v) => !v)}>
           {showCreate ? "Close form" : "New Work Unit"}
         </button>
-        <button type="button" disabled={uploadBusy} onClick={() => fileInput.current?.click()}>
-          Bulk Upload Excel
-        </button>
-        <LabelWithInfo label="Bulk Upload Excel" />
-        <input
-          ref={fileInput}
-          className="file-hidden"
-          type="file"
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void uploadExcel(file);
-          }}
-        />
-        <span className="muted">{list.data?.total ?? 0} in inventory</span>
+        <BulkUploadButton busy={uploadBusy} onFile={(file) => void uploadExcel(file)} />
+        <span className="muted">
+          {list.data?.total ?? 0} in {client?.name ?? "inventory"}
+          {client?.kind === "catalog" ? " · test lab" : ""}
+        </span>
       </div>
+      <div className="wu-filters">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter status">
+          <option value="">Status</option>
+          <option value="draft">draft</option>
+          <option value="reconciled">reconciled</option>
+          <option value="authoritative">authoritative</option>
+        </select>
+        <select value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)} aria-label="Filter L">
+          <option value="">L</option>
+          {LEVELS.map((n) => <option key={n} value={n}>L{n}</option>)}
+        </select>
+        <select value={readableFilter} onChange={(e) => setReadableFilter(e.target.value)} aria-label="Filter readable">
+          <option value="">Readable</option>
+          <option value="yes">yes</option>
+          <option value="no">no</option>
+        </select>
+        <select value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)} aria-label="Filter verification method">
+          <option value="">Verification method</option>
+          {METHODS.map((m) => <option key={m}>{m}</option>)}
+        </select>
+      </div>
+      {client && client.kind !== "catalog" && (
+        <section className="card">
+          <h3>Function census — {client.name}</h3>
+          <p className="hint">
+            One pass for HR &amp; People Ops in this company: draft VERDICT from the contract, infer
+            cost where missing, compare the SOP, add graph edges, then download the pack.
+            Drafts are inferred. Confirming a score on VERDICT protects it from a re-run.
+          </p>
+          <textarea
+            rows={4}
+            style={{ width: "100%" }}
+            value={sopText}
+            onChange={(e) => setSopText(e.target.value)}
+            placeholder="Paste this company's HR SOP or JD (optional)"
+          />
+          <div className="toolbar">
+            <button
+              className="primary"
+              type="button"
+              disabled={censusBusy}
+              onClick={() =>
+                void act(async () => {
+                  setCensusBusy(true);
+                  try {
+                    const result = await api.post<{
+                      units: number;
+                      verdict_drafted: number;
+                      cost_attached: number;
+                      gaps: number;
+                      l4_plus: number;
+                      economics: { attributed_hours: number; fte: number };
+                      note: string;
+                    }>("/census/run", {
+                      client_id: client.id,
+                      function: "HR & People Ops",
+                      sop_text: sopText,
+                    });
+                    setInfo(
+                      `Census: ${result.verdict_drafted}/${result.units} VERDICT, ${result.cost_attached} costed, ${result.gaps} gaps, L4+ ${result.l4_plus}. ${result.note}`,
+                    );
+                    reloadCompanies();
+                  } finally {
+                    setCensusBusy(false);
+                  }
+                })
+              }
+            >
+              {censusBusy ? "Running…" : "Run census for HR & People Ops"}
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const pack = await api.get<Record<string, unknown>>(
+                  `/census/pack/${client.id}?function=${encodeURIComponent("HR & People Ops")}`,
+                );
+                const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `${client.slug}-hr-census-pack.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              Download HR pack
+            </button>
+          </div>
+        </section>
+      )}
       {uploadProgress && (
         <div className="upload-progress" aria-live="polite">
           <div className="upload-progress-label">
@@ -243,6 +400,7 @@ export default function WorkUnits() {
                   provenance: data.get("provenance"),
                   owner: data.get("owner"),
                   actor_type: data.get("actor_type"),
+                  client_id: client?.id,
                 });
                 form.reset();
                 setShowCreate(false);
@@ -310,23 +468,38 @@ export default function WorkUnits() {
       <div className="split">
         <div>
           {list.loading ? <Loading /> : (
-            <DataTable
-              rows={items}
-              selectedId={selectedId}
-              highlightedId={highlightedId}
-              onRowClick={(row) => setSelectedId(row.id)}
-              columns={[
-                { key: "code", header: <LabelWithInfo label="Work Unit">Code</LabelWithInfo> },
-                { key: "name", header: "Name" },
-                { key: "status", header: "Status" },
-                { key: "autonomy_level", header: "L", render: (r) => `L${r.autonomy_level}` },
-                {
-                  key: "machine_readable",
-                  header: "Readable",
-                  render: (r) => <Badge ok={r.machine_readable}>{r.machine_readable ? "yes" : "no"}</Badge>,
-                },
-              ]}
-            />
+            <>
+              {filtered.length === 0 && <p className="muted">No Work Units match this search.</p>}
+              {groups.map((group) => (
+                <FunctionGroup
+                  key={group.name}
+                  group={group}
+                  expanded={expandedFunctions.has(group.name)}
+                  expandedIndustries={new Set(group.industries.filter((ind) => !collapsedIndustries.has(`${group.name}::${ind.name}`)).map((ind) => `${group.name}::${ind.name}`))}
+                  onToggle={() => {
+                    setExpandedFunctions((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(group.name)) next.delete(group.name);
+                      else next.add(group.name);
+                      return next;
+                    });
+                  }}
+                  onToggleIndustry={(industry) => {
+                    const key = `${group.name}::${industry}`;
+                    setCollapsedIndustries((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(key)) next.delete(key);
+                      else next.add(key);
+                      return next;
+                    });
+                  }}
+                  selectedId={selectedId}
+                  highlightedId={highlightedId}
+                  search={search}
+                  onSelect={(row) => setSelectedId(row.id)}
+                />
+              ))}
+            </>
           )}
         </div>
         <aside className="card">
@@ -347,6 +520,8 @@ export default function WorkUnits() {
                 <p className="muted">Missing: {selected.missing_attributes.join(", ")}</p>
               )}
               <dl>
+                <dt className="muted">Provenance</dt>
+                <dd>{selected.provenance}</dd>
                 <dt className="muted">Authority</dt>
                 <dd>{selected.authority || "—"}</dd>
                 <dt className="muted">Acceptance</dt>
