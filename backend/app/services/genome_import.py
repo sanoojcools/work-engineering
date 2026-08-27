@@ -19,7 +19,7 @@ from ..models.client import Client
 from ..models.graph import EdgeType, WorkEdge
 from ..models.ontology import EntityKind, EntityType, Provenance
 from ..models.regulatory import RegulatoryEntry
-from ..models.security import AuditLog, GenomeVersion, GenomeVersionType, WorkUnitProvenanceDetail, WorkUnitRegulatoryLink
+from ..models.security import AuditLog, GenomeVersion, GenomeVersionType, UploadedFile, WorkUnitProvenanceDetail, WorkUnitRegulatoryLink
 from ..models.workunit import ActorType, UnitStatus, VerificationMethod, WorkUnit
 from ..schemas.genome_import import GenomeImportRequest
 from . import work_units as wu_svc
@@ -84,6 +84,43 @@ def _get_or_create_regulatory_entry(db: Session, rr_id: str) -> RegulatoryEntry:
     return row
 
 
+def _validate_file_provenance(db: Session, client_id: int, parsed: GenomeImportRequest) -> list[dict]:
+    """Slice 1 PR 1a: a Work Unit citing provenance.file_id must reference a
+    real UploadedFile for this tenant, and if it also supplies hash_sha256,
+    that hash must match the server-computed one on record. This runs as a
+    pre-pass over the whole batch (before any WorkUnit row is written) so a
+    bad reference fails the entire import, not a partial write.
+
+    A Work Unit with NO file_id is unaffected — that's the caller-supplied-hash
+    path that already existed, and stays exactly as it was."""
+    violations: list[dict] = []
+    for wu_in in parsed.work_units:
+        file_id_raw = wu_in.provenance.file_id
+        if not file_id_raw:
+            continue
+        try:
+            file_pk = int(file_id_raw)
+        except (TypeError, ValueError):
+            violations.append({
+                "code": "unknown_file_id",
+                "detail": f"{wu_in.id}: provenance.file_id {file_id_raw!r} is not a valid UploadedFile id",
+            })
+            continue
+        row = db.query(UploadedFile).filter(UploadedFile.id == file_pk, UploadedFile.client_id == client_id).one_or_none()
+        if row is None:
+            violations.append({
+                "code": "unknown_file_id",
+                "detail": f"{wu_in.id}: provenance.file_id {file_id_raw!r} does not exist for this tenant",
+            })
+            continue
+        if wu_in.provenance.hash_sha256 and wu_in.provenance.hash_sha256 != row.sha256:
+            violations.append({
+                "code": "file_hash_mismatch",
+                "detail": f"{wu_in.id}: provenance.hash_sha256 does not match UploadedFile {file_id_raw}'s server-computed sha256",
+            })
+    return violations
+
+
 def _log_audit(db: Session, client_id: int, actor: str, action: str, resource: str, resource_id: str, detail: str = "") -> None:
     db.add(AuditLog(client_id=client_id, actor=actor, action=action, resource=resource, resource_id=resource_id, detail=detail))
 
@@ -132,6 +169,12 @@ def import_genome(db: Session, client_id: int, raw_genome: dict, *, actor: str =
         db.commit()
         return _failure_result(gqs_result, version, pyd_violations)
 
+    file_violations = _validate_file_provenance(db, client_id, parsed)
+    if file_violations:
+        version.gates_failed = json.dumps(file_violations)
+        db.commit()
+        return _failure_result(gqs_result, version, file_violations)
+
     code_to_wu: dict[str, WorkUnit] = {}
     for wu_in in parsed.work_units:
         entity_type = _get_or_create_entity_type(db, wu_in.business_object)
@@ -170,10 +213,13 @@ def import_genome(db: Session, client_id: int, raw_genome: dict, *, actor: str =
         db.flush()
         code_to_wu[wu_in.id] = wu
 
+        # file_id resolution: _validate_file_provenance already proved this
+        # int()s cleanly and exists for this tenant, if it was supplied at all.
+        resolved_file_pk = int(wu_in.provenance.file_id) if wu_in.provenance.file_id else None
         db.add(WorkUnitProvenanceDetail(
             work_unit_id=wu.id,
             source_type=provenance,
-            file_id=None,
+            file_id=resolved_file_pk,
             row_ref=wu_in.provenance.row,
             col_ref=wu_in.provenance.col or "",
             hash_sha256=wu_in.provenance.hash_sha256 or "",
@@ -181,6 +227,14 @@ def import_genome(db: Session, client_id: int, raw_genome: dict, *, actor: str =
             interview_ref=wu_in.provenance.interview_id or "",
             consent_receipt_id=None,
         ))
+        if resolved_file_pk is None and wu_in.provenance.hash_sha256:
+            # Caller supplied a hash without a real file_id — it was never
+            # server-computed. Flag it, don't block it (that's the existing,
+            # already-proven caller-supplied-hash path).
+            _log_audit(
+                db, client_id, actor, "provenance.hash.not_computed", "work_unit", wu_in.id,
+                detail="hash_sha256 supplied without a resolvable file_id — not server-computed",
+            )
 
         for rr_id in wu_in.regulatory_register_link:
             entry = _get_or_create_regulatory_entry(db, rr_id)
