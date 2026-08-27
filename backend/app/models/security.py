@@ -14,7 +14,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, LargeBinary, String, Text
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, LargeBinary, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db import Base
@@ -95,6 +95,11 @@ class UploadedFile(Base):
     sha256: Mapped[str] = mapped_column(String(64))
     content_type: Mapped[str] = mapped_column(String(120), default="")
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    # Slice 1 PR 1b: PR 1a computed sha256 but never persisted the bytes
+    # themselves, so a later classifier had nothing to read. Nullable so
+    # pre-1b rows (if any survive from PR 1a testing) don't violate a
+    # NOT NULL add; every upload from this PR forward always sets it.
+    content: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     uploaded_by: Mapped[str] = mapped_column(String(120), default="")
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
@@ -117,7 +122,10 @@ class GenomeVersion(Base):
     version_type: Mapped[GenomeVersionType] = mapped_column(
         Enum(GenomeVersionType), default=GenomeVersionType.inferred)
     sequence: Mapped[int] = mapped_column(Integer, default=1)  # v1, v2, v3... per client
-    gqs_score: Mapped[float | None] = mapped_column(Integer, nullable=True)
+    # Bug found in Slice 1 PR 1b: this was typed Integer despite the Python
+    # hint saying float — every stored score got truncated (94.29 -> 94).
+    # Confirmed live: the GQS endpoint had been returning 94, not 94.29.
+    gqs_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     work_unit_count: Mapped[int] = mapped_column(Integer, default=0)
     gates_passed: Mapped[str] = mapped_column(Text, default="[]")   # JSON list of gate ids that passed
     gates_failed: Mapped[str] = mapped_column(Text, default="[]")   # JSON list of {gate_id, reason}
@@ -145,7 +153,10 @@ class ReviewQueueItem(Base):
     client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
     file_id: Mapped[int | None] = mapped_column(ForeignKey("uploaded_files.id"), nullable=True)
     row_ref: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    confidence: Mapped[float | None] = mapped_column(Integer, nullable=True)
+    col_ref: Mapped[str] = mapped_column(String(120), default="")  # added Slice 1 PR 1b
+    raw_text: Mapped[str] = mapped_column(Text, default="")  # added Slice 1 PR 1b
+    # Same Integer-typed-as-float bug as GenomeVersion.gqs_score above, fixed here too.
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     reason: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[ReviewQueueStatus] = mapped_column(Enum(ReviewQueueStatus), default=ReviewQueueStatus.pending)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

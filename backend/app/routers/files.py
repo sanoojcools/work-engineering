@@ -13,7 +13,9 @@ from pathlib import PurePosixPath
 from fastapi import APIRouter, HTTPException, UploadFile, status
 
 from ..dependencies import OrgKeyDep, TenantDbDep
-from ..models.security import UploadedFile
+from ..models.security import ReviewQueueItem, ReviewQueueStatus, UploadedFile
+from ..services.classifier import classify
+from ..services.lookup import get_or_404
 
 router = APIRouter()
 
@@ -46,6 +48,7 @@ async def upload_file(file: UploadFile, db: TenantDbDep, key: OrgKeyDep) -> dict
         sha256=sha256,
         content_type=file.content_type or "",
         size_bytes=len(body),
+        content=body,
         uploaded_by=key.label or "",
     )
     db.add(row)
@@ -53,3 +56,45 @@ async def upload_file(file: UploadFile, db: TenantDbDep, key: OrgKeyDep) -> dict
     db.refresh(row)
 
     return {"file_id": str(row.id), "sha256": row.sha256, "size": row.size_bytes, "file_name": row.file_name}
+
+
+@router.post("/{file_id}/classify")
+def classify_file(file_id: int, db: TenantDbDep, key: OrgKeyDep) -> dict:
+    """Slice 1 PR 1b: format classifier. Never calls the import service —
+    this only scores the header row and queues the file if nothing scores
+    >= 0.7 (playbook: a File-6-class sheet must never become a genome)."""
+    row = get_or_404(db, UploadedFile, file_id, "UploadedFile")
+    if row.content is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "File has no stored content to classify")
+
+    result = classify(row.content, row.file_name)
+
+    if result.queued:
+        item = ReviewQueueItem(
+            client_id=key.client_id,
+            file_id=row.id,
+            row_ref=None,
+            col_ref="",
+            raw_text="",
+            confidence=0.0,
+            reason="unrecognized_step_column",
+            status=ReviewQueueStatus.pending,
+        )
+        db.add(item)
+        db.commit()
+        db.refresh(item)
+        return {
+            "queued": True,
+            "review_queue_item_id": item.id,
+            "reason": "unrecognized_step_column",
+            "metadata_notes": result.metadata_notes,
+        }
+
+    return {
+        "queued": False,
+        "header_row_index": result.header_row_index,
+        "step_identity_column": result.step_identity_column,
+        "step_identity_confidence": result.step_identity_confidence,
+        "header_cells": result.header_cells,
+        "metadata_notes": result.metadata_notes,
+    }
