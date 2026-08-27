@@ -6,7 +6,14 @@ class Settings(BaseSettings):
 
     app_name: str = "Work Engineering"
     app_version: str = "0.8.0"
-    database_url: str = "postgresql+psycopg2://wep:wep@localhost:5432/wep"
+    # Per-request runtime connection: non-superuser, RLS-bound (see alembic
+    # f198c4aadd2c). This is what get_db()/routers use — every query on it
+    # is tenant-scoped by app.current_client_id.
+    database_url: str = "postgresql+psycopg2://wep_app:wep_app_dev_pw@localhost:5433/wep"
+    # Startup/maintenance connection only (e.g. bootstrap_tenants cloning
+    # catalog Work Units across clients) — deliberately bypasses RLS via the
+    # migration superuser. Never used for per-request/tenant-facing queries.
+    system_database_url: str = "postgresql+psycopg2://wep:wep@localhost:5433/wep"
     allowed_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     # LLM-assisted discovery
@@ -17,6 +24,10 @@ class Settings(BaseSettings):
 
     # Shared secret for the Spec API / Enforcement Gateway (execution systems)
     spec_api_key: str = "dev-spec-key-change-me"
+
+    # P0: pgcrypto symmetric key for field-level PII encryption (pii.py).
+    # Dev default only — override in any non-local environment.
+    pii_encryption_key: str = "dev-pii-key-change-me"
 
     # G4 ladder
     promotion_min_runs: int = 5

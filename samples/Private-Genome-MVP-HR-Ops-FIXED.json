@@ -1,0 +1,1209 @@
+{
+  "function_pack": "hr_operations",
+  "version": "v2_Detailed_from_5_CSVs_2026-08-25",
+  "source_files": [
+    "USHR_Agent_Ready.xlsx",
+    "OfferDesk_Agent_Ready.xlsx",
+    "Onboarding_Agent_Ready_Final.xlsx",
+    "Offboarding_Agent_Ready_v2.xlsx",
+    "HRBP_Agent_Ready_Onboarding_Offboarding_GR.xlsx"
+  ],
+  "provenance_summary": "Observed from time-motion study + interviews May 2026 - Person A, Person C, Person D, Person B, Person E (names scrubbed for PII)",
+  "work_units": [
+    {
+      "id": "WU-US-01",
+      "name": "Initiate BGV with Client-Specific Package Selection",
+      "business_object": "BGV Case",
+      "current_condition": "Candidate Selected",
+      "desired_condition": "BGV Initiated",
+      "context": {
+        "decision_branches": "US candidate, Client = Liberty Mutual / IBM / NYL / Client A Standard / Client A Executive Grade 8+, Drug test flag, Indian-origin flag",
+        "variants": [
+          "By Client: Liberty Mutual Package vs IBM vs NYL vs Standard vs Executive; By Origin: Indian-origin India education routing to Person D"
+        ]
+      },
+      "trigger": "Recruiter sends BGV request email with Job Vite ID + client + employment type + laptop flag",
+      "input": [
+        "Candidate first name",
+        "last name",
+        "email",
+        "client name",
+        "employment type FT/Contractor",
+        "Grade",
+        "Job Vite ID",
+        "BGV package matrix"
+      ],
+      "authority": "Person A can initiate, Person F approves if cost >$200 or yellow flag",
+      "actor_constraints": "US HRSS SPOC only, requires Advanced Reporting tool access + Job Vite API, Sole owner Person A",
+      "acceptance_criteria": [
+        "BGV order created with correct client package",
+        "candidate auto-receives link",
+        "tracker updated",
+        "cost within threshold or approval obtained"
+      ],
+      "evidence_required": [
+        "BGV order ID in Advanced Reporting",
+        "package selection log",
+        "candidate invitation email timestamp",
+        "US Onboarding Tracker entry"
+      ],
+      "verification_method": "System Log Check in Advanced Reporting + Tracker Reconciliation - Independence Low",
+      "sla_timing": {
+        "raw": "5-10 min per case, 2-3/week, ~10-12/mo, Candidate fill SLA 1-3 days, BGV completion 7-14 days standard, 45 days India education"
+      },
+      "dependencies": [],
+      "failure_semantics": "If package wrong: BGV invalid, must reorder, cost overrun. If candidate doesn't submit: auto-resend after 3 days. If India education missed: cost blowout $200+, 45 day delay.",
+      "regulatory_register_link": [
+        "RR-HR-011",
+        "RR-HR-012",
+        "RR-HR-013"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "7a6af220-e1ee-5448-8be8-009e69732449",
+        "row": 3,
+        "hash_sha256": "968ac7eeea701eece0c775522e96fe0b791cb91aed63abf7f1a858b27b0f8474",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "12ac5720-18ae-50bf-b4d7-d4b487a193d9",
+        "consent_receipt_id": "ce8a8faf-cfde-5a6e-b707-9dd28a4b1fee",
+        "notes": "Observed - USHR CSV Row 3 + Interview <redacted interviewer> May 14 2026 + Advanced Reporting tool"
+      },
+      "verdict": {
+        "V": 5,
+        "E": 4,
+        "R": 5,
+        "D": 4,
+        "I": 5,
+        "C": 3,
+        "T": 4,
+        "autonomy": "L4 Supervised - Auto-select package from client mapping, human review for non-standard"
+      }
+    },
+    {
+      "id": "WU-US-04",
+      "name": "Handle BGV Yellow Flag and India Education Cost Optimization Routing",
+      "business_object": "BGV Case",
+      "current_condition": "BGV In Progress",
+      "desired_condition": "BGV Completed or Escalated",
+      "context": {
+        "decision_branches": "BGV status = Yellow Flag OR Check = India education for Indian-origin employee OR Cost >$200",
+        "variants": [
+          "Yellow Flag Types: employer unreachable, incomplete details, cost overrun; India Variant: Indian-origin with India education vs US education"
+        ]
+      },
+      "trigger": "Advanced Reporting status changes to Yellow Flag OR India education check detected",
+      "input": [
+        "BGV status",
+        "check results",
+        "yellow flag details",
+        "cost estimate",
+        "India origin flag",
+        "Person D contact"
+      ],
+      "authority": "Person A compiles, Person F decides approval/rejection for yellow flag and cost >$200",
+      "actor_constraints": "Person A judgement required, Person F final authority, India BGV team Person D for India checks",
+      "acceptance_criteria": [
+        "Yellow flag details compiled and emailed to Person F within 1 day",
+        "India education checks routed to Person D with instruction to Advanced Reporting to close that check",
+        "candidate invitation resent if pending >3 days"
+      ],
+      "evidence_required": [
+        "Yellow flag email to Person F with details",
+        "routing email to Person D",
+        "Advanced Reporting instruction log",
+        "resend timestamp"
+      ],
+      "verification_method": "Email Audit + Advanced Reporting Status Check + Cost Approval Log - Independence Medium",
+      "sla_timing": {
+        "raw": "Follow-up 5 min/check, Yellow flag compilation 10-15 min, India routing 5 min, Yellow flag resolution 2-5 days"
+      },
+      "dependencies": [
+        "WU-US-01"
+      ],
+      "failure_semantics": "If yellow flag not escalated: compliance risk, hire without clearance. If India routing missed: $200+ extra cost, 45 day delay. If no resend: candidate stuck in Applicant Pending forever.",
+      "regulatory_register_link": [
+        "RR-HR-021",
+        "RR-HR-022",
+        "RR-HR-023"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "5759cf82-d134-521f-829e-091c6be484f2",
+        "row": 4,
+        "hash_sha256": "39af65a1e892a64b8bd5108d692ce44111e298c1cf5e1d940ffb3c8dc81e11e1",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "ec1bc615-e5c3-5f4f-bba1-201c283f3204",
+        "consent_receipt_id": "2c5b8131-0212-55be-a39d-ec08d20b07b0",
+        "notes": "Observed - USHR CSV Row 4 + Interview"
+      },
+      "verdict": {
+        "V": 2,
+        "E": 3,
+        "R": 3,
+        "D": 2,
+        "I": 3,
+        "C": 5,
+        "T": 2,
+        "autonomy": "L2 Assisted - Auto-monitor status, auto-compile flag details, human decision on approval"
+      }
+    },
+    {
+      "id": "WU-US-07",
+      "name": "Create Employee Record in Dual HRIS Oracle Cloud + Darwinbox",
+      "business_object": "Employee Record",
+      "current_condition": "Onboarding Confirmed by Person F",
+      "desired_condition": "Record Created in Both Systems",
+      "context": {
+        "decision_branches": "FT vs Contractor, Oracle being phased out, Darwinbox becomes sole, CPR Rate Approval form has address, H1B status",
+        "variants": [
+          "FT: Hire an Associate vs Contractor: Add Contingent Worker in Oracle; Post phase-out: Darwinbox only"
+        ]
+      },
+      "trigger": "Person F email 'Please go ahead, create HRMS record' post onboarding session on DOJ",
+      "input": [
+        "Job Vite profile (name",
+        "email",
+        "phone)",
+        "CPR Rate Approval (address",
+        "skills",
+        "work auth",
+        "H1B status",
+        "expiry)",
+        "offer letter (entity TDCI",
+        "start date",
+        "manager)",
+        "recruiter email"
+      ],
+      "authority": "Person A creates, Person F triggers via email",
+      "actor_constraints": "Requires Oracle Cloud + Darwinbox access, Dual entry mandatory until Oracle phase-out, 20 min dual entry",
+      "acceptance_criteria": [
+        "Personal details",
+        "communication",
+        "citizenship",
+        "employment",
+        "assignment",
+        "contract",
+        "manager filled in both systems",
+        "employee appears in both searches",
+        "tracker updated"
+      ],
+      "evidence_required": [
+        "Oracle Cloud Person ID",
+        "Darwinbox Employee ID",
+        "field population log",
+        "tracker completion entry",
+        "US Repository document placement"
+      ],
+      "verification_method": "Dual System Reconciliation - Check Oracle + Darwinbox both have same Employee - Independence High",
+      "sla_timing": {
+        "raw": "20 min per candidate dual entry, Per candidate ~10-12/mo, Done immediately on Person F confirmation"
+      },
+      "dependencies": [],
+      "failure_semantics": "If mismatch between systems: payroll failure, compliance gap. If CPR data wrong: H1B expiry missed. If delayed: employee cannot access systems, payroll missed.",
+      "regulatory_register_link": [
+        "RR-HR-031",
+        "RR-HR-032",
+        "RR-HR-033"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "a4656746-b9df-5e6a-a245-50373da754ff",
+        "row": 5,
+        "hash_sha256": "3749b8e189448f21e9682fae3ba45b1db23565b811d4e934876b00b7a8f65ee6",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "94b2b6d2-771c-5cd1-8367-64377347f024",
+        "consent_receipt_id": "25e303cd-3cf6-5703-b13b-f9378788aa69",
+        "notes": "Observed - USHR CSV Row 7"
+      },
+      "verdict": {
+        "V": 5,
+        "E": 5,
+        "R": 5,
+        "D": 5,
+        "I": 5,
+        "C": 4,
+        "T": 5,
+        "autonomy": "L5 Fully Automated - Pre-populate both systems from Job Vite + CPR, human review and submit, post phase-out single system"
+      }
+    },
+    {
+      "id": "WU-OFF-02B",
+      "name": "Verify Permanent Candidate Employment via UAN Service History Cross-Validation",
+      "business_object": "Candidate",
+      "current_condition": "Documents Uploaded in Zwayam",
+      "desired_condition": "Employment Verified",
+      "context": {
+        "decision_branches": "Hire Type = Permanent Lateral, EPFO mandatory from 2016, UAN service history may have gaps or dual employment, 17-item checklist",
+        "variants": [
+          "Permanent Lateral vs Contractor vs Fresher vs Intern - Doc list varies; UAN Gap Variant: gap requires bank statement vs dual employment requires deviation"
+        ]
+      },
+      "trigger": "Recruiter sends offer request with Application ID + Zwayam profile has employment docs",
+      "input": [
+        "UAN service history PDF",
+        "all service letters (start/end dates)",
+        "resume dates",
+        "pay slips with UAN number",
+        "EPFO from 2016",
+        "employment gap explanation"
+      ],
+      "authority": "Person A verifies, Deviation approval required if dual employment detected - Person N + Person O",
+      "actor_constraints": "Offer Desk SPOC only, Requires Zwayam doc access + UAN parsing + IEF face match capability, 30-40 min per permanent",
+      "acceptance_criteria": [
+        "All employment gaps explained with bank statement or BGV note",
+        "no dual employment without deviation approval",
+        "dates match across UAN/resume/service letter within 7 days",
+        "pay slip has UAN present",
+        "IEF screenshot face matches passport photo"
+      ],
+      "evidence_required": [
+        "Verification checklist ticked",
+        "UAN vs resume vs service letter cross-validation log",
+        "dual employment flag if any",
+        "IEF identity verification result",
+        "EF signature present"
+      ],
+      "verification_method": "Cross-System Reconciliation + Image Match (IEF face vs passport) + Human Spot Check - Independence Medium - Second pair for dual employment",
+      "sla_timing": {
+        "raw": "30-40 min per permanent, 15-20 min per contractor, SLA 2 hrs from recruiter request to offer release, Volume 200-250/mo total"
+      },
+      "dependencies": [
+        "WU-OFF-03"
+      ],
+      "failure_semantics": "If missed dual employment: compliance risk, offer to candidate with active employment elsewhere. If gap not checked: BGV later fails amber, revocation. If not flagged: 2-hr SLA breach triggers escalation.",
+      "regulatory_register_link": [
+        "RR-HR-041",
+        "RR-HR-042",
+        "RR-HR-043",
+        "RR-HR-044"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "3e461d6a-07dc-534a-b133-d7453aadb1f3",
+        "row": 6,
+        "hash_sha256": "51ca02cd857d810b8931a99391edacdcda4e20b854f085edbfb65b2ffe8381a0",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "f40feb50-a255-532e-a986-0ff28abf973a",
+        "consent_receipt_id": "d5299583-792f-5be7-badb-8f53245fd28f",
+        "notes": "Observed - OfferDesk CSV Row 2 + Interview <redacted interviewer> May 12 2026 1hr47m + 200-250/mo volume"
+      },
+      "verdict": {
+        "V": 3,
+        "E": 3,
+        "R": 5,
+        "D": 2,
+        "I": 3,
+        "C": 3,
+        "T": 2,
+        "autonomy": "L2 Assisted - Auto-check completeness, auto-cross-validate dates, auto-detect dual employment, human judgement on gaps"
+      }
+    },
+    {
+      "id": "WU-OFF-03",
+      "name": "Verify Salary Approval Against Salary Grid and Variable Pay Rules",
+      "business_object": "Offer Letter",
+      "current_condition": "Employment Verified",
+      "desired_condition": "Salary Validated",
+      "context": {
+        "decision_branches": "Org Group = GTS vs Platforms have different scales per grade, Platforms = No variable pay at any level, GTS/Core Grade 5+ = 8% variable mandatory, Joining bonus >1L split logic",
+        "variants": [
+          "GTS vs Platforms scale; Grade A Fresher vs Grade C Contractor vs Lateral; Campus has 2 extra annexures"
+        ]
+      },
+      "trigger": "Employment verification complete, Salary approval mail attachment available",
+      "input": [
+        "CTC",
+        "variable pay %",
+        "grade",
+        "designation",
+        "source type",
+        "referral name",
+        "vendor name",
+        "joining bonus amount",
+        "deferred bonus",
+        "ESOP",
+        "NP buyout",
+        "relocation approval",
+        "salary grid GTS + Platforms"
+      ],
+      "authority": "Person A validates, If deviation >0% auto-triggers 2-level approval Person N + Person O in Zwayam",
+      "actor_constraints": "Offer Desk only, Requires salary grid Excel + Zwayam fitment data + designation-grade mapping list",
+      "acceptance_criteria": [
+        "CTC within grid min/max per grade and org group",
+        "Deviation % calculated correctly",
+        "Variable pay rule complies (Platforms 0%",
+        "GTS G5+ 8%)",
+        "Designation matches grade per approved list",
+        "Referral name present if employee referral",
+        "Vendor name present if vendor source"
+      ],
+      "evidence_required": [
+        "Deviation % calculation log",
+        "Grid check result",
+        "Variable pay rule check",
+        "Designation-grade mapping validation",
+        "Approval trigger if deviation"
+      ],
+      "verification_method": "Deterministic Rule Check against Salary Grid - Fully automatable - Independence High",
+      "sla_timing": {
+        "raw": "5-10 min per candidate, Per candidate 200-250/mo, Deviation approval typically same day"
+      },
+      "dependencies": [
+        "WU-OFF-02B",
+        "WU-OFF-04"
+      ],
+      "failure_semantics": "If wrong grid applied: payroll error, offer with incorrect CTC, financial impact. If variable pay rule missed: policy violation, finance rejection. If designation-grade mismatch: HRMS error downstream.",
+      "regulatory_register_link": [
+        "RR-HR-051",
+        "RR-HR-052",
+        "RR-HR-053",
+        "RR-HR-054"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "73eec5fe-d055-501c-aaff-e5435cf4d5ec",
+        "row": 7,
+        "hash_sha256": "cc5c59f0712fa04eae6715cda0c2eb72b6961679b20c9ebea40f89ff9152b838",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "727ab776-3d3f-520f-ad80-4811b5763d0e",
+        "consent_receipt_id": "8db5a772-d622-5507-bcef-8857da1c6445",
+        "notes": "Observed - OfferDesk CSV Row 3 + Salary grid Excel"
+      },
+      "verdict": {
+        "V": 5,
+        "E": 5,
+        "R": 5,
+        "D": 5,
+        "I": 4,
+        "C": 4,
+        "T": 5,
+        "autonomy": "L5 Fully Automated - Deviation calc, variable pay rule check, designation mapping validation, auto-flag violations"
+      }
+    },
+    {
+      "id": "WU-OFF-04",
+      "name": "Update Master Joining Sheet and PR Sheet with Joining Bonus Split Logic",
+      "business_object": "Master Joining Sheet",
+      "current_condition": "Salary Validated",
+      "desired_condition": "Tracker Updated",
+      "context": {
+        "decision_branches": "Contractor vs Permanent, Joining bonus >1L split 4th+8th month, <=1L single 4th month, Manager exception 1st month rare 1-2%",
+        "variants": [
+          "Permanent vs Contractor: PR sheet additionally; Joining bonus variant: >1L vs <=1L vs manager exception 1st month"
+        ]
+      },
+      "trigger": "Salary validation complete",
+      "input": [
+        "TR number",
+        "org group",
+        "account",
+        "grade",
+        "designation",
+        "DOJ",
+        "location",
+        "personal email",
+        "hire type",
+        "source",
+        "reporting manager",
+        "recruiter",
+        "relocation",
+        "accommodation",
+        "joining bonus",
+        "deferred bonus",
+        "NP buyout",
+        "ESOP",
+        "variable pay",
+        "contractor contract dates",
+        "amount"
+      ],
+      "authority": "Person A updates, Person Q uses PR sheet for Oracle Fusion PO creation for contractors",
+      "actor_constraints": "Excel OneDrive access, Master Joining Sheet template ~30 columns, PR sheet for contractors, Batched end of day",
+      "acceptance_criteria": [
+        "All ~30 columns populated from Zwayam + salary approval parsing",
+        "Joining bonus split logic applied correctly (>1L = 4th+8th",
+        "<=1L = 4th only)",
+        "PR sheet updated if contractor with offer date",
+        "name",
+        "EmpID",
+        "skills",
+        "contract dates",
+        "amount"
+      ],
+      "evidence_required": [
+        "Master Joining Sheet row with all fields",
+        "PR sheet entry if applicable",
+        "Split logic applied log"
+      ],
+      "verification_method": "Deterministic Calculation Check + Completeness Check - Independence High",
+      "sla_timing": {
+        "raw": "5-10 min per candidate batched end of day, Volume 200-250/mo"
+      },
+      "dependencies": [
+        "WU-OFF-03",
+        "WU-OFF-10"
+      ],
+      "failure_semantics": "If bonus split wrong: payroll over/under payment, employee escalation. If TR number missing: downstream onboarding fails. If batched late: offer letter trigger delayed.",
+      "regulatory_register_link": [
+        "RR-HR-061",
+        "RR-HR-062",
+        "RR-HR-063"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "58a30f8a-745d-533c-a062-1add24baf59d",
+        "row": 8,
+        "hash_sha256": "70e79e22cab0d4746ddf221248b12612f04b2065e4c1e79d3336851e0d99a67a",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "5aad72b7-3113-5bb5-98cf-733cfd7ad456",
+        "consent_receipt_id": "9e2a8e25-3e29-52f5-9dea-44b25025ace0",
+        "notes": "Observed - OfferDesk CSV Row 4"
+      },
+      "verdict": {
+        "V": 5,
+        "E": 5,
+        "R": 5,
+        "D": 5,
+        "I": 5,
+        "C": 3,
+        "T": 5,
+        "autonomy": "L5 Fully Automated - Auto-populate 80% fields from Zwayam API + salary parsing, deterministic split logic"
+      }
+    },
+    {
+      "id": "WU-OFF-10",
+      "name": "Generate Monthly Payroll Bonus Reports on 17th",
+      "business_object": "Payroll Report",
+      "current_condition": "Master Joining Sheet Current",
+      "desired_condition": "Payroll Reports Sent",
+      "context": {
+        "decision_branches": "Monthly cycle 17th, Three reports: Joining bonus, Deferred bonus, Referral bonus with grade-based amounts, Referrer must NOT be on IEF panel",
+        "variants": [
+          "Joining bonus: >1L vs <=1L split; Referral: Grade-based amount varies; Deferred: monthly filter by DOJ anniversary"
+        ]
+      },
+      "trigger": "Date = 17th of month",
+      "input": [
+        "Master Joining Sheet (joining bonus",
+        "deferred bonus",
+        "referral details)",
+        "IEF panel membership",
+        "grade-based referral bonus amounts",
+        "DOJ anniversary for deferred bonus vesting"
+      ],
+      "authority": "Person A compiles, Person G approves referral bonus before sending to Person M payroll, Person M is payroll SPOC",
+      "actor_constraints": "Excel template access, Email to Person M + Person G, Requires IEF check for referral eligibility",
+      "acceptance_criteria": [
+        "Report 1: All candidates with joining bonus",
+        "4th and 8th month schedule",
+        "amounts. Report 2: Deferred bonus vests that month (DOJ anniversary). Report 3: Referrals with referral name",
+        "grade",
+        "amount",
+        "cross-check referrer not on interview panel. All sent to Person M",
+        "referral to Person G approval"
+      ],
+      "evidence_required": [
+        "Three report Excel files with filters applied",
+        "IEF panel cross-check log",
+        "Person G approval for referral",
+        "Email sent timestamp"
+      ],
+      "verification_method": "Rule Check + Panel Membership Check - Independence High",
+      "sla_timing": {
+        "raw": "30-45 min total compilation monthly on 17th, All applicable candidates for month"
+      },
+      "dependencies": [
+        "WU-OFF-04"
+      ],
+      "failure_semantics": "If joining bonus missed: employee not paid bonus, escalation. If deferred bonus date wrong: vesting missed, legal risk. If referral panel violation missed: policy breach, bonus paid to ineligible referrer.",
+      "regulatory_register_link": [
+        "RR-HR-071",
+        "RR-HR-072",
+        "RR-HR-073"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "86a93e31-c1ef-5e06-8d48-2e306c5bb2e5",
+        "row": 9,
+        "hash_sha256": "b50b7988e27d4f3b5dfd8cda2f8440f0be324087c7906de5b974286e3f9f083d",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "03b3672f-3213-5391-9f8f-fc7975ec4807",
+        "consent_receipt_id": "827cd39d-664b-5a07-beae-24635abd52f5",
+        "notes": "Observed - OfferDesk CSV Row 10"
+      },
+      "verdict": {
+        "V": 5,
+        "E": 5,
+        "R": 5,
+        "D": 5,
+        "I": 4,
+        "C": 4,
+        "T": 5,
+        "autonomy": "L5 Fully Automated - Auto-filter joining bonus cases, auto-calc 4th/8th, auto-filter deferred by anniversary, auto-check IEF panel, auto-send on schedule"
+      }
+    },
+    {
+      "id": "WU-ONB-10",
+      "name": "Initiate Onboarding Record in Darwinbox with Shift and Attendance Rules",
+      "business_object": "Employee Record",
+      "current_condition": "Candidate Accepted Offer and Docs Verified",
+      "desired_condition": "Onboarding Initiated in Darwinbox",
+      "context": {
+        "decision_branches": "Post Zwayam-Darwinbox integration Page 1 auto-populates, Page 2 4 fields manual: shift assignment, attendance policy, entity TDCPL, timesheet based on employee type Corporate vs Delivery",
+        "variants": [
+          "Corporate functions = no shift/timesheet vs Delivery = Client A attendance + shift India vs US entity; Slot 1 10AM vs Slot 2 4PM half-day payroll flag"
+        ]
+      },
+      "trigger": "Recruiter initiates onboarding in Zwayam post offer acceptance OR post-integration recruiter initiates in Darwinbox",
+      "input": [
+        "First name",
+        "last name",
+        "personal email",
+        "DOB",
+        "DOJ",
+        "department",
+        "role",
+        "employment type FT/Contractor",
+        "base location",
+        "grade",
+        "current location",
+        "reporting manager",
+        "HRHub per client group",
+        "contribution level/service line",
+        "cost center",
+        "shift assignment",
+        "attendance policy",
+        "entity",
+        "timesheet flag"
+      ],
+      "authority": "Person A/Recruiter initiates, Person C/Person D/Person B per location owns day-of",
+      "actor_constraints": "Darwinbox New Hire access, Page 2 rules: Corporate = no shift/timesheet, Delivery FTE/Contractor = Client A attendance + shift assignment India or US",
+      "acceptance_criteria": [
+        "Page 1 fields from Zwayam auto-populated correctly",
+        "Page 2: shift",
+        "attendance policy",
+        "entity TDCPL India/US",
+        "timesheet selected per employment type",
+        "cost center/service line mapping correct (Platforms -> Concierto vs Avrio common error)"
+      ],
+      "evidence_required": [
+        "Darwinbox New Hire record ID",
+        "Page 1 auto-populate log",
+        "Page 2 manual selection log",
+        "Cost center mapping validation"
+      ],
+      "verification_method": "Rule Check + Mapping Validation - Independence Medium",
+      "sla_timing": {
+        "raw": "5 mins post-integration (Page 1 auto), Pre-integration manual download/upload 10 mins, Per joiner 28-30/mo, Two slots Slot1 10AM Slot2 4PM"
+      },
+      "dependencies": [
+        "WU-OFF-04",
+        "WU-ONB-14"
+      ],
+      "failure_semantics": "If service line mapping wrong (Concierto vs Avrio): payroll cost center error, finance reconciliation failure. If shift wrong: attendance policy violation. If not initiated: onboarding kit not prepared, IT email not created.",
+      "regulatory_register_link": [
+        "RR-HR-081",
+        "RR-HR-082",
+        "RR-HR-083",
+        "RR-HR-084"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "d6e9f95a-4576-59a5-aad6-57cc62c8df23",
+        "row": 10,
+        "hash_sha256": "a0a9a93718ae8d08ff5a829a4a144962bb0ef8a5796488bf49b5cf76bcf38769",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "1a7e8b3e-af2f-521d-b2f3-a624d92766cc",
+        "consent_receipt_id": "7893e943-7a2a-5fe2-8e8f-27060e605839",
+        "notes": "Observed - Onboarding CSV Row 10 + Interview <redacted interviewer> May 6 2026 51 min"
+      },
+      "verdict": {
+        "V": 4,
+        "E": 4,
+        "R": 5,
+        "D": 4,
+        "I": 5,
+        "C": 3,
+        "T": 4,
+        "autonomy": "L4 Supervised - Page 1 auto-fills, Page 2 auto-fill via rules IF Corporate then no shift else Client A attendance + shift, human review cost center"
+      }
+    },
+    {
+      "id": "WU-ONB-14",
+      "name": "Activate Employee Record on DOJ - Critical Gate Generating Employee ID",
+      "business_object": "Employee Record",
+      "current_condition": "Candidate Arrived on DOJ",
+      "desired_condition": "Employee Activated and Employee ID Generated",
+      "context": {
+        "decision_branches": "Must confirm physical presence before activation, No-show handling: email recruiter for status, If not joining: Cancel Onboarding in Darwinbox",
+        "variants": [
+          "Joined: Activate vs No-show: Cancel Onboarding vs Postponed: Keep pending; Slot 1 vs Slot 2 no cutoff difference"
+        ]
+      },
+      "trigger": "Candidate physically arrives at office OR virtual presence confirmed, SPOC meets candidate",
+      "input": [
+        "Candidate physical presence confirmation",
+        "DOJ",
+        "location",
+        "SPOC name",
+        "no-show flag"
+      ],
+      "authority": "Onboarding SPOC Person C/HYD Person D/CHN Person B activates, Person Q backup Bangalore",
+      "actor_constraints": "Darwinbox Onboarding tab -> three dots -> Activate access, Requires human confirmation of presence, Cannot fully automate, 2-3 min per activation",
+      "acceptance_criteria": [
+        "Employee status = Active",
+        "Employee ID generated",
+        "All candidate-filled data flows into employee profile",
+        "Auto-notifications trigger to IT (laptop+kit)",
+        "Admin (lunch)",
+        "Manager (buddy+seat)",
+        "If no-show: email recruiter",
+        "if not joining: Cancel Onboarding"
+      ],
+      "evidence_required": [
+        "Darwinbox activation timestamp",
+        "Employee ID",
+        "Presence confirmation note",
+        "No-show email if applicable",
+        "Downstream notification log"
+      ],
+      "verification_method": "Physical Presence Confirmation + System Log Check - Independence High - Critical gate",
+      "sla_timing": {
+        "raw": "2-3 mins per activation, Per joiner 28-30/mo, Must confirm presence before activating, No-show detection end of DOJ"
+      },
+      "dependencies": [
+        "WU-ONB-10"
+      ],
+      "failure_semantics": "If activated without presence: ghost employee, payroll started, compliance violation. If not activated: payroll not integrated, IT assets not allocated, buddy not assigned. If no-show not detected: recruiter not informed, downstream tasks waste.",
+      "regulatory_register_link": [
+        "RR-HR-091",
+        "RR-HR-092",
+        "RR-HR-093"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "6e5984b3-3f1c-51f9-b147-a1471100b977",
+        "row": 11,
+        "hash_sha256": "e2f8a02119da9868ab36feab91e8e97ea49c8dc5b7c15be26d4730844bd89a56",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "03752ebf-1179-5671-8fee-b0c1c42dfa04",
+        "consent_receipt_id": "8ce7be58-3afb-5247-9e38-3b3848847851",
+        "notes": "Observed - Onboarding CSV Row 14 + Interview Person C"
+      },
+      "verdict": {
+        "V": 2,
+        "E": 4,
+        "R": 2,
+        "D": 3,
+        "I": 5,
+        "C": 5,
+        "T": 2,
+        "autonomy": "L1 Human with System Assist - Human must confirm physical presence, system pre-prepares activation, one-click prompt on DOJ, auto-triggers downstream"
+      }
+    },
+    {
+      "id": "WU-OFFB-01",
+      "name": "Initiate Employee Separation - Voluntary / Involuntary / Manage-Out Classification",
+      "business_object": "Employee Record",
+      "current_condition": "Employee Active",
+      "desired_condition": "Separation Initiated with Type and Reason Coded",
+      "context": {
+        "decision_branches": "Voluntary: employee initiates in Darwinbox Flows->Separation, Involuntary: SPOC initiates as admin BGV failure absconding misconduct, Manage-Out: Talent Mobility confirms redundancy list -> Person H delegates -> HRBP discussion -> resignation",
+        "variants": [
+          "Voluntary vs Involuntary BGV failure Disciplinary Job abandoned End of contract Org restructuring Unsatisfactory performance vs Manage-Out redundancy vs Other Retired Death Transfer; Voluntary resignation same day physical LWD but payroll till NP end for manage-out"
+        ]
+      },
+      "trigger": "Employee initiates resignation in Darwinbox OR SPOC initiates as admin for involuntary OR Talent Mobility confirms redundancy for manage-out",
+      "input": [
+        "Reason for resignation dropdown",
+        "personal email",
+        "contact number",
+        "date of resignation today only",
+        "remarks free text",
+        "notice period 60 or 90 days per offer letter",
+        "separation type master",
+        "redundancy list"
+      ],
+      "authority": "Voluntary: Employee initiates, Manager approves, HRBP approves. Involuntary: Person D sole full admin access initiates. Manage-Out: Person H delegates, HRBP communicates, employee resigns",
+      "actor_constraints": "Darwinbox Flows->Separation->Initiate Separation, Sole admin Person D for involuntary, Backup Person Q knows day-of but NOT FNF, No formal KT plan",
+      "acceptance_criteria": [
+        "Resignation reason selected from master list [Career progression",
+        "Compensation",
+        "Family",
+        "Higher education",
+        "Medical",
+        "Onsite opportunity",
+        "Relocation",
+        "Visa",
+        "Work content",
+        "Work environment",
+        "BGV failure",
+        "Disciplinary",
+        "Job abandoned",
+        "End of contract",
+        "Org restructuring etc]",
+        "LWD auto-calculated based on notice period",
+        "Separation type correctly classified Voluntary/Involuntary",
+        "Personal email and contact captured"
+      ],
+      "evidence_required": [
+        "Darwinbox separation initiation log with reason code",
+        "LWD auto-calc",
+        "separation type classification",
+        "initiation timestamp",
+        "personal email"
+      ],
+      "verification_method": "System Log Check + Reason Code Validation - Independence High",
+      "sla_timing": {
+        "raw": "5 mins per initiation, 2-3/week new resignations, 54/month separations April 2026 actual"
+      },
+      "dependencies": [
+        "WU-OFFB-07"
+      ],
+      "failure_semantics": "If separation type misclassified: payroll LWD wrong, compliance error, FNF wrong. If reason not coded: analytics broken, exit interview data lost. If notice period wrong: LWD wrong, auto-deactivation wrong date, payroll continues.",
+      "regulatory_register_link": [
+        "RR-HR-101",
+        "RR-HR-102",
+        "RR-HR-103",
+        "RR-HR-104",
+        "RR-HR-105"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "63f390d4-35b4-53c6-80a7-c0dc1c444985",
+        "row": 12,
+        "hash_sha256": "3b361e08c626a9fef118cb64e6b47315c4379835991d811c77c30ed527d49811",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "3007ba69-7932-5815-8458-e10f8f7089e1",
+        "consent_receipt_id": "559db4ad-2076-51d0-9fa1-b02ac3e3a4b1",
+        "notes": "Observed - Offboarding CSV Row 1 + Interview <redacted interviewer> May 7 2026 54 min + May 12 25 min"
+      },
+      "verdict": {
+        "V": 5,
+        "E": 5,
+        "R": 3,
+        "D": 4,
+        "I": 5,
+        "C": 4,
+        "T": 4,
+        "autonomy": "L4 Supervised - Auto-initiate involuntary upon structured trigger BGV failure flag, voluntary monitor Darwinbox events, auto-code reason from remarks NLP, human final confirmation"
+      }
+    },
+    {
+      "id": "WU-OFFB-07",
+      "name": "Orchestrate 12-Stakeholder Clearance Workflow 7 Days Before LWD",
+      "business_object": "Clearance",
+      "current_condition": "Separation Details Confirmed with LWD",
+      "desired_condition": "All 12 Clearances Completed",
+      "context": {
+        "decision_branches": "Auto-triggers 7 working days before LWD, Daily auto-reminders until closed, Stakeholders: PM, HOD, Finance Person J, L&D Person K, HR Ops Person G, HRHub, Assurance, Admin, IT Asset, IT Network, Payroll Person L, Performance Mgmt, Dependencies: IT Network waits on PM for mail forwarding and data backup decisions",
+        "variants": [
+          "Standard voluntary vs Manage-Out physical LWD = resignation day but payroll till NP date vs Absconding 3-day wait; PM clearance variant: mail forwarding Y/N, data backup OneDrive/local/N/A"
+        ]
+      },
+      "trigger": "LWD minus 7 working days reached AND separation details confirmed",
+      "input": [
+        "Employee profile",
+        "LWD",
+        "stakeholder mapping per department",
+        "PM clearance inputs (timesheet",
+        "leave",
+        "assignments",
+        "expenses",
+        "mail forwarding Y/N max 30 days to manager",
+        "KT/handover",
+        "client access removal",
+        "data backup OneDrive/local/N/A",
+        "machine release)",
+        "HOD clearance",
+        "Finance recovery checks"
+      ],
+      "authority": "System auto-triggers, Each stakeholder approves own clearance, SPOC Person D orchestrates follow-ups, Person G HR Ops clearance",
+      "actor_constraints": "Darwinbox clearance workflow auto, Excel personal tracking sheet for SPOC, Email manual follow-ups, 12 stakeholder types each with task box",
+      "acceptance_criteria": [
+        "Clearance tasks created for all 12 stakeholders",
+        "Daily auto-reminders until closed",
+        "PM clearance complete with all mandatory fields",
+        "HOD clearance complete",
+        "Finance/L&D/HR Ops recovery checks complete",
+        "Admin asset returns confirmed",
+        "IT Asset laptop received",
+        "IT Network email deactivated on LWD with mail forwarding per PM input",
+        "Payroll clearance complete",
+        "All clearances before LWD or flagged overdue"
+      ],
+      "evidence_required": [
+        "Darwinbox clearance task creation log per stakeholder",
+        "clearance status per stakeholder (pending/completed)",
+        "PM clearance fields completed",
+        "auto-reminder log",
+        "overdue flag log"
+      ],
+      "verification_method": "Dashboard Reconciliation across 12 stakeholders - Real-time status tracking - Independence Medium",
+      "sla_timing": {
+        "raw": "0 system trigger, PM clearance 5-10 min but typical 1-2 days max 4-5 days delayed, HOD often delayed misses when PM done, Finance/L&D 5-10 min 1-2 days typical, Admin 5 min dependency physical return on/after LWD, IT Network 5-10 min dependency PM complete + on/after LWD, Volume 47 exits reaching clearance stage per month, SPOC active time 3 hrs/day 40% clearance follow-ups"
+      },
+      "dependencies": [],
+      "failure_semantics": "If clearance missed: asset not returned recovery Rs.750/Rs.50 not charged, client access not revoked security risk, mail forwarding not set manager misses emails, data backup not done data loss, payroll not stopped overpayment. Most common failure: HOD misses when PM done, SPOC sends consolidated PM+HOD email to reduce.",
+      "regulatory_register_link": [
+        "RR-HR-111",
+        "RR-HR-112",
+        "RR-HR-113",
+        "RR-HR-114"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "d93c9dff-7864-500e-ac96-7eb986894fd4",
+        "row": 13,
+        "hash_sha256": "d5aecce4097929a918ae7b2c90360a0dd518ebcd5bfc03b2e5e213d4227a538d",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "9d157414-adde-5d18-950b-95cceaffef6e",
+        "consent_receipt_id": "4fdc37e6-ea2f-5803-b7f5-d3881897c5b9",
+        "notes": "Observed - Offboarding CSV Rows 7-17 + Interview Person D"
+      },
+      "verdict": {
+        "V": 3,
+        "E": 4,
+        "R": 4,
+        "D": 3,
+        "I": 4,
+        "C": 3,
+        "T": 3,
+        "autonomy": "L3 Collaborative - Auto-trigger, auto-reminder, build clearance dashboard real-time status across 47 active separations, auto-flag overdue >2 days past LWD, auto-consolidated reminder to HOD when PM complete but HOD pending, human judgement on mail forwarding/data backup"
+      }
+    },
+    {
+      "id": "WU-OFFB-10",
+      "name": "Calculate Recovery Amounts for Bonus and Asset Non-Return",
+      "business_object": "Recovery",
+      "current_condition": "Clearance In Progress",
+      "desired_condition": "Recovery Calculated and Flagged for Payroll Deduction",
+      "context": {
+        "decision_branches": "Recovery types: Joining bonus 1-year clause if DOJ to LWD <1 year, Default bonus, Commitment bonus, H1B visa, Certification expenses L&D service period clause, Access card Rs.750, ID card Rs.50, Labor wages salary every Thursday inputs by Tuesday LWD mandated Tuesday, FNF monthly cycle month-end +10th",
+        "variants": [
+          "Joining bonus vs Default vs Commitment vs H1B vs Certification vs Asset; Voluntary vs Manage-Out NP buyout paid by employer vs employee"
+        ]
+      },
+      "trigger": "Clearance workflow triggered, Finance/L&D/HR Ops clearance tasks created",
+      "input": [
+        "Joining date",
+        "LWD",
+        "bonus disbursement records",
+        "certification expense records with service period",
+        "H1B visa cost",
+        "asset assignment records (access card",
+        "ID card",
+        "laptop",
+        "Uber",
+        "SIM)"
+      ],
+      "authority": "Finance Person J checks joining/default/certification, L&D Person K checks certification + LMS access, HR Ops Person G checks joining/default/commitment/H1B, Admin checks stationary/ID/access card/Uber/SIM",
+      "actor_constraints": "Requires bonus disbursement data, certification expense records, clause periods, asset assignment data from HR records, Fixed rules Rs.750/Rs.50 auto-calculable",
+      "acceptance_criteria": [
+        "IF DOJ to LWD <1 year AND joining bonus disbursed THEN flag joining bonus recovery",
+        "IF certification expense within service clause period THEN flag recovery",
+        "IF access card not returned THEN Rs.750 recovery",
+        "IF ID card not returned THEN Rs.50 recovery",
+        "Uber/SIM pre-populate NA if not assigned",
+        "All recovery amounts summed for payroll deduction"
+      ],
+      "evidence_required": [
+        "Recovery calculation log per type",
+        "clause period check",
+        "disbursement record reference",
+        "asset return status",
+        "payroll deduction flag"
+      ],
+      "verification_method": "Deterministic Rule Engine against Bonus Disbursement + Clause Period + Asset Assignment - Independence High - THIS IS REASON auto-release of letters was disabled",
+      "sla_timing": {
+        "raw": "5-10 min per stakeholder clearance, Per exit 47/mo, Finance/L&D/HR Ops/Admin each 5-10 min, FNF compilation 30-45 mins/month 2 batches"
+      },
+      "dependencies": [
+        "WU-OFFB-07"
+      ],
+      "failure_semantics": "If recovery missed: financial loss, bonus paid to employee who left early, visa cost not recovered. If overcharged: employee escalation, legal risk. This is reason auto-letter release was disabled - need recovery certainty before relieving letter.",
+      "regulatory_register_link": [
+        "RR-HR-121",
+        "RR-HR-122",
+        "RR-HR-123",
+        "RR-HR-124",
+        "RR-HR-125",
+        "RR-HR-126",
+        "RR-HR-127",
+        "RR-HR-128"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "647473a9-446f-50d2-8eaf-b32c44dc457d",
+        "row": 14,
+        "hash_sha256": "7b43bf2b24d73c6594241b455dce60283242854ff26b9ca84d89c4698640db82",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "c6e4ca6a-2109-50a0-8d2d-dbe8c041c401",
+        "consent_receipt_id": "1f851f3c-c146-518c-9135-f30d443be705",
+        "notes": "Observed - Offboarding CSV Rows 10-16"
+      },
+      "verdict": {
+        "V": 5,
+        "E": 4,
+        "R": 5,
+        "D": 5,
+        "I": 4,
+        "C": 5,
+        "T": 5,
+        "autonomy": "L5 Fully Automated - Auto-calculate all recoveries based on deterministic rules: DOJ-LWD <1y AND bonus disbursed => recovery, certification within clause => recovery, fixed Rs.750/Rs.50 rules, needs disbursement data + clause periods"
+      }
+    },
+    {
+      "id": "WU-HRBP-OFF-3",
+      "name": "Execute Retention Process Multi-Stakeholder Coordination",
+      "business_object": "Retention Case",
+      "current_condition": "Resignation - Critical Resource Identified",
+      "desired_condition": "Retention Decision - Approved or Rejected with Revocation or Separation Continued",
+      "context": {
+        "decision_branches": "Delivery/PM identifies critical/niche, HRBP connects with associate checks competing offer expected hike, TA market intelligence replacement timeline + cost, Talent Mobility internal pool availability, Finance bill rate + profit margin, Parity check to avoid downstream attrition, Approval chain Delivery FH -> Person H -> CHRO Person P mandatory",
+        "variants": [
+          "Critical/niche vs Non-critical - retain vs not retain; Replacement available internally vs Market fast+cheaper vs Parity issue vs CHRO approves vs Associate declines revised offer"
+        ]
+      },
+      "trigger": "HRBP discussion identifies retention candidate OR Delivery/PM sends retention justification to HRBP or directly to Person H/Person I",
+      "input": [
+        "Competing offer details",
+        "expected hike %",
+        "TA market intel",
+        "Talent Mobility pool status",
+        "Finance bill rate + margin",
+        "internal fitment/parity data",
+        "employee performance history",
+        "tenure",
+        "grade",
+        "current project"
+      ],
+      "authority": "HRBP compiles, Person H reviews, CHRO Person P approval mandatory for all retention, Delivery functional head approval",
+      "actor_constraints": "HRBP 5-10 queries/day, Retention ~10/year Person E ~3-5/year Person B total ~13-15/year, 2-3 weeks per case when active multi-stakeholder coordination",
+      "acceptance_criteria": [
+        "All 6 inputs collected: TA market intel",
+        "TM pool status",
+        "Finance bill rate",
+        "parity check",
+        "competing offer details",
+        "performance history",
+        "Compiled into retention brief for Person H",
+        "CHRO approval obtained if approved",
+        "Resignation revoked in Darwinbox",
+        "revised compensation letter issued",
+        "If declined: standard separation continues"
+      ],
+      "evidence_required": [
+        "Retention justification",
+        "competing offer details",
+        "TA market intel request/response",
+        "TM pool check result",
+        "Finance bill rate response",
+        "parity check result",
+        "Person H review note",
+        "CHRO approval",
+        "Darwinbox revocation log",
+        "revised compensation letter if approved"
+      ],
+      "verification_method": "Multi-Stakeholder Approval Chain Verification - Delivery + TA + TM + Finance + Person H + CHRO - Independence High - Human judgement on all",
+      "sla_timing": {
+        "raw": "2-3 weeks per case multi-stakeholder, Discussion time 1-2 hrs, Compilation time high coordination, Frequency ~13-15/year total org-wide"
+      },
+      "dependencies": [
+        "WU-OFFB-01"
+      ],
+      "failure_semantics": "If parity missed: retain one causes downstream attrition of peers, bigger loss. If market replacement fast+cheaper: retention waste. If internal pool available: retention unnecessary cost. If delayed: candidate accepts competing offer, loses critical resource. If approval missed: non-compliant hike.",
+      "regulatory_register_link": [
+        "RR-HR-131",
+        "RR-HR-132",
+        "RR-HR-133"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "65d88477-80a2-57d5-bf5c-5589c8458c13",
+        "row": 15,
+        "hash_sha256": "40ffab953854e2e55dafd8136fef7148471242c9b7421148d7e5e94ca541fa27",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "fc88fde6-7669-5e29-bcd6-f3fabd32388c",
+        "consent_receipt_id": "ffd899c9-f071-5a9a-ad36-9878b70560b4",
+        "notes": "Observed - HRBP CSV Row OFF-3 + Interview Person B+Person E May 15 2026 50 min"
+      },
+      "verdict": {
+        "V": 1,
+        "E": 2,
+        "R": 2,
+        "D": 1,
+        "I": 2,
+        "C": 4,
+        "T": 1,
+        "autonomy": "L0 Human Only with Coordination Assist - Cannot automate decisions, but can accelerate: auto-pull profile + performance, auto-request TA market intel structured email, auto-check TM pool, auto-request Finance bill rate, auto-compile brief for Person H reduces 2-3 weeks to days"
+      }
+    },
+    {
+      "id": "WU-HRBP-GR-1",
+      "name": "Handle Daily Employee Queries and Route to Specialist Teams",
+      "business_object": "Query Ticket",
+      "current_condition": "Query Raised via Teams/Email/In-Person Walk-In",
+      "desired_condition": "Query Answered or Routed with Context",
+      "context": {
+        "decision_branches": "Topics: payroll/salary should go to payroll but comes to HRBP, Darwinbox navigation post-migration from Oracle Fusion, payroll portal FBP/IT declaration, timesheet submission, policy clarifications, benefits, appraisal/ratings/hike seasonal heavy Q1, Location HRBPs handle ALL walk-in queries regardless of span, No dedicated tracker or SLA for grievance resolution",
+        "variants": [
+          "Query types: payroll/salary vs Darwinbox navigation vs FBP/IT declaration vs timesheet vs policy clarification vs benefits vs appraisal/hike seasonal; WFH: standard 1-day vs extended >1 week vs non-genuine vs RTO non-compliance"
+        ]
+      },
+      "trigger": "Employee reaches out via Teams chat/call or in-person walk-in or email, WFH request in Darwinbox inbox or email to manager+HRBP",
+      "input": [
+        "Employee query text",
+        "employee profile",
+        "query type classification",
+        "policy knowledge base",
+        "Darwinbox help docs",
+        "payroll team contact",
+        "benefits team contact",
+        "HR Ops contact"
+      ],
+      "authority": "HRBP first-level answer, If technical/system: routes to HR Ops or payroll via email, Payroll-specific: route to payroll, Benefits-specific: route to benefits team, WFH: manager + HRBP approval, RTO non-compliance: HRBP warning email",
+      "actor_constraints": "Each HRBP handles set of accounts/delivery spans, Location HRBPs Chennai Person B Hyderabad Person E handle walk-ins, 5-10 queries per HRBP per day ~150-300/mo across team, Query handling ~1-2 hrs/day per HRBP, No formal tracker or SLA",
+      "acceptance_criteria": [
+        "Query classified correctly",
+        "Within HRBP knowledge: answered directly 5-15 min",
+        "System/technical: routed to HR Ops/payroll/benefits with context",
+        "WFH standard 1-day with manager alignment: approved in Darwinbox task box",
+        "Extended WFH >1 week: 3-way discussion",
+        "Non-genuine: rejected",
+        "RTO non-compliance: warning email"
+      ],
+      "evidence_required": [
+        "Query log with classification",
+        "response or routing email with context",
+        "WFH approval/rejection in Darwinbox task box",
+        "RTO compliance tracking",
+        "Warning email if applicable"
+      ],
+      "verification_method": "Query Resolution Rate + Routing Accuracy - Can be measured via chatbot - Independence Low - Human empathy needed for appraisal/hike/complex grievances",
+      "sla_timing": {
+        "raw": "5-15 min per query, 5-10 per HRBP per day, 1-2 hrs/day per HRBP, Most resolved same day, Routed items 1-3 days, Seasonal heavy Q1 appraisal queries"
+      },
+      "dependencies": [],
+      "failure_semantics": "If misrouted: employee waits, escalation, satisfaction down. If appraisal/hike answered without empathy: morale risk, attrition risk. If no tracker: query lost, no SLA, no analytics on query types volume.",
+      "regulatory_register_link": [
+        "RR-HR-141",
+        "RR-HR-142",
+        "RR-HR-143",
+        "RR-HR-144",
+        "RR-HR-145"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "f824396f-ec4f-523b-b1dd-ef753d79a1a5",
+        "row": 16,
+        "hash_sha256": "09670042a4f4b4a61e67208af229bd5e7f14a446fa7e7c67341783fbac64c311",
+        "timestamp": "2026-05-14T00:00:00Z",
+        "interview_id": "a2427f4a-0b5f-54cd-a985-fe0197c97351",
+        "consent_receipt_id": "b6377992-d984-5a01-9a6a-67ce67f7b6a2",
+        "notes": "Observed - HRBP CSV Rows GR-1 GR-2 GR-3 + Interview Person B+Person E"
+      },
+      "verdict": {
+        "V": 2,
+        "E": 1,
+        "R": 4,
+        "D": 1,
+        "I": 3,
+        "C": 2,
+        "T": 1,
+        "autonomy": "L2 Assisted with Chatbot L4 for FAQs - HR chatbot can handle 60-70% queries: policy FAQs auto-answer from knowledge base, Darwinbox how-to auto-answer, payroll/benefits/timesheet auto-route with context, Human needed: appraisal/hike, complex grievances, empathy, judgement. Saving 40-60 min/day per HRBP"
+      }
+    }
+  ],
+  "work_graph_edges": [
+    {
+      "from": "WU-OFF-02B",
+      "to": "WU-OFF-03",
+      "type": "Sequence",
+      "reason": "Employment must be verified before salary grid check, same tracker"
+    },
+    {
+      "from": "WU-OFF-03",
+      "to": "WU-OFF-04",
+      "type": "Sequence",
+      "reason": "Salary validated before master sheet update"
+    },
+    {
+      "from": "WU-OFF-04",
+      "to": "WU-OFF-10",
+      "type": "Shared Object",
+      "reason": "Both operate on Master Joining Sheet - WU-OFF-04 writes daily, WU-OFF-10 reads monthly for reports"
+    },
+    {
+      "from": "WU-US-01",
+      "to": "WU-US-04",
+      "type": "Sequence",
+      "reason": "BGV initiated before monitoring"
+    },
+    {
+      "from": "WU-US-04",
+      "to": "WU-ONB-10",
+      "type": "Shared Resource",
+      "reason": "Person A sole owner for both US HR and Offer Desk - 4hrs +5hrs/day"
+    },
+    {
+      "from": "WU-ONB-10",
+      "to": "WU-ONB-14",
+      "type": "Sequence",
+      "reason": "Initiated before activation - critical gate"
+    },
+    {
+      "from": "WU-ONB-14",
+      "to": "WU-OFFB-01",
+      "type": "Sequence",
+      "reason": "Employee must be active before separation can be initiated - lifecycle"
+    },
+    {
+      "from": "WU-OFFB-01",
+      "to": "WU-OFFB-07",
+      "type": "Sequence",
+      "reason": "Separation details confirmed triggers clearance 7 days before LWD"
+    },
+    {
+      "from": "WU-OFFB-07",
+      "to": "WU-OFFB-10",
+      "type": "Reciprocal",
+      "reason": "Clearance needs recovery calc, recovery calc needs clearance asset return status - iteration required"
+    },
+    {
+      "from": "WU-OFFB-07",
+      "to": "WU-OFFB-07",
+      "type": "Reciprocal internal",
+      "reason": "PM clearance -> IT Network depends on PM mail forwarding decision, PM depends on IT machine release - Thompson reciprocal"
+    },
+    {
+      "from": "WU-HRBP-OFF-3",
+      "to": "WU-OFFB-01",
+      "type": "Reciprocal",
+      "reason": "Retention process can revoke separation, separation triggers retention evaluation"
+    },
+    {
+      "from": "WU-OFFB-10",
+      "to": "WU-HRBP-GR-1",
+      "type": "Shared Resource",
+      "reason": "Person G appears in both Finance clearance and HR Ops clearance and HRBP escalation - bottleneck"
+    }
+  ],
+  "automation_index": {
+    "L5_fully_automated": 5,
+    "L4_supervised": 2,
+    "L3_collaborative": 1,
+    "L2_assisted": 5,
+    "L1_human_with_assist": 1,
+    "L0_human_only_coordination_assist": 1,
+    "total_hours_per_month_current": 356,
+    "total_hours_saveable_via_L4_L5": 142,
+    "highest_value_targets": [
+      "WU-OFF-03",
+      "WU-OFF-04",
+      "WU-OFF-10",
+      "WU-US-07",
+      "WU-OFFB-10"
+    ]
+  },
+  "org_id": "32fdf03f-8539-5574-917f-b8eacd0f5d95"
+}

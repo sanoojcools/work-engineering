@@ -24,6 +24,20 @@ from .ontology import (  # noqa: F401
     RelationKind,
 )
 from .regulatory import RegulatoryEntry  # noqa: F401
+from .security import (  # noqa: F401
+    AuditLog,
+    ConsentReceipt,
+    ConsentStatus,
+    GenomeVersion,
+    GenomeVersionType,
+    OrgApiKey,
+    PiiFieldValue,
+    ReviewQueueItem,
+    ReviewQueueStatus,
+    UploadedFile,
+    WorkUnitProvenanceDetail,
+    WorkUnitRegulatoryLink,
+)
 from .verdict import VerdictScore  # noqa: F401
 from .verification import (  # noqa: F401
     AutonomyChange,

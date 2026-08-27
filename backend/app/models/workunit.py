@@ -49,6 +49,10 @@ class WorkUnit(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    # Which genome import produced this row, if any (NULL for units created
+    # via the plain POST /work-units API or seed/census data predating the
+    # genome import path).
+    genome_version_id: Mapped[int | None] = mapped_column(ForeignKey("genome_versions.id"), nullable=True)
 
     # 1-2: identity
     code: Mapped[str] = mapped_column(String(40))          # 1. ID

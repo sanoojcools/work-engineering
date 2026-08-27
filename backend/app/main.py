@@ -6,20 +6,24 @@ from sqlalchemy import text
 
 from . import models as _models  # noqa: F401  — register ORM tables
 from .config import settings
-from .db import Base, engine
+from .db import engine
 from .routers import api_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Schema is Alembic-owned as of the P0 foundation migration — no more
+    # Base.metadata.create_all() here. A missing/unapplied migration should
+    # fail loudly (db_ready=False), not be silently papered over.
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        Base.metadata.create_all(bind=engine)
-        from .db import SessionLocal
-        from .services.tenants import bootstrap_tenants, ensure_schema
-        ensure_schema(engine)
-        db = SessionLocal()
+        # bootstrap_tenants clones catalog Work Units across clients — an
+        # inherently cross-tenant maintenance step, so it deliberately runs
+        # on the RLS-bypassing system session, not the per-request one.
+        from .db import SystemSessionLocal
+        from .services.tenants import bootstrap_tenants
+        db = SystemSessionLocal()
         try:
             bootstrap_tenants(db)
         finally:

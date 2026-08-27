@@ -6,6 +6,7 @@ from . import (
     clients,
     discovery,
     economics,
+    genome,
     health,
     ontology,
     projections,
@@ -21,6 +22,7 @@ api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
 api_router.include_router(admin.router, tags=["admin"])
 api_router.include_router(clients.router, prefix="/clients", tags=["clients"])
+api_router.include_router(genome.router, prefix="/genome", tags=["genome"])
 api_router.include_router(census.router, prefix="/census", tags=["census"])
 api_router.include_router(ontology.router, prefix="/ontology", tags=["ontology"])
 api_router.include_router(work_units.router, prefix="/work-units", tags=["work-units"])
