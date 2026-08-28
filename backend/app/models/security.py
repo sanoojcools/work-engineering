@@ -14,7 +14,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, LargeBinary, String, Text
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db import Base
@@ -216,4 +216,29 @@ class PiiFieldValue(Base):
     redacted_preview: Mapped[str] = mapped_column(String(80), default="")  # first 3 chars + ***
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
+    work_unit: Mapped["WorkUnit"] = relationship()
+
+
+class Ratification(Base):
+    """Slice 2 PR 2b: per-Work-Unit approval record. Whole-version ratify
+    (both business_object and work_unit_ids null) still just sets
+    GenomeVersion.ratified directly — no rows here for that path. A
+    business_object- or work_unit_ids-scoped ratify creates/updates one row
+    per targeted WU; GenomeVersion.ratified flips to true automatically
+    once every WU on the version has an approved=True row."""
+    __tablename__ = "ratifications"
+    __table_args__ = (UniqueConstraint("version_id", "work_unit_id", name="uq_ratifications_version_wu"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    version_id: Mapped[int] = mapped_column(ForeignKey("genome_versions.id"))
+    work_unit_id: Mapped[int] = mapped_column(ForeignKey("work_units.id"))
+    business_object: Mapped[str] = mapped_column(String(200), default="")
+    approved: Mapped[bool] = mapped_column(default=True)
+    comment: Mapped[str] = mapped_column(Text, default="")
+    ratified_by: Mapped[str] = mapped_column(String(120), default="")
+    ratified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    client: Mapped["Client"] = relationship()
+    version: Mapped["GenomeVersion"] = relationship()
     work_unit: Mapped["WorkUnit"] = relationship()

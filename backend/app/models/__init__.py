@@ -32,6 +32,7 @@ from .security import (  # noqa: F401
     GenomeVersionType,
     OrgApiKey,
     PiiFieldValue,
+    Ratification,
     ReviewQueueItem,
     ReviewQueueStatus,
     UploadedFile,
