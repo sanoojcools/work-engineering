@@ -2,7 +2,13 @@
 
 Base URL: `http://localhost:8000/api`. Interactive docs: `http://localhost:8000/docs`.
 
-The Vite UI calls the same paths via `/api` proxy. Spec routes require header `X-Spec-Key` (env `SPEC_API_KEY`, default `dev-spec-key-change-me`).
+The Vite UI calls the same paths via `/api` proxy. Genome, files, work-units,
+spec, census, and org routes all require header `X-Spec-Key`: a per-org
+credential looked up against `org_api_keys` (see `POST /org/keys/rotate`
+below), not a single shared secret — there is no env-var default. Every
+other router listed here (ontology, discovery, projections, verdict,
+work-graph, economics, regulatory, verification, clients, admin) is
+unauthenticated.
 
 List endpoints return `{ "total": n, "items": [...] }`.
 
@@ -27,6 +33,8 @@ List endpoints return `{ "total": n, "items": [...] }`.
 
 ## Work Units and Work Graph
 
+`/work-units/*` requires `X-Spec-Key` (per-org). `/work-graph/*` does not.
+
 | Method | Path |
 |---|---|
 | GET, POST | `/work-units/` |
@@ -39,7 +47,7 @@ List endpoints return `{ "total": n, "items": [...] }`.
 | GET, POST | `/work-graph/edges` |
 | DELETE | `/work-graph/edges/{id}` |
 
-Create body includes the 18-attribute contract (code, name, business object type, conditions, context, trigger, inputs, authority, actor constraints, acceptance, evidence, verification method, SLA, failure semantics, optional regulatory id, provenance). Owner and `actor_type` are H4 fields, not substitutes for each other.
+Create body includes the 18-attribute contract (code, name, business object type, conditions, context, trigger, inputs, authority, actor constraints, acceptance, evidence, verification method, SLA, failure semantics, optional regulatory id, provenance). Owner and `actor_type` are H4 fields, not substitutes for each other. `client_id` in the body is ignored if present — a create is always scoped to the calling key's own org.
 
 ## VERDICT, economics
 
@@ -78,6 +86,23 @@ PUT VERDICT returns `recommended_level`, `applied_gates`, `allocation`, `mean`, 
 | POST | `/spec/check` | Body: `work_unit_code`, `check_type` (`authority` \| `evidence` \| `condition` \| `acceptance`), `approver`, `actor`, `evidence_ref`, `object_state`, `caller` |
 | GET | `/spec/checks` | |
 | POST, GET | `/spec/trajectories` | |
+
+## Census
+
+Requires `X-Spec-Key` (per-org). `client_id` (body for `/run`, path for `/pack`) must equal the calling key's own org — a mismatch is a `404`, not a `422` or `403`, matching the rest of the tenant boundary.
+
+| Method | Path |
+|---|---|
+| POST | `/census/run` | Body: `{ client_id, function, sop_text, executions_per_month? }` |
+| GET | `/census/pack/{client_id}` | Query: `function` |
+
+## Org keys
+
+| Method | Path | Auth |
+|---|---|---|
+| POST | `/org/keys/rotate` | `X-Spec-Key` (the key being rotated) |
+
+Returns the new plaintext key once: `{ client_id, key, key_id, old_key_id, old_key_expires_at }`. The old key keeps authenticating until `old_key_expires_at` (a 60-minute grace window), then `401`s.
 
 ## Projections (C3)
 

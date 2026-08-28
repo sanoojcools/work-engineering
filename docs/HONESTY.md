@@ -29,7 +29,7 @@ Also true, not a per-attribute row:
 - GQS runs on the raw dict, before Pydantic validation.
 - `dual_scoring_kappa` is caller-supplied. No mechanism produces two independent scores to compute it from.
 - No file writer exists yet for `UploadedFile` — no endpoint uploads a file, so `hash_sha256` in provenance today is whatever the caller supplied, never server-computed.
-- Legacy routers (`work_units`, `spec`, `census`) still authenticate via the single global `spec_api_key`, default `dev-spec-key-change-me`. Only the genome router uses per-org `X-Spec-Key`.
+- Slice 3 PR 3a: `work_units`, `spec`, and `census` are off the legacy global `spec_api_key` (default `dev-spec-key-change-me` is gone, not just changed) and onto per-org `X-Spec-Key` / RLS, same as genome and files. `POST /api/org/keys/rotate` rotates a key; the old one 401s after a 60-minute grace window (`dependencies.ROTATION_GRACE_MINUTES`). `ontology`, `discovery`, `projections`, `verdict`, `work-graph`, `economics`, `regulatory`, `verification`, `clients`, and `admin` are still unauthenticated `DbDep` routes — that's out of PR 3a's scope (playbook G.1 names work_units/spec/census only), not a gap this PR closed.
 - 15 No-Cracks Gates: #15 (RLS) is fully live. ~6 are partially live. ~8 are specified-only. GQS ≥ 90 means the quality gate passed — it does not mean 15/15 gates passed.
 
 Update this file in the same PR any time a row moves from "specified" to "enforced."
