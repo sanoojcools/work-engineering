@@ -38,6 +38,10 @@ class OrgApiKey(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Slice 3 PR 3a: set on the OLD row by POST /org/keys/rotate, alongside
+    # is_active=False. A rotated key keeps authenticating until this expires
+    # (dependencies.ROTATION_GRACE_MINUTES), then 401s like any other dead key.
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     client: Mapped["Client"] = relationship()
 

@@ -22,9 +22,6 @@ class Settings(BaseSettings):
     llm_model: str = "claude-sonnet-4-5"
     llm_base_url: str = "https://api.openai.com/v1"
 
-    # Shared secret for the Spec API / Enforcement Gateway (execution systems)
-    spec_api_key: str = "dev-spec-key-change-me"
-
     # P0: pgcrypto symmetric key for field-level PII encryption (pii.py).
     # Dev default only — override in any non-local environment.
     pii_encryption_key: str = "dev-pii-key-change-me"
