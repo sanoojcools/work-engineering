@@ -17,7 +17,7 @@ Enforced today vs specified-but-not-enforced, for `POST /api/genome/import`'s `W
 | acceptance_criteria | `list[str]` min 1 at API; joined | native array column |
 | evidence_required | same; PII-scanned | native array column |
 | verification_method | free text → enum heuristic, default `human_spot_check` | strict input enum |
-| sla_timing | structured, all fields optional, extra=forbid; only `time_per_case_min` mapped to `sla_hours` | `gt=0` on time; other fields read back |
+| sla_timing | structured, all fields optional, extra=forbid; `time_per_case_min` mapped to `sla_hours`, `volume_per_month` persisted as-is (Slice 2 PR 2c) | `gt=0` on time; `frequency` / `sla_deadline` still not read back |
 | dependencies | `list[str]`, default []; unresolved = skip edge | schema/FK reject |
 | failure_semantics | min 1 | — |
 | regulatory_register_link | `list[str]`; upsert stub on `regulatory_entries.regulation` | `RR-` prefix; must-exist FK |

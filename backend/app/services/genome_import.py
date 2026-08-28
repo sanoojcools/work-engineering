@@ -202,6 +202,7 @@ def import_genome(db: Session, client_id: int, raw_genome: dict, *, actor: str =
             evidence_required="; ".join(wu_in.evidence_required),
             verification_method=_map_verification_method(wu_in.verification_method),
             sla_hours=sla_hours,
+            volume_per_month=wu_in.sla_timing.volume_per_month,
             failure_semantics=wu_in.failure_semantics,
             provenance=provenance,
             owner="",

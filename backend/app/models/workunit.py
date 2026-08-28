@@ -80,6 +80,11 @@ class WorkUnit(Base):
 
     # 14-16: operations
     sla_hours: Mapped[float] = mapped_column(Float, default=0)          # 14
+    # Slice 2 PR 2c: sla_timing.volume_per_month was accepted by the import
+    # schema but never persisted anywhere — the automation index cannot
+    # compute hours_current (time * volume) without it. Nullable: absent
+    # means "not supplied", never imputed as 0.
+    volume_per_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
     failure_semantics: Mapped[str] = mapped_column(Text, default="")    # 16
 
     # 17: compliance (E6) — null means unregulated
