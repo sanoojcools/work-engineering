@@ -80,7 +80,7 @@ Autonomy levels (V8 Annexure D + `services/verdict.py`): L1 Human Only, L2 Assis
 
 ## Work Graph — 4 Edge Types per Thompson, Implementation Status
 
-The 4 types (Sequence, Shared Object, Shared Resource, Reciprocal) are defined in the pre-existing `EdgeType` enum on the pre-existing `work_edges` table (not a new `work_graph_edges` table). **Only Sequence is auto-derived**, and only from the `dependencies` list on each imported Work Unit — not from a Handoff Map or trigger-text analysis. Shared Object, Shared Resource (including the bus-factor-1 / burnout bottleneck flag), and Reciprocal (including cycle detection) are **specified, not implemented**.
+The 4 types (Sequence, Shared Object, Shared Resource, Reciprocal) are defined in the pre-existing `EdgeType` enum on the pre-existing `work_edges` table (not a new `work_graph_edges` table). Sequence is auto-derived on import, only from the `dependencies` list on each imported Work Unit — not from a Handoff Map or trigger-text analysis. **Slice 2 PR 2c** adds two more auto-derived types, both computed (and persisted, idempotently) on `GET /api/genome/{version_id}/automation-index`, not on import: Shared Object (same `business_object` on ≥2 WUs) and Shared Resource / bus-factor-1 (same exact `authority` string on more than 3 WUs whose combined `time_per_case_min × volume_per_month` load exceeds 6 hrs/day over a 22-day month — both named constants, not invented). `work_edges.reason` / `detection_method` record why each of those two types fired; Sequence edges leave both blank. Reciprocal (including cycle detection) remains **specified, not implemented** — the endpoint reports `reciprocal_edges: 0, reciprocal_computed: false` rather than a fake empty list.
 
 ## GQS — Genome Quality Score + 15 No-Cracks Gates
 
@@ -116,7 +116,7 @@ Implemented exactly as written in `app/services/gqs.py`, operating on the **raw 
 
 ## Interface Contract — ScoutAPI → WEP
 
-The target JSON shape below is the design intent from the planning docs. **The actual `GET /api/genome/{version_id}` response today is simpler**: `{version_id, gqs, ratified, work_unit_count, work_units: [...]}` using the existing `WorkUnitOut` schema (DB-column shaped: `inputs` as a joined string, not an array; no `work_graph_edges`, `automation_index`, `gqs` breakdown, or `version_history` in the response). The richer contract below remains the target for `GET /diff`, `GET /automation-index`, etc., none of which exist yet.
+The target JSON shape below is the design intent from the planning docs. **The actual `GET /api/genome/{version_id}` response today is simpler**: `{version_id, gqs, ratified, work_unit_count, work_units: [...]}` using the existing `WorkUnitOut` schema (DB-column shaped: `inputs` as a joined string, not an array; no `work_graph_edges`, `automation_index`, `gqs` breakdown, or `version_history` in the response). The richer contract below remains the target for `GET /diff`, which does not exist yet. `GET /api/genome/{version_id}/automation-index` **does** exist now (Slice 2 PR 2c) — see `docs/STATUS.md` / `SCOUT_OPERATING_PLAYBOOK.md` F.3 for its actual (narrower) response shape: hours current/saveable from present `sla_timing` fields only, `cost_per_verified_unit: null` (no `CostProfile` data is ever populated by import), autonomy counts from stored VERDICT rows, and the two edge detectors above.
 
 ```
 {
@@ -125,7 +125,7 @@ The target JSON shape below is the design intent from the planning docs. **The a
   org_id: UUID,                     // target design — actual tenant key is clients.id (int), not a UUID column
   work_units: [ {18 attrs, verdict, context.variants[]} ],
   work_graph_edges: [{from, to, type, reason, detection_method}],
-  automation_index: {...},          // not built
+  automation_index: {...},          // GET /automation-index exists now (Slice 2 PR 2c) but returns a narrower, flatter shape than this — see above
   gqs: {...},                       // GET /gqs returns a subset of this today
   version_history: [...],           // not built
   files: [...]                      // not built — no file table populated

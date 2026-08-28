@@ -24,6 +24,7 @@ from ..models.security import (
 from ..models.verdict import VerdictScore
 from ..models.workunit import WorkUnit
 from ..services import work_units as wu_svc
+from ..services.automation_index import compute_automation_index
 from ..services.genome_import import import_genome
 from ..services.lookup import get_or_404
 
@@ -273,3 +274,14 @@ def get_work_unit_full(version_id: int, wu_code: str, db: TenantDbDep, key: OrgK
             "interview_ref": prov.interview_ref if prov else "",
         },
     }
+
+
+@router.get("/{version_id}/automation-index")
+def get_automation_index(version_id: int, db: TenantDbDep, key: OrgKeyDep) -> dict:
+    """Slice 2 PR 2c: hours current/saveable from present sla fields only —
+    no imputed cost — plus the Shared Object and Shared Resource/bus-factor-1
+    detectors, which persist new work_edges rows on top of the Sequence
+    edges Slice 1 already writes from dependencies[]. Idempotent: a second
+    GET does not duplicate an edge already on record."""
+    version = get_or_404(db, GenomeVersion, version_id, "GenomeVersion")
+    return {"version_id": version.id, **compute_automation_index(db, version.id)}
