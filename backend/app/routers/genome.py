@@ -1,8 +1,7 @@
 """P0-5 + Day 5-6: Scout -> WEP genome handoff endpoints. Auth is per-org
-(X-Spec-Key -> org_api_keys, see dependencies.require_org_api_key), NOT the
-old global spec_api_key — this router is the first (only, so far) consumer
-of TenantDbDep, deliberately kept separate from the legacy SpecKeyDep-based
-routers until they're migrated one at a time (see dependencies.py docstring)."""
+(X-Spec-Key -> org_api_keys, see dependencies.require_org_api_key) — this
+was the first TenantDbDep consumer; every router is on it as of Slice 3
+PR 3a (playbook G.1), which retired the legacy global spec_api_key."""
 from __future__ import annotations
 
 import json

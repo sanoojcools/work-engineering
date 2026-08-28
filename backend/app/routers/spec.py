@@ -1,6 +1,10 @@
+"""C4 spec-consumption surface for execution systems. Slice 3 PR 3a: moved off
+the legacy global spec_api_key onto per-org X-Spec-Key (OrgKeyDep/TenantDbDep),
+the same credential genome import and files already use — see
+dependencies.require_org_api_key."""
 from fastapi import APIRouter, status
 
-from ..dependencies import DbDep, SpecKeyDep
+from ..dependencies import OrgKeyDep, TenantDbDep
 from ..models.execution import SpecCheck, Trajectory
 from ..models.workunit import WorkUnit
 from ..schemas.common import Page
@@ -14,14 +18,14 @@ router = APIRouter()
 
 
 @router.get("/work-units/{code}", response_model=WorkUnitOut)
-def get_spec(code: str, _key: SpecKeyDep, db: DbDep) -> WorkUnitOut:
+def get_spec(code: str, db: TenantDbDep, _key: OrgKeyDep) -> WorkUnitOut:
     """The specification an execution system consumes (C4)."""
     wu = get_by_code_or_404(db, WorkUnit, code)
     return wu_svc.to_out(wu)
 
 
 @router.post("/check", response_model=SpecCheckOut)
-def check(payload: SpecCheckIn, _key: SpecKeyDep, db: DbDep) -> SpecCheckOut:
+def check(payload: SpecCheckIn, db: TenantDbDep, _key: OrgKeyDep) -> SpecCheckOut:
     wu = get_by_code_or_404(db, WorkUnit, payload.work_unit_code)
     row = spec_svc.enforce(
         db,
@@ -37,13 +41,13 @@ def check(payload: SpecCheckIn, _key: SpecKeyDep, db: DbDep) -> SpecCheckOut:
 
 
 @router.get("/checks", response_model=Page[SpecCheckOut])
-def list_checks(_key: SpecKeyDep, db: DbDep) -> Page[SpecCheckOut]:
+def list_checks(db: TenantDbDep, _key: OrgKeyDep) -> Page[SpecCheckOut]:
     rows = db.query(SpecCheck).order_by(SpecCheck.id).all()
     return Page(total=len(rows), items=rows)
 
 
 @router.post("/trajectories", response_model=TrajectoryOut, status_code=status.HTTP_201_CREATED)
-def create_trajectory(payload: TrajectoryIn, _key: SpecKeyDep, db: DbDep) -> Trajectory:
+def create_trajectory(payload: TrajectoryIn, db: TenantDbDep, _key: OrgKeyDep) -> Trajectory:
     wu = get_by_code_or_404(db, WorkUnit, payload.work_unit_code)
     data = payload.model_dump()
     data.pop("work_unit_code")
@@ -55,6 +59,6 @@ def create_trajectory(payload: TrajectoryIn, _key: SpecKeyDep, db: DbDep) -> Tra
 
 
 @router.get("/trajectories", response_model=Page[TrajectoryOut])
-def list_trajectories(_key: SpecKeyDep, db: DbDep) -> Page[TrajectoryOut]:
+def list_trajectories(db: TenantDbDep, _key: OrgKeyDep) -> Page[TrajectoryOut]:
     rows = db.query(Trajectory).order_by(Trajectory.id).all()
     return Page(total=len(rows), items=rows)

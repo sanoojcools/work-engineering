@@ -10,6 +10,7 @@ from . import (
     genome,
     health,
     ontology,
+    org,
     projections,
     regulatory,
     spec,
@@ -36,3 +37,4 @@ api_router.include_router(discovery.router, prefix="/discovery", tags=["discover
 api_router.include_router(verification.router, prefix="/verification", tags=["verification"])
 api_router.include_router(spec.router, prefix="/spec", tags=["spec"])
 api_router.include_router(projections.router, prefix="/projections", tags=["projections"])
+api_router.include_router(org.router, prefix="/org", tags=["org"])

@@ -1,6 +1,12 @@
-from fastapi import APIRouter
+"""Slice 3 PR 3a: moved off the old no-auth DbDep onto per-org X-Spec-Key
+(OrgKeyDep/TenantDbDep). clients is not RLS-protected (see alembic
+9a07306c5434's comment — it's the tenant boundary itself), so a
+caller-supplied client_id that doesn't match the key's own org is rejected
+explicitly here rather than left to surface as a raw RLS WITH CHECK
+violation on the work_units writes underneath."""
+from fastapi import APIRouter, HTTPException, status
 
-from ..dependencies import DbDep
+from ..dependencies import OrgKeyDep, TenantDbDep
 from ..models.graph import WorkEdge
 from ..models.workunit import WorkUnit
 from ..schemas.client import CensusRunIn
@@ -15,8 +21,14 @@ from ..services.verdict import LEVEL_NAMES, allocation_for
 router = APIRouter()
 
 
+def _require_own_client(key, client_id: int) -> None:
+    if client_id != key.client_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Client not found")
+
+
 @router.post("/run")
-def run_census(payload: CensusRunIn, db: DbDep) -> dict:
+def run_census(payload: CensusRunIn, db: TenantDbDep, key: OrgKeyDep) -> dict:
+    _require_own_client(key, payload.client_id)
     get_or_404(db, Client, payload.client_id, "Client")
     return census_svc.run_census(
         db,
@@ -28,7 +40,8 @@ def run_census(payload: CensusRunIn, db: DbDep) -> dict:
 
 
 @router.get("/pack/{client_id}")
-def census_pack(client_id: int, db: DbDep, function: str = "HR & People Ops") -> dict:
+def census_pack(client_id: int, db: TenantDbDep, key: OrgKeyDep, function: str = "HR & People Ops") -> dict:
+    _require_own_client(key, client_id)
     get_or_404(db, Client, client_id, "Client")
     units = units_for_function(
         db.query(WorkUnit).filter(WorkUnit.client_id == client_id).order_by(WorkUnit.id).all(),
