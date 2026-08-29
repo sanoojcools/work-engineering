@@ -4,6 +4,7 @@ from . import (
     admin,
     census,
     clients,
+    consent,
     discovery,
     economics,
     files,
@@ -38,3 +39,4 @@ api_router.include_router(verification.router, prefix="/verification", tags=["ve
 api_router.include_router(spec.router, prefix="/spec", tags=["spec"])
 api_router.include_router(projections.router, prefix="/projections", tags=["projections"])
 api_router.include_router(org.router, prefix="/org", tags=["org"])
+api_router.include_router(consent.router, prefix="/consent", tags=["consent"])

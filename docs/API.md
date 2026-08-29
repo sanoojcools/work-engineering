@@ -3,12 +3,12 @@
 Base URL: `http://localhost:8000/api`. Interactive docs: `http://localhost:8000/docs`.
 
 The Vite UI calls the same paths via `/api` proxy. Genome, files, work-units,
-spec, census, and org routes all require header `X-Spec-Key`: a per-org
-credential looked up against `org_api_keys` (see `POST /org/keys/rotate`
-below), not a single shared secret — there is no env-var default. Every
-other router listed here (ontology, discovery, projections, verdict,
-work-graph, economics, regulatory, verification, clients, admin) is
-unauthenticated.
+spec, census, org, and consent routes all require header `X-Spec-Key`: a
+per-org credential looked up against `org_api_keys` (see `POST
+/org/keys/rotate` below), not a single shared secret — there is no env-var
+default. Every other router listed here (ontology, discovery, projections,
+verdict, work-graph, economics, regulatory, verification, clients, admin)
+is unauthenticated.
 
 List endpoints return `{ "total": n, "items": [...] }`.
 
@@ -103,6 +103,18 @@ Requires `X-Spec-Key` (per-org). `client_id` (body for `/run`, path for `/pack`)
 | POST | `/org/keys/rotate` | `X-Spec-Key` (the key being rotated) |
 
 Returns the new plaintext key once: `{ client_id, key, key_id, old_key_id, old_key_expires_at }`. The old key keeps authenticating until `old_key_expires_at` (a 60-minute grace window), then `401`s.
+
+## Consent receipts (DPDP)
+
+Requires `X-Spec-Key` (per-org). `consent_receipts` carries RLS same as `work_units` — a receipt id from another org is a `404`, not a `403`.
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/consent/receipts` | Body: `{ subject_id, purpose, data_principal_initials?, consent_text?, retention_days? }` (default 90). Returns the receipt, `expires_at = consented_at + retention_days`. Audits `org.consent.receipt.create`. |
+| GET | `/consent/receipts` | List own org's receipts. |
+| GET | `/consent/receipts/{id}` | `404` if the receipt belongs to another org. |
+| POST | `/consent/receipts/{id}/revoke` | Body: `{ withdrawal_method? }`. Sets `status=withdrawn`, `revoked_at=now()`. Audits `org.consent.receipt.revoke`. |
+| POST | `/admin/consent/purge` | Unauthenticated maintenance trigger (same trust level as `/seed`, `/demo/prepare`) for the daily auto-purge sweep. Tombstones every `status=active` receipt past `expires_at` (`status=purged`, `purged_at=now()`) across every tenant — cross-tenant by nature, so it runs on the RLS-bypassing system session, not a per-org key. Returns `{ purged: <count> }`. `withdrawn` receipts are left alone: the timer isn't a second purge path for a consent already withdrawn. Reports `0` until a receipt actually ages past its `expires_at` — that's expected, it proves the path runs end to end. |
 
 ## Projections (C3)
 

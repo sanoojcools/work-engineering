@@ -14,7 +14,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Index, Integer, LargeBinary, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db import Base
@@ -55,8 +55,19 @@ class ConsentStatus(str, enum.Enum):
 class ConsentReceipt(Base):
     """DPDP Act 2023 style consent receipt. An interview/transcript may not be
     stored without one; absent consent, discovery runs in notes-only mode
-    (same 18-attribute tagging, no recording retained)."""
+    (same 18-attribute tagging, no recording retained).
+
+    Slice 3 PR 3c: added revoked_at/purged_at alongside the existing `status`
+    enum — status alone (P0) told you *whether* a receipt left the active
+    state but not *when*, which both the revoke endpoint and the purge job
+    need to record. auto_purge_at is this receipt's expiry (consent_timestamp
+    + retention_days, set once at creation); the daily purge job scans for
+    status=active rows past it."""
     __tablename__ = "consent_receipts"
+    __table_args__ = (
+        Index("ix_consent_receipts_client_expiry", "client_id", "auto_purge_at"),
+        Index("ix_consent_receipts_client_subject", "client_id", "interview_ref"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
@@ -69,6 +80,8 @@ class ConsentReceipt(Base):
     withdrawal_method: Mapped[str] = mapped_column(String(200), default="")
     auto_purge_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[ConsentStatus] = mapped_column(Enum(ConsentStatus), default=ConsentStatus.active)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     client: Mapped["Client"] = relationship()
 
