@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SessionCreate(BaseModel):
@@ -70,3 +70,80 @@ class SessionOut(BaseModel):
     units: list[UnitOut]
     created_at: datetime
     updated_at: datetime
+
+
+class TimelineOut(BaseModel):
+    # timeline_json is a deliberately open JSONB blob -- PATCH lets a
+    # manual drag-correction add fields the deterministic builder never
+    # emits (see services/scout_timeline.py), so the response model must
+    # not silently drop them.
+    model_config = ConfigDict(extra="allow")
+
+    day_start_min: int
+    day_end_min: int
+    blocks: list[dict]
+    gaps: list[dict]
+    total_minutes: float
+    over_allocated: bool
+    unplaced_units: list[dict]
+
+
+class TimelineUpdate(BaseModel):
+    timeline: dict
+
+
+class ContradictionOut(BaseModel):
+    id: int
+    unit_name: str
+    field: str
+    founder_session_id: int
+    sme_session_id: int
+    founder_text: str
+    sme_text: str
+    confidence: float
+    resolution: str
+    status: str
+    created_at: datetime
+
+
+class ContradictionResolve(BaseModel):
+    resolution: str = Field(min_length=1)
+
+
+class PainHeatmapOut(BaseModel):
+    systems: list[dict]
+    top_pain_points: list[dict]
+    total_time_wasted_min_per_day: float
+
+
+class StoryExtractIn(BaseModel):
+    transcript_chunk: str = Field(min_length=1)
+
+
+class StoryExtractOut(BaseModel):
+    used_llm: bool
+    chunks: list[dict]
+    note: str
+
+
+class FuturePreviewOut(BaseModel):
+    completeness_pct: float
+    unlocked: bool
+    time_saved_min_per_day: float
+    business_objects_preview: list[str]
+    unit_count: int
+
+
+class GenerateGenomeOut(BaseModel):
+    # Passes through import_genome()'s real result dict as-is (accepted,
+    # version_id, gqs, gate_threshold, breakdown, violations,
+    # work_unit_count, work_graph_edge_count on success) -- same GQS gate
+    # as every other import path, not a relaxed one for Scout-originated
+    # genomes.
+    model_config = ConfigDict(extra="allow")
+
+    accepted: bool
+    version_id: int
+    gqs: float
+    work_unit_count: int
+    violations: list[dict] = Field(default_factory=list)

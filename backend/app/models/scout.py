@@ -47,6 +47,12 @@ class ScoutInterviewSession(Base):
     # here only because the frontend flow enforces it before create; not a
     # backend bypass).
     consent_receipt_id: Mapped[int | None] = mapped_column(ForeignKey("consent_receipts.id"), nullable=True)
+    # Elevation 1 (Time-Travel Replay): JSON-serialized {"blocks": [...], "gaps": [...]}
+    # -- built by services/scout_timeline.py, editable via PATCH .../timeline.
+    # Text, not a native JSON/JSONB column: same convention as
+    # GenomeVersion.gates_passed/gates_failed -- SQLite (the fast, non-RLS
+    # test suite's DB) can't compile a Postgres JSONB column.
+    timeline_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
@@ -83,4 +89,42 @@ class ScoutCapturedUnit(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     session: Mapped["ScoutInterviewSession"] = relationship(back_populates="units")
+    client: Mapped["Client"] = relationship()
+
+
+class ContradictionStatus(str, enum.Enum):
+    open = "open"
+    resolved = "resolved"
+
+
+class ScoutContradiction(Base):
+    """Elevation 2: founder vs SME truth merge. The design doc keys this on
+    work_unit_id, but nothing here is a real WorkUnit yet (captured units
+    stay in draft state until genome generation) -- keyed on unit_name
+    instead, matched case-insensitively across a founder-type and an
+    sme-type session for the same client. Detected on read (GET
+    /contradictions re-scans and upserts), not on every unit write --
+    cheap enough at this scale and avoids stale rows if either side's
+    unit is later edited to agree."""
+    __tablename__ = "scout_contradictions"
+    __table_args__ = (Index("ix_scout_contradictions_client", "client_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    unit_name: Mapped[str] = mapped_column(String(200))
+    field: Mapped[str] = mapped_column(String(40))  # "systems" | "frequency" | "inputs"
+    founder_session_id: Mapped[int] = mapped_column(ForeignKey("scout_interview_sessions.id"))
+    sme_session_id: Mapped[int] = mapped_column(ForeignKey("scout_interview_sessions.id"))
+    founder_text: Mapped[str] = mapped_column(Text, default="")
+    sme_text: Mapped[str] = mapped_column(Text, default="")
+    # Confidence a real difference exists, not a measured statistic --
+    # 1.0 when both sides gave a non-empty, differing answer; lower when
+    # one side is empty (could just be an unanswered question, not a
+    # genuine contradiction). Named so it's never mistaken for the kind
+    # of measured confidence GQS/kappa use elsewhere in this codebase.
+    confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    resolution: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[ContradictionStatus] = mapped_column(Enum(ContradictionStatus), default=ContradictionStatus.open)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
     client: Mapped["Client"] = relationship()

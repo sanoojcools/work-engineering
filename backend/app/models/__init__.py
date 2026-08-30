@@ -25,9 +25,11 @@ from .ontology import (  # noqa: F401
 )
 from .regulatory import RegulatoryEntry  # noqa: F401
 from .scout import (  # noqa: F401
+    ContradictionStatus,
     InterviewStatus,
     InterviewType,
     ScoutCapturedUnit,
+    ScoutContradiction,
     ScoutInterviewSession,
 )
 from .security import (  # noqa: F401

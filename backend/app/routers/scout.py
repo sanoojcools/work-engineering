@@ -8,15 +8,45 @@ see services/scout.py for the honest accounting of which of the 8
 design-doc dimensions that actually covers."""
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import text
 
 from ..dependencies import OrgKeyDep, TenantDbDep
-from ..models.scout import InterviewStatus, InterviewType, ScoutCapturedUnit, ScoutInterviewSession
+from ..models.scout import (
+    ContradictionStatus,
+    InterviewStatus,
+    InterviewType,
+    ScoutCapturedUnit,
+    ScoutContradiction,
+    ScoutInterviewSession,
+)
 from ..models.security import AuditLog, OrgApiKey
 from ..schemas.common import Page
-from ..schemas.scout import SessionCreate, SessionOut, UnitCreate, UnitOut, UnitUpdate
+from ..schemas.scout import (
+    ContradictionOut,
+    ContradictionResolve,
+    FuturePreviewOut,
+    GenerateGenomeOut,
+    PainHeatmapOut,
+    SessionCreate,
+    SessionOut,
+    StoryExtractIn,
+    StoryExtractOut,
+    TimelineOut,
+    TimelineUpdate,
+    UnitCreate,
+    UnitOut,
+    UnitUpdate,
+)
 from ..services import scout as scout_svc
+from ..services import scout_contradictions as contradiction_svc
+from ..services import scout_future as future_svc
+from ..services import scout_genome as genome_svc
+from ..services import scout_pain as pain_svc
+from ..services import scout_story as story_svc
+from ..services import scout_timeline as timeline_svc
 from ..services.lookup import get_or_404
 
 router = APIRouter()
@@ -152,3 +182,120 @@ def complete_session(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> Sessio
     _rebind_tenant(db, key)
     db.refresh(session)
     return _to_session_out(session)
+
+
+def _contradiction_to_out(c: ScoutContradiction) -> ContradictionOut:
+    return ContradictionOut(
+        id=c.id, unit_name=c.unit_name, field=c.field,
+        founder_session_id=c.founder_session_id, sme_session_id=c.sme_session_id,
+        founder_text=c.founder_text, sme_text=c.sme_text,
+        confidence=c.confidence, resolution=c.resolution,
+        status=c.status.value, created_at=c.created_at,
+    )
+
+
+@router.get("/sessions/{session_id}/timeline", response_model=TimelineOut)
+def get_timeline(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> TimelineOut:
+    session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
+    stored = json.loads(session.timeline_json)
+    if not stored:
+        stored = timeline_svc.build_timeline(list(session.units))
+        session.timeline_json = json.dumps(stored)
+        db.commit()
+        _rebind_tenant(db, key)
+        db.refresh(session)
+    return TimelineOut(**stored)
+
+
+@router.post("/sessions/{session_id}/timeline/rebuild", response_model=TimelineOut)
+def rebuild_timeline(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> TimelineOut:
+    """Re-run the deterministic placement from current units, discarding
+    any manual drag corrections. Separate from PATCH so a manual edit is
+    never silently clobbered by a routine GET."""
+    session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
+    stored = timeline_svc.build_timeline(list(session.units))
+    session.timeline_json = json.dumps(stored)
+    db.commit()
+    return TimelineOut(**stored)
+
+
+@router.patch("/sessions/{session_id}/timeline", response_model=TimelineOut)
+def update_timeline(session_id: int, payload: TimelineUpdate, db: TenantDbDep, key: OrgKeyDep) -> TimelineOut:
+    session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
+    session.timeline_json = json.dumps(payload.timeline)
+    db.add(AuditLog(
+        client_id=key.client_id, actor=key.label or f"org_api_key:{key.id}",
+        action="scout.timeline.update", resource="scout_interview_session", resource_id=str(session.id),
+    ))
+    db.commit()
+    return TimelineOut(**payload.timeline)
+
+
+@router.get("/contradictions", response_model=Page[ContradictionOut])
+def list_contradictions(db: TenantDbDep, key: OrgKeyDep, session_id: int | None = None) -> Page[ContradictionOut]:
+    contradiction_svc.detect_and_upsert(db, key.client_id)
+    db.commit()
+    _rebind_tenant(db, key)
+    q = db.query(ScoutContradiction)
+    if session_id is not None:
+        q = q.filter(
+            (ScoutContradiction.founder_session_id == session_id)
+            | (ScoutContradiction.sme_session_id == session_id)
+        )
+    rows = q.order_by(ScoutContradiction.id).all()
+    return Page(total=len(rows), items=[_contradiction_to_out(r) for r in rows])
+
+
+@router.post("/contradictions/{contradiction_id}/resolve", response_model=ContradictionOut)
+def resolve_contradiction(
+    contradiction_id: int, payload: ContradictionResolve, db: TenantDbDep, key: OrgKeyDep
+) -> ContradictionOut:
+    row = get_or_404(db, ScoutContradiction, contradiction_id, "ScoutContradiction")
+    row.resolution = payload.resolution
+    row.status = ContradictionStatus.resolved
+    db.add(AuditLog(
+        client_id=key.client_id, actor=key.label or f"org_api_key:{key.id}",
+        action="scout.contradiction.resolve", resource="scout_contradiction", resource_id=str(row.id),
+    ))
+    db.commit()
+    return _contradiction_to_out(row)
+
+
+@router.get("/sessions/{session_id}/pain-heatmap", response_model=PainHeatmapOut)
+def get_pain_heatmap(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> PainHeatmapOut:
+    """Design doc scopes this org-wide (?org_id=...); this scopes it to one
+    session's units instead, consistent with every other elevation here and
+    simpler to reason about (a founder session naming no systems would
+    otherwise dilute an SME session's real pain signal). See HONESTY.md."""
+    session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
+    return PainHeatmapOut(**pain_svc.build_pain_heatmap(list(session.units)))
+
+
+@router.post("/extract-from-story", response_model=StoryExtractOut)
+def extract_from_story(payload: StoryExtractIn, key: OrgKeyDep) -> StoryExtractOut:
+    """Tenant-scoped like everything else here (needs a valid X-Spec-Key),
+    but doesn't touch the database -- it's a pure text transform, real
+    LLM extraction or the deterministic fallback (see services/scout_story.py)."""
+    return StoryExtractOut(**story_svc.extract_from_story(payload.transcript_chunk))
+
+
+@router.get("/sessions/{session_id}/future-preview", response_model=FuturePreviewOut)
+def get_future_preview(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> FuturePreviewOut:
+    session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
+    return FuturePreviewOut(**future_svc.build_future_preview(session))
+
+
+@router.post("/sessions/{session_id}/generate-genome", response_model=GenerateGenomeOut)
+def generate_genome(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> GenerateGenomeOut:
+    """Calls the EXISTING genome import pipeline (services/genome_import
+    .import_genome) with a best-effort mapping from captured units -- see
+    services/scout_genome.py's module docstring for exactly which of the
+    18 attributes are real vs. an honest placeholder. Same GQS gate as
+    every other import path: a thin session's genome can, correctly,
+    fail to pass."""
+    session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
+    if not session.units:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No captured units to generate a genome from")
+    result = genome_svc.generate_genome(db, session, actor=key.label or f"org_api_key:{key.id}")
+    _rebind_tenant(db, key)
+    return GenerateGenomeOut(**result)

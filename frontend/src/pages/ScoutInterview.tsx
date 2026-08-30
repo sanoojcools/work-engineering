@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
+import { ContradictionResolver } from "../components/scout/ContradictionResolver";
 import { DiscoveryPartner } from "../components/scout/DiscoveryPartner";
+import { FuturePreview } from "../components/scout/FuturePreview";
 import { GenomeStrengthMeter } from "../components/scout/GenomeStrengthMeter";
+import { PainHeatmap } from "../components/scout/PainHeatmap";
+import { StoryToStructure } from "../components/scout/StoryToStructure";
+import { TimeTravelReplay } from "../components/scout/TimeTravelReplay";
 import { WorkCaptureGrid } from "../components/scout/WorkCaptureGrid";
 import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
 import { INTERVIEW_TYPES } from "../types";
@@ -140,15 +145,43 @@ export default function ScoutInterview() {
         <GenomeStrengthMeter session={session} />
       </div>
 
-      <div className="nudge info" style={{ marginTop: 20 }}>
-        <div className="nudge-body">
-          <div className="nudge-title">Coming in later PRs</div>
-          <div className="nudge-msg" style={{ marginBottom: 0 }}>
-            Time-Travel Replay, Contradiction Resolver, Pain Heatmap, Story-to-Structure live trace, and the 100%
-            Future Preview unlock are the next 5 elevations (Scout Elevated V2 design doc) — not built in this PR.
-          </div>
-        </div>
+      <ElevationModules session={session} onNeedsKey={() => setNeedsKey(true)} />
+    </div>
+  );
+}
+
+const ELEVATIONS = [
+  "Time-Travel Replay",
+  "Contradiction Resolver",
+  "Pain Heatmap",
+  "Story to Structure",
+  "Future Preview",
+] as const;
+
+function ElevationModules({ session, onNeedsKey }: { session: ScoutSession; onNeedsKey: () => void }) {
+  const [open, setOpen] = useState<(typeof ELEVATIONS)[number] | null>(null);
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div className="tabs">
+        {ELEVATIONS.map((name) => (
+          <button key={name} aria-selected={open === name} onClick={() => setOpen(open === name ? null : name)}>
+            {name}
+          </button>
+        ))}
       </div>
+      {open && (
+        <div className="card">
+          <h3>{open}</h3>
+          {open === "Time-Travel Replay" && <TimeTravelReplay sessionId={session.id} onNeedsKey={onNeedsKey} />}
+          {open === "Contradiction Resolver" && (
+            <ContradictionResolver sessionId={session.id} onNeedsKey={onNeedsKey} />
+          )}
+          {open === "Pain Heatmap" && <PainHeatmap sessionId={session.id} onNeedsKey={onNeedsKey} />}
+          {open === "Story to Structure" && <StoryToStructure onNeedsKey={onNeedsKey} />}
+          {open === "Future Preview" && <FuturePreview sessionId={session.id} onNeedsKey={onNeedsKey} />}
+        </div>
+      )}
     </div>
   );
 }

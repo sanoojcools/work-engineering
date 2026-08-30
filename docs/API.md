@@ -131,7 +131,43 @@ Requires `X-Spec-Key` (per-org). `scout_interview_sessions` and `scout_captured_
 
 **Completeness is not what the design doc originally specified.** The doc's formula was "captured / expected, expected from JD + logs baseline" — no JD or log ingestion exists, so `services/scout.py` uses a published constant (`EXPECTED_UNITS_PER_SESSION = 8`, same spirit as `BUS_FACTOR_WU_THRESHOLD` elsewhere) for the "Work Units Captured" dimension, and per-unit field-fill percentage for six more. The 8th dimension, **Knowledge Artifacts** (policies/JD/papers linked), has no real field to measure yet — it's returned with `computed: false` rather than a fake `0%`, and `completeness_pct` averages only the 7 dimensions that are actually computed (same `reciprocal_computed: false` honesty pattern as automation-index's cycle detection).
 
-**No LLM calls anywhere in this surface.** `LLM_PROVIDER=none` in this environment. The 5 "elevation" modules from the design doc (Time-Travel Replay, Contradiction Resolver, Pain Heatmap, Story-to-Structure live trace, Future Preview) are not built in PR1 — see `HONESTY.md`.
+**No LLM calls anywhere in `routers/scout.py`.** `LLM_PROVIDER=none` in this environment — see the elevation-by-elevation breakdown below for what each one does instead.
+
+### Elevation 1 — Time-Travel Replay
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/scout/sessions/{id}/timeline` | Returns the session's timeline, computing and caching it on first call. Deterministic placement (`services/scout_timeline.py`): units sorted by daily-minutes descending, packed into a published 09:00–18:00 window; `frequency` text converts to a daily minutes figure (`day`→as-is, `week`→÷5, `month`→÷22, matching automation-index's existing `WORKING_DAYS_PER_MONTH`). Flags `over_allocated` when total exceeds the window; reports gaps ≥30 min. |
+| POST | `/scout/sessions/{id}/timeline/rebuild` | Re-runs the deterministic placement, discarding any manual edit. |
+| PATCH | `/scout/sessions/{id}/timeline` | Saves a manually-corrected timeline verbatim (drag corrections) — the stored JSON is open-ended, not limited to the auto-builder's own shape. Audits `scout.timeline.update`. |
+
+### Elevation 2 — Contradiction Resolver
+
+RLS on `scout_contradictions` same as the direct-`client_id` tables.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/scout/contradictions?session_id=` | Re-scans on every call (`services/scout_contradictions.py`): matches a founder-type session's unit against an sme-type session's unit by exact (case-insensitive) name, flags a contradiction when `systems`, `frequency`, or `inputs` differ and both sides answered. Plain text diff — no LLM, no measured confidence (the `confidence` field is fixed at 1.0, documented in the model as "not a measured statistic"). Optional `session_id` filters to contradictions touching that session. |
+| POST | `/scout/contradictions/{id}/resolve` | Body `{ resolution }`. Sets `status=resolved`; a resolved pair is never re-flagged by a later scan. Audits `scout.contradiction.resolve`. |
+
+### Elevation 3 — Pain & Automation X-Ray
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/scout/sessions/{id}/pain-heatmap` | Scoped to one session's units, not org-wide as the design doc's `?org_id=` suggested (a founder session naming no systems would otherwise dilute a real SME pain signal). `pain_score` (`services/scout_pain.py`) is a fixed keyword-weight lookup over the free-text `pain` field (`PAIN_KEYWORDS`, capped at 5) — explicitly **not** sentiment analysis. `automation_potential_pct` is each system's share of total daily minutes captured, not a modeled estimate. |
+
+### Elevation 4 — Story to Structure
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/scout/extract-from-story` | Body `{ transcript_chunk }`. Checks `settings.llm_provider` first (real extraction would run here if configured); with none configured it falls through to a deterministic sentence-splitter (`services/scout_story.py`, same philosophy as `services/discovery.py`'s existing `split_text` fallback). Every returned chunk is a literal substring of the input by construction — Track B's own guardrail ("every generated span must be a substring of raw_text", `SCOUT_AMBITIOUS_PLAN.md` §4) is satisfied structurally, not checked after the fact. `used_llm` is always `false` in this environment. Doesn't write to the database. |
+
+### Elevation 5 — Future Preview
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/scout/sessions/{id}/future-preview` | `unlocked` is `completeness_pct >= 100`. `time_saved_min_per_day` reuses the pain-heatmap total (no separate estimate). No confetti — see `HONESTY.md`. |
+| POST | `/scout/sessions/{id}/generate-genome` | Calls the **existing** `services/genome_import.import_genome` — no parallel write path. Maps each captured unit to the 18-attribute contract (`services/scout_genome.py`); several attributes the Work Capture Grid never asks for (`trigger`, `actor_constraints`, `acceptance_criteria`, `evidence_required`, `failure_semantics`) get one honest literal placeholder string rather than fabricated content. `provenance.source_type` is `"declared"` (self-reported in a structured interview), not `"observed"`. Goes through the **same GQS gate** as any other import — a thin session's genome is expected to score low and get blocked, not pass on a relaxed rule; verified in `tests/test_scout_future_preview.py` (a 1-unit session scores GQS 30, `accepted: false`).
 
 ## Projections (C3)
 
