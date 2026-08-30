@@ -14,29 +14,19 @@ import { INTERVIEW_TYPES } from "../types";
 import type { ScoutSession } from "../types";
 import { Banner, Loading } from "../ui";
 
-function NewSessionForm({ onCreated, onNeedsKey }: { onCreated: (s: ScoutSession) => void; onNeedsKey: () => void }) {
-  const [type, setType] = useState<(typeof INTERVIEW_TYPES)[number]>("sme");
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function create() {
-    if (!name.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const session = await apiFetch.post<ScoutSession>("/scout/sessions", { type, interviewee_name: name.trim() });
-      onCreated(session);
-    } catch (err) {
-      if (err instanceof NeedsApiKeyError) onNeedsKey();
-      else setError(err instanceof Error ? err.message : "Failed to create session");
-    } finally {
-      setBusy(false);
-    }
-  }
-
+function NewSessionForm({
+  type, setType, name, setName, busy, error, onSubmit,
+}: {
+  type: (typeof INTERVIEW_TYPES)[number];
+  setType: (t: (typeof INTERVIEW_TYPES)[number]) => void;
+  name: string;
+  setName: (n: string) => void;
+  busy: boolean;
+  error: string | null;
+  onSubmit: () => void;
+}) {
   return (
-    <div className="card" style={{ maxWidth: 480 }}>
+    <div className="card" style={{ maxWidth: 520 }}>
       <h3>Start a Scout interview</h3>
       {error && <Banner kind="error">{error}</Banner>}
       <div className="stack">
@@ -49,10 +39,15 @@ function NewSessionForm({ onCreated, onNeedsKey }: { onCreated: (s: ScoutSession
         </label>
         <label>
           <span>Interviewee name</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Priya N." />
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") onSubmit(); }}
+            placeholder="Priya N."
+          />
         </label>
-        <button type="button" className="primary" disabled={busy || !name.trim()} onClick={create}>
-          Start interview &rarr;
+        <button type="button" className="primary" disabled={busy || !name.trim()} onClick={onSubmit}>
+          {busy ? "Starting…" : "Start interview →"}
         </button>
       </div>
       <p className="hint" style={{ marginTop: 12 }}>
@@ -71,6 +66,13 @@ export default function ScoutInterview() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(sessionId !== "new");
 
+  // Lifted out of NewSessionForm so a key-banner retry can re-submit the
+  // same track/name the interviewer already typed, instead of clearing the
+  // form or making them click Start a second time.
+  const [type, setType] = useState<(typeof INTERVIEW_TYPES)[number]>("sme");
+  const [name, setName] = useState("");
+  const [creating, setCreating] = useState(false);
+
   async function load(id: string) {
     setLoading(true);
     setError(null);
@@ -86,6 +88,23 @@ export default function ScoutInterview() {
     }
   }
 
+  async function createSession() {
+    if (!name.trim() || creating) return;
+    setCreating(true);
+    setError(null);
+    try {
+      const s = await apiFetch.post<ScoutSession>("/scout/sessions", { type, interviewee_name: name.trim() });
+      setNeedsKey(false);
+      setSession(s);
+      navigate(`/scout/interview/${s.id}`, { replace: true });
+    } catch (err) {
+      if (err instanceof NeedsApiKeyError) setNeedsKey(true);
+      else setError(err instanceof Error ? err.message : "Failed to create session");
+    } finally {
+      setCreating(false);
+    }
+  }
+
   useEffect(() => {
     if (sessionId && sessionId !== "new") void load(sessionId);
   }, [sessionId]);
@@ -95,13 +114,12 @@ export default function ScoutInterview() {
       <div>
         <h2>Scout Interview</h2>
         <p className="lede">Elevated discovery interview — Founder or SME track, live capture, completeness meter.</p>
-        {needsKey && <ApiKeyBanner onSaved={() => setNeedsKey(false)} />}
+        {needsKey && <ApiKeyBanner onSaved={createSession} />}
         <NewSessionForm
-          onCreated={(s) => {
-            setSession(s);
-            navigate(`/scout/interview/${s.id}`, { replace: true });
-          }}
-          onNeedsKey={() => setNeedsKey(true)}
+          type={type} setType={setType}
+          name={name} setName={setName}
+          busy={creating} error={error}
+          onSubmit={() => void createSession()}
         />
       </div>
     );
@@ -111,7 +129,7 @@ export default function ScoutInterview() {
     return (
       <div>
         <h2>Scout Interview</h2>
-        <ApiKeyBanner onSaved={() => sessionId && void load(sessionId)} />
+        <ApiKeyBanner onSaved={() => (sessionId ? load(sessionId) : Promise.resolve())} />
       </div>
     );
   }

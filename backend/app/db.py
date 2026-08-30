@@ -23,3 +23,21 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def get_system_db():
+    """Cross-tenant session for the handful of endpoints that legitimately
+    write across tenant boundaries (demo seeding, the consent purge sweep).
+    Bypasses RLS by connecting as the migration superuser.
+
+    A FastAPI dependency rather than a bare `SystemSessionLocal()` call so it
+    participates in dependency_overrides — calling the sessionmaker directly
+    inside a handler silently escapes the test override and sends the request
+    to the developer's real Postgres, which is exactly how
+    test_client_list_and_demo_prepare_stay_open started asserting against
+    live database state instead of its own fixture."""
+    db = SystemSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

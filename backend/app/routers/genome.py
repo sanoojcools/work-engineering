@@ -50,6 +50,37 @@ def import_genome_endpoint(payload: dict, db: TenantDbDep, key: OrgKeyDep) -> di
     return result
 
 
+@router.get("/versions")
+def list_genome_versions(db: TenantDbDep, key: OrgKeyDep) -> dict:
+    """Every other genome route needs a version_id the caller has to already
+    know — an import response, or a Scout generate-genome result. Nothing
+    listed what a tenant actually has, so a genome you imported yesterday was
+    unreachable from the UI. Declared above `/{version_id}` so the literal
+    path wins the match. RLS scopes this to the calling tenant."""
+    rows = (
+        db.query(GenomeVersion)
+        .filter(GenomeVersion.client_id == key.client_id)
+        .order_by(GenomeVersion.id.desc())
+        .all()
+    )
+    return {
+        "total": len(rows),
+        "items": [
+            {
+                "version_id": v.id,
+                "sequence": v.sequence,
+                "gqs": v.gqs_score,
+                "ratified": v.ratified,
+                "work_unit_count": v.work_unit_count,
+                "gates_passed": json.loads(v.gates_passed) if v.gates_passed else [],
+                "accepted": bool(json.loads(v.gates_passed)) if v.gates_passed else False,
+                "created_at": v.created_at.isoformat() if v.created_at else None,
+            }
+            for v in rows
+        ],
+    }
+
+
 @router.get("/{version_id}/gqs")
 def get_gqs(version_id: int, db: TenantDbDep, key: OrgKeyDep) -> dict:
     version = get_or_404(db, GenomeVersion, version_id, "GenomeVersion")

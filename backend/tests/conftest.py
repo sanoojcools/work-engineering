@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from fastapi.testclient import TestClient
 import pytest
 
-from app.db import Base, get_db
+from app.db import Base, get_db, get_system_db
 from app.main import create_app
 import app.models  # noqa: F401
 
@@ -39,6 +39,12 @@ def client(db):
             pass
 
     app.dependency_overrides[get_db] = override
+    # Cross-tenant endpoints (demo seeding, consent purge) resolve their own
+    # RLS-bypassing session. Point it at the same in-memory SQLite session so
+    # those routes stay inside the fixture instead of reaching the developer's
+    # real Postgres — which made assertions depend on whatever state that
+    # database happened to be carrying.
+    app.dependency_overrides[get_system_db] = override
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

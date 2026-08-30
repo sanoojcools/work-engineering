@@ -9,6 +9,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter
+from sqlalchemy import text
 
 from ..dependencies import ROTATION_GRACE_MINUTES, OrgKeyDep, TenantDbDep
 from ..models.security import AuditLog, OrgApiKey
@@ -18,6 +19,16 @@ router = APIRouter()
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _rebind_tenant(db: TenantDbDep, key: OrgApiKey) -> None:
+    """db.commit() hands the connection back to the pool; the next statement
+    can be issued on a DIFFERENT pooled connection that never had
+    app.current_client_id SET, so an RLS-filtered read after a commit sees
+    zero rows and db.refresh() raises "Could not refresh instance". Same bug
+    class and same fix as routers/scout.py::_rebind_tenant — re-apply the
+    tenant binding after every commit, before any further read."""
+    db.execute(text("SET app.current_client_id = :cid"), {"cid": str(key.client_id)})
 
 
 @router.post("/keys/rotate")
@@ -41,6 +52,7 @@ def rotate_key(db: TenantDbDep, key: OrgKeyDep) -> dict:
         detail=f"grace_expires_at={key.expires_at.isoformat()}",
     ))
     db.commit()
+    _rebind_tenant(db, key)
     db.refresh(new_row)
 
     return {

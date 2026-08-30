@@ -93,8 +93,8 @@ export default function Genome() {
   if (needsKey) {
     return (
       <div>
-        <h2>Genome {vid}</h2>
-        <ApiKeyBanner onSaved={() => { setNeedsKey(false); void loadCore(); }} />
+        <h2>Genome v{vid}</h2>
+        <ApiKeyBanner onSaved={async () => { setNeedsKey(false); await loadCore(); }} />
       </div>
     );
   }

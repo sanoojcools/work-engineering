@@ -1,9 +1,14 @@
 """Demo employer: 12 cross-industry HR units + a sample SOP (V8 J1 wedge)."""
 from __future__ import annotations
 
+import hashlib
+import secrets
+
 from sqlalchemy.orm import Session
 
+from ..models.client import Client
 from ..models.ontology import EntityKind, EntityType, Provenance
+from ..models.security import OrgApiKey
 from ..models.workunit import ActorType, UnitStatus, VerificationMethod, WorkUnit
 from ..services.census import run_census
 from ..services.tenants import (
@@ -140,3 +145,54 @@ def prepare_demo(db: Session, run: bool = True) -> dict:
         "sop": DEMO_SOP,
         "note": "Switch to Client A. This is a sample employer, not a real customer. VERDICT and hours are inferred drafts.",
     }
+
+
+def issue_first_key(db: Session, client: Client, label: str = "demo") -> tuple[str | None, int | None]:
+    """Mint a tenant's FIRST org API key. Until this existed, standing a demo
+    up meant a hand-written `INSERT INTO org_api_keys` with a manually
+    computed sha256 — routers/org.py could only ROTATE a key you already had,
+    so there was no way to get the first one through the app at all.
+
+    Returns (plaintext, key_id), or (None, None) when the tenant already has
+    an active key: a key's plaintext exists only at the moment it is minted
+    (the table stores the hash), so this can never "show me the existing
+    key" — rotate it instead, which is why re-running is a no-op rather than
+    an error."""
+    existing = (
+        db.query(OrgApiKey)
+        .filter(OrgApiKey.client_id == client.id, OrgApiKey.is_active.is_(True))
+        .first()
+    )
+    if existing is not None:
+        return None, None
+    plaintext = secrets.token_urlsafe(24)
+    row = OrgApiKey(
+        client_id=client.id,
+        label=label,
+        key_hash=hashlib.sha256(plaintext.encode("utf-8")).hexdigest(),
+        is_active=True,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return plaintext, row.id
+
+
+def bootstrap_demo(db: Session) -> dict:
+    """prepare_demo + a usable key, in one unauthenticated call, so a local
+    demo is one command instead of a Python snippet against the database.
+    Gated by settings.demo_bootstrap_enabled (see routers/admin.py)."""
+    result = prepare_demo(db)
+    client_a = get_or_create_client_a(db)
+    plaintext, key_id = issue_first_key(db, client_a)
+    result["api_key"] = plaintext
+    result["api_key_id"] = key_id
+    result["api_key_note"] = (
+        "Paste this into the app's key banner (Scout Interview / Genome). Shown once and never "
+        "recoverable — the database stores only its hash. Client A already had an active key, so "
+        "none was minted; rotate via POST /api/org/keys/rotate if you need a fresh one."
+        if plaintext is None else
+        "Paste this into the app's key banner (Scout Interview / Genome). Shown once and never "
+        "recoverable — the database stores only its hash."
+    )
+    return result

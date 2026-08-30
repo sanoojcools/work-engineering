@@ -6,10 +6,14 @@ from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy import or_, text
 from sqlalchemy.orm import Session
 
-from .db import get_db
+from .db import get_db, get_system_db
 from .models.security import OrgApiKey
 
 DbDep = Annotated[Session, Depends(get_db)]
+# Cross-tenant, RLS-bypassing session. Only for endpoints that write across
+# tenant boundaries by nature (demo seeding, consent purge) — never as a way
+# around a missing tenant binding on an ordinary route. See db.get_system_db.
+SystemDbDep = Annotated[Session, Depends(get_system_db)]
 
 # Slice 3 PR 3a (playbook G.1): how long a rotated-out key keeps
 # authenticating after POST /org/keys/rotate, so a caller mid-flight isn't

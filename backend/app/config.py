@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     # Dev default only — override in any non-local environment.
     pii_encryption_key: str = "dev-pii-key-change-me"
 
+    # Gates POST /api/demo/bootstrap, which mints and returns an org API key
+    # in plaintext over an UNAUTHENTICATED request so a local demo needs no
+    # hand-written SQL. That is only acceptable on a throwaway local database:
+    # set DEMO_BOOTSTRAP_ENABLED=false (and it is refused) anywhere else.
+    demo_bootstrap_enabled: bool = True
+
     # G4 ladder
     promotion_min_runs: int = 5
     promotion_min_pass_rate: float = 0.95

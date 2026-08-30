@@ -121,6 +121,50 @@ def _validate_file_provenance(db: Session, client_id: int, parsed: GenomeImportR
     return violations
 
 
+def _validate_work_unit_codes(db: Session, client_id: int, parsed: GenomeImportRequest) -> list[dict]:
+    """work_units has a UNIQUE (client_id, code) constraint, and nothing
+    checked it before the insert loop — so importing a genome whose codes
+    already exist for the tenant blew up mid-loop on a raw psycopg2
+    UniqueViolation, surfacing as a 500 with no violation list and leaving
+    the rows written before the collision behind. That is reachable in an
+    ordinary demo: samples/Private-Genome-MVP-HR-Ops-FIXED.json and the
+    Client A HR seed (services/demo.py) both define WU-OFF-03.
+
+    Same pre-pass shape as _validate_file_provenance: catch it before any
+    row is written and report it as a structured violation, so a re-import
+    is a clean 400 the caller can act on rather than a 500.
+
+    Also catches duplicates WITHIN one payload, which would otherwise hit
+    the same constraint on the second occurrence."""
+    violations: list[dict] = []
+    incoming = [_clip(wu_in.id, 40) for wu_in in parsed.work_units]
+
+    seen: set[str] = set()
+    for code in incoming:
+        if code in seen:
+            violations.append({
+                "code": "duplicate_work_unit_id",
+                "detail": f"{code}: appears more than once in this payload; work unit ids must be unique",
+            })
+        seen.add(code)
+
+    existing = {
+        row[0]
+        for row in db.query(WorkUnit.code)
+        .filter(WorkUnit.client_id == client_id, WorkUnit.code.in_(sorted(seen)))
+        .all()
+    }
+    for code in sorted(seen & existing):
+        violations.append({
+            "code": "work_unit_id_already_exists",
+            "detail": (
+                f"{code}: this tenant already has a work unit with this id. Import a genome whose "
+                f"ids are unique for the tenant, or use a different tenant."
+            ),
+        })
+    return violations
+
+
 def _log_audit(db: Session, client_id: int, actor: str, action: str, resource: str, resource_id: str, detail: str = "") -> None:
     db.add(AuditLog(client_id=client_id, actor=actor, action=action, resource=resource, resource_id=resource_id, detail=detail))
 
@@ -135,6 +179,34 @@ def _failure_result(gqs_result: dict, version: GenomeVersion, violations: list[d
         "violations": violations,
         "work_unit_count": gqs_result["work_unit_count"],
     }
+
+
+def _record_failed_attempt(
+    db: Session, client_id: int, actor: str, gqs_result: dict, violations: list[dict]
+) -> dict:
+    """Re-record an import attempt after a rollback discarded its original
+    GenomeVersion row. Used by the write-phase guard in import_genome: the
+    rollback is what keeps a half-written genome out of the database, but
+    the attempt still has to stay auditable, which is this module's whole
+    reason for persisting blocked imports rather than dropping them."""
+    sequence = db.query(GenomeVersion).filter(GenomeVersion.client_id == client_id).count() + 1
+    version = GenomeVersion(
+        client_id=client_id,
+        version_type=GenomeVersionType.detailed,
+        sequence=sequence,
+        gqs_score=gqs_result["gqs"],
+        work_unit_count=gqs_result["work_unit_count"],
+        gates_passed=json.dumps([]),
+        gates_failed=json.dumps(violations),
+    )
+    db.add(version)
+    db.flush()
+    _log_audit(
+        db, client_id, actor, "genome.import.failed", "genome_version", str(version.id),
+        detail=json.dumps({"violations": violations}),
+    )
+    db.commit()
+    return _failure_result(gqs_result, version, violations)
 
 
 def import_genome(db: Session, client_id: int, raw_genome: dict, *, actor: str = "") -> dict:
@@ -175,6 +247,42 @@ def import_genome(db: Session, client_id: int, raw_genome: dict, *, actor: str =
         db.commit()
         return _failure_result(gqs_result, version, file_violations)
 
+    code_violations = _validate_work_unit_codes(db, client_id, parsed)
+    if code_violations:
+        version.gates_failed = json.dumps(code_violations)
+        db.commit()
+        return _failure_result(gqs_result, version, code_violations)
+
+    # Everything from here writes rows. Anything unexpected that escapes must
+    # roll the whole batch back: before this guard existed, a mid-loop failure
+    # (a UniqueViolation on work_units.code, say) surfaced as a bare 500 AND
+    # left the work units written before the collision in the database,
+    # attached to a version row that still claimed the full count — which then
+    # collided with every retry, so one bad import poisoned the tenant.
+    try:
+        return _write_genome(db, client_id, actor, gqs_result, parsed, version)
+    except Exception as exc:  # noqa: BLE001 — deliberately broad: see rollback below
+        db.rollback()
+        return _record_failed_attempt(db, client_id, actor, gqs_result, [{
+            "code": "import_write_failed",
+            "detail": (
+                f"The genome passed validation but could not be written; nothing was saved. "
+                f"{type(exc).__name__}: {exc}"
+            ),
+        }])
+
+
+def _write_genome(
+    db: Session,
+    client_id: int,
+    actor: str,
+    gqs_result: dict,
+    parsed: GenomeImportRequest,
+    version: GenomeVersion,
+) -> dict:
+    """The mutating half of import_genome, split out so its caller can wrap
+    it in one rollback boundary. Unchanged behaviour — only the enclosing
+    error handling is new."""
     code_to_wu: dict[str, WorkUnit] = {}
     for wu_in in parsed.work_units:
         entity_type = _get_or_create_entity_type(db, wu_in.business_object)
