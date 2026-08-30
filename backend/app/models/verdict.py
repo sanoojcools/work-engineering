@@ -24,5 +24,6 @@ class VerdictScore(Base):
     recommended_level: Mapped[int] = mapped_column(Integer, default=1)
     applied_gates: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of gate ids
     allocation: Mapped[str] = mapped_column(String(20), default="make")  # make|agent|automate|buy
+    origin: Mapped[str] = mapped_column(String(20), default="confirmed")  # inferred | confirmed
 
     work_unit: Mapped["WorkUnit"] = relationship(back_populates="verdict")

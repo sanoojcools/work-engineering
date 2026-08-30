@@ -56,6 +56,7 @@ class IntentSource(Base):
     title: Mapped[str] = mapped_column(String(200))
     body: Mapped[str] = mapped_column(Text, default="")
     provenance: Mapped[Provenance] = mapped_column(Enum(Provenance), default=Provenance.declared)
+    client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id"), nullable=True)
 
 
 class Origin(str, enum.Enum):
@@ -81,6 +82,7 @@ class DiscoveryCandidate(Base):
     sampling_bias_note: Mapped[str] = mapped_column(Text, default="")  # D2
     status: Mapped[CandidateStatus] = mapped_column(Enum(CandidateStatus), default=CandidateStatus.new)
     work_unit_id: Mapped[int | None] = mapped_column(ForeignKey("work_units.id"), nullable=True)
+    client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id"), nullable=True)
 
     work_unit: Mapped["WorkUnit | None"] = relationship()
 
@@ -104,5 +106,6 @@ class ConformanceGap(Base):
     discovered_ref: Mapped[str] = mapped_column(String(200), default="")
     declared_ref: Mapped[str] = mapped_column(String(200), default="")
     work_unit_id: Mapped[int | None] = mapped_column(ForeignKey("work_units.id"), nullable=True)
+    client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id"), nullable=True)
 
     work_unit: Mapped["WorkUnit | None"] = relationship()

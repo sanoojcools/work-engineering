@@ -1,7 +1,7 @@
 """Layer 1 core: the Work Unit — the 18-attribute machine-readable contract."""
 import enum
 
-from sqlalchemy import Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db import Base
@@ -45,11 +45,17 @@ class WorkUnit(Base):
     """The primitive. One accountable commitment to move one business object
     from a stated current condition to a stated desired condition."""
     __tablename__ = "work_units"
+    __table_args__ = (UniqueConstraint("client_id", "code", name="uq_work_units_client_code"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    # Which genome import produced this row, if any (NULL for units created
+    # via the plain POST /work-units API or seed/census data predating the
+    # genome import path).
+    genome_version_id: Mapped[int | None] = mapped_column(ForeignKey("genome_versions.id"), nullable=True)
 
     # 1-2: identity
-    code: Mapped[str] = mapped_column(String(40), unique=True)          # 1. ID
+    code: Mapped[str] = mapped_column(String(40))          # 1. ID
     name: Mapped[str] = mapped_column(String(200))                      # 2. Name
 
     # 3-5: state transition commitment
@@ -74,6 +80,11 @@ class WorkUnit(Base):
 
     # 14-16: operations
     sla_hours: Mapped[float] = mapped_column(Float, default=0)          # 14
+    # Slice 2 PR 2c: sla_timing.volume_per_month was accepted by the import
+    # schema but never persisted anywhere — the automation index cannot
+    # compute hours_current (time * volume) without it. Nullable: absent
+    # means "not supplied", never imputed as 0.
+    volume_per_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
     failure_semantics: Mapped[str] = mapped_column(Text, default="")    # 16
 
     # 17: compliance (E6) — null means unregulated
@@ -102,6 +113,7 @@ class WorkUnit(Base):
         back_populates="work_unit", uselist=False, cascade="all, delete-orphan")
     business_object_type: Mapped["EntityType"] = relationship()
     regulatory_entry: Mapped["RegulatoryEntry"] = relationship()
+    client: Mapped["Client"] = relationship(back_populates="work_units")
 
 
 class WorkUnitVariant(Base):

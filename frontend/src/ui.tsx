@@ -1,6 +1,6 @@
 import type { FormEvent, ReactNode } from "react";
 
-export function Banner({ kind, children }: { kind: "error" | "info" | "ok"; children: ReactNode }) {
+export function Banner({ kind, children }: { kind: "error" | "info" | "ok" | "warn"; children: ReactNode }) {
   return <div className={`banner ${kind}`}>{children}</div>;
 }
 
@@ -13,7 +13,7 @@ export function Field({
   children,
   span2 = false,
 }: {
-  label: string;
+  label: ReactNode;
   children: ReactNode;
   span2?: boolean;
 }) {
@@ -47,18 +47,20 @@ export function Form({
   );
 }
 
-type Column<T> = { key: string; header: string; render?: (row: T) => ReactNode };
+type Column<T> = { key: string; header: ReactNode; render?: (row: T) => ReactNode };
 
 export function DataTable<T extends { id: number }>({
   rows,
   columns,
   onRowClick,
   selectedId,
+  highlightedId,
 }: {
   rows: T[];
   columns: Column<T>[];
   onRowClick?: (row: T) => void;
   selectedId?: number | null;
+  highlightedId?: number | null;
 }) {
   if (rows.length === 0) {
     return <p className="health">No rows yet.</p>;
@@ -77,7 +79,11 @@ export function DataTable<T extends { id: number }>({
           {rows.map((row) => (
             <tr
               key={row.id}
-              className={selectedId === row.id ? "selected" : undefined}
+              data-row-id={row.id}
+              className={[
+                selectedId === row.id ? "selected" : "",
+                highlightedId === row.id ? "highlight" : "",
+              ].filter(Boolean).join(" ") || undefined}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               style={onRowClick ? { cursor: "pointer" } : undefined}
             >

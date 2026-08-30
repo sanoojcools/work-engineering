@@ -1,44 +1,3 @@
-from app.config import settings
-from app.models.ontology import EntityKind
-from app.models.workunit import VerificationMethod
-from app.models.execution import CheckType
-
-
-def _type(client) -> int:
-    response = client.post("/api/ontology/types", json={
-        "name": "Order",
-        "kind": EntityKind.business_object.value,
-        "state_machine": '["draft","validated"]',
-    })
-    assert response.status_code == 201, response.text
-    return response.json()["id"]
-
-
-def _unit(client, type_id: int, **overrides) -> dict:
-    body = {
-        "code": "WU-TEST-01",
-        "name": "Validate order",
-        "business_object_type_id": type_id,
-        "current_condition": "draft",
-        "desired_condition": "validated",
-        "context": "O2C",
-        "trigger": "order submitted",
-        "inputs": "order record",
-        "authority": "Order Desk",
-        "actor_constraints": "Order Desk",
-        "acceptance_criteria": "Order state is validated",
-        "evidence_required": "ERP status change",
-        "verification_method": VerificationMethod.deterministic_rule.value,
-        "sla_hours": 4,
-        "failure_semantics": "hold and notify",
-        "owner": "Order Desk",
-    }
-    body.update(overrides)
-    response = client.post("/api/work-units/", json=body)
-    assert response.status_code == 201, response.text
-    return response.json()
-
-
 def test_health_ok(client):
     response = client.get("/api/health")
     assert response.status_code == 200
@@ -50,58 +9,16 @@ def test_spec_rejects_missing_key(client):
     assert response.status_code == 401
 
 
-def test_work_unit_crud_and_verdict_gates(client):
-    type_id = _type(client)
-    created = _unit(client, type_id)
-    assert created["machine_readable"] is True
-    uid = created["id"]
-
-    high = {
-        "verifiability": 5, "evidence": 5, "reversibility": 5,
-        "determinism": 5, "impact_scope": 5, "compliance": 5, "tacitness": 5,
-    }
-    scored = client.put(f"/api/verdict/{uid}", json=high)
-    assert scored.status_code == 200, scored.text
-    assert scored.json()["recommended_level"] == 6
-
-    gated = client.put(f"/api/verdict/{uid}", json={**high, "compliance": 1})
-    assert gated.json()["recommended_level"] == 2
-    assert "gate1_regulatory" in gated.json()["applied_gates"]
+def test_work_units_rejects_missing_key(client):
+    response = client.post("/api/work-units/", json={"code": "WU-X", "name": "x"})
+    assert response.status_code == 401
 
 
-def test_promote_requires_runs(client):
-    type_id = _type(client)
-    uid = _unit(client, type_id)["id"]
-    client.put(f"/api/verdict/{uid}", json={
-        "verifiability": 5, "evidence": 5, "reversibility": 5,
-        "determinism": 5, "impact_scope": 5, "compliance": 5, "tacitness": 5,
+def test_census_rejects_missing_key(client):
+    response = client.post("/api/census/run", json={
+        "client_id": 1, "function": "HR & People Ops", "sop_text": "x",
     })
-    response = client.post(f"/api/work-units/{uid}/promote", json={
-        "to_level": 2, "approved_by": "Asha", "reason": "trial",
-    })
-    assert response.status_code == 422
-
-
-def test_spec_enforcement_denies_without_authority(client):
-    type_id = _type(client)
-    _unit(client, type_id)
-    headers = {"X-Spec-Key": settings.spec_api_key}
-    denied = client.post("/api/spec/check", headers=headers, json={
-        "work_unit_code": "WU-TEST-01",
-        "check_type": CheckType.authority.value,
-        "caller": "agent-runtime",
-        "approver": "",
-    })
-    assert denied.status_code == 200
-    assert denied.json()["result"] == "denied"
-
-    allowed = client.post("/api/spec/check", headers=headers, json={
-        "work_unit_code": "WU-TEST-01",
-        "check_type": CheckType.authority.value,
-        "caller": "agent-runtime",
-        "approver": "Order Desk",
-    })
-    assert allowed.json()["result"] == "allowed"
+    assert response.status_code == 401
 
 
 def test_seed_otc_census(client):
@@ -112,3 +29,85 @@ def test_seed_otc_census(client):
     assert inventory.json()["total"] == 16
     graph = client.get("/api/work-graph/edges")
     assert graph.json()["total"] >= 1
+
+
+def test_suggest_persists_candidates_without_llm(client):
+    response = client.post("/api/discovery/suggest", json={
+        "text": "1. Collect joining documents\n2. Send welcome mail",
+        "origin": "downward",
+        "title": "HR JD",
+        "kind": "job_description",
+    })
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert len(body["items"]) >= 2
+    listed = client.get("/api/discovery/candidates")
+    assert listed.json()["total"] >= 2
+    intents = client.get("/api/discovery/intent")
+    assert intents.json()["total"] >= 1
+    assert "tacit" in body["items"][0]["sampling_bias_note"].lower()
+
+
+def test_accept_and_reject_candidate(client):
+    suggested = client.post("/api/discovery/suggest", json={
+        "text": "Issue joining kit",
+        "origin": "downward",
+    }).json()["items"]
+    cid = suggested[0]["id"]
+    accepted = client.post(f"/api/discovery/candidates/{cid}/accept")
+    assert accepted.status_code == 200, accepted.text
+    unit = accepted.json()
+    assert unit["status"] == "draft"
+    assert unit["actor_type"] == "human"
+    assert unit["provenance"] == "inferred"
+    assert len(unit["current_condition"]) <= 80
+    listed = client.get("/api/discovery/candidates")
+    row = next(c for c in listed.json()["items"] if c["id"] == cid)
+    assert row["status"] == "merged"
+    assert row["work_unit_id"] == unit["id"]
+
+    second = client.post("/api/discovery/suggest", json={"text": "Reject me", "origin": "downward"}).json()["items"][0]
+    rejected = client.post(f"/api/discovery/candidates/{second['id']}/reject")
+    assert rejected.status_code == 200
+    assert rejected.json()["status"] == "rejected"
+
+
+def test_gap_scan_clears_and_classifies(client):
+    client.post("/api/ontology/types", json={
+        "name": "Employee",
+        "kind": "business_object",
+        "state_machine": '["draft","active"]',
+    })
+    client.post("/api/discovery/intent", json={
+        "kind": "sop",
+        "title": "Onboarding SOP",
+        "body": "Welcome mail after offer signed",
+    })
+    scan = client.post("/api/discovery/gaps/scan")
+    assert scan.status_code == 200, scan.text
+    kinds = {g["kind"] for g in scan.json()["items"]}
+    assert "unimplemented" in kinds
+    again = client.post("/api/discovery/gaps/scan")
+    assert again.json()["total"] == scan.json()["total"]
+
+
+def test_census_pack(client):
+    client.post("/api/seed")
+    pack = client.get("/api/projections/pack")
+    assert pack.status_code == 200, pack.text
+    body = pack.json()
+    for key in ("inventory", "work_graph", "verification", "allocation", "economics", "honest_case"):
+        assert key in body
+
+
+def test_client_list_and_demo_prepare_stay_open(client):
+    """/clients and /demo/prepare are unauthenticated DbDep routes, untouched
+    by Slice 3 PR 3a — the work-units/census flows they used to be tested
+    alongside now require a per-org key and live in
+    test_org_key_migration.py against real Postgres (RLS needs it)."""
+    companies = client.get("/api/clients/")
+    assert companies.status_code == 200, companies.text
+    prepared = client.post("/api/demo/prepare")
+    assert prepared.status_code == 200, prepared.text
+    assert prepared.json()["census"]["units"] == 12
+

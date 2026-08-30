@@ -1,5 +1,6 @@
 """Import every ORM model so Base.metadata is complete for create_all."""
 
+from .client import Client  # noqa: F401
 from .discovery import (  # noqa: F401
     CandidateStatus,
     ConformanceGap,
@@ -23,6 +24,29 @@ from .ontology import (  # noqa: F401
     RelationKind,
 )
 from .regulatory import RegulatoryEntry  # noqa: F401
+from .scout import (  # noqa: F401
+    ContradictionStatus,
+    InterviewStatus,
+    InterviewType,
+    ScoutCapturedUnit,
+    ScoutContradiction,
+    ScoutInterviewSession,
+)
+from .security import (  # noqa: F401
+    AuditLog,
+    ConsentReceipt,
+    ConsentStatus,
+    GenomeVersion,
+    GenomeVersionType,
+    OrgApiKey,
+    PiiFieldValue,
+    Ratification,
+    ReviewQueueItem,
+    ReviewQueueStatus,
+    UploadedFile,
+    WorkUnitProvenanceDetail,
+    WorkUnitRegulatoryLink,
+)
 from .verdict import VerdictScore  # noqa: F401
 from .verification import (  # noqa: F401
     AutonomyChange,

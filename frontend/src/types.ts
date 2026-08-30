@@ -53,6 +53,7 @@ export type WorkUnit = {
   is_sustaining: boolean;
   machine_readable: boolean;
   missing_attributes: string[];
+  client_id?: number | null;
 };
 
 export type WorkEdge = {
@@ -75,6 +76,7 @@ export type Verdict = {
   recommended_level: number;
   applied_gates: string;
   allocation: string;
+  origin?: string | null;
   mean: number | null;
   uncapped_level: number | null;
   level_name: string | null;
@@ -90,6 +92,7 @@ export type CostProfile = {
   exception_minutes: number;
   maintenance_hours: number;
   attribution_confidence: number;
+  origin?: string;
   computed: Record<string, number | null | Record<string, number>> | null;
 };
 
@@ -181,6 +184,7 @@ export type AllocationItem = {
   recommended_level: number | null;
   allocation: string;
   gates: string;
+  origin?: string | null;
 };
 
 export type EconomicsProjection = {
@@ -233,3 +237,125 @@ export const VERDICT_KEYS = [
   "compliance",
   "tacitness",
 ] as const;
+
+// Scout Elevated V2 PR1
+export const INTERVIEW_TYPES = ["founder", "sme"] as const;
+
+export type ScoutCapturedUnit = {
+  id: number;
+  name: string;
+  inputs: string;
+  outputs: string;
+  systems: string;
+  frequency: string;
+  time_minutes: number | null;
+  pain: string;
+  handoffs: string;
+  decision_rule: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ScoutDimension = {
+  key: string;
+  label: string;
+  captured: number;
+  expected: number;
+  pct: number;
+  computed: boolean;
+};
+
+// Genome / Business Objects / Ratify / Automation Index (V8 delivery side)
+export type GenomeSummary = {
+  version_id: number;
+  gqs: number | null;
+  ratified: boolean;
+  work_unit_count: number;
+  work_units: WorkUnit[];
+};
+
+export type BusinessObject = {
+  name: string;
+  work_unit_count: number;
+  ratified: boolean;
+  state_machine: string[];
+  needs_state_machine: boolean;
+};
+
+export type BusinessObjectsOut = { version_id: number; business_objects: BusinessObject[] };
+
+export type BoWorkUnit = {
+  id: string;
+  name: string;
+  current_condition: string;
+  desired_condition: string;
+  time_per_case_min: number | null;
+  autonomy: number | null;
+  provenance: { file_id: string | null; row: number | null; hash_sha256: string | null };
+};
+
+export type WorkUnitFull = {
+  id: string;
+  name: string;
+  business_object: string;
+  current_condition: string;
+  desired_condition: string;
+  context: { decision_branches: string; variants: string[] };
+  trigger: string;
+  input: string[];
+  authority: string;
+  actor_constraints: string;
+  acceptance_criteria: string[];
+  evidence_required: string[];
+  verification_method: string;
+  sla_hours: number | null;
+  dependencies: string[];
+  failure_semantics: string;
+  regulatory_register_link: string[];
+  provenance: {
+    source_type: string;
+    file_id: string | null;
+    row: number | null;
+    hash_sha256: string | null;
+    interview_ref: string;
+  };
+};
+
+export type BottleneckRow = {
+  authority_redacted: string;
+  wu_count: number;
+  hours_per_day: number;
+  bus_factor_1: boolean;
+  wu_ids: string[];
+};
+
+export type AutomationIndex = {
+  version_id: number;
+  L1_count: number; L2_count: number; L3_count: number;
+  L4_count: number; L5_count: number; L6_count: number;
+  verdict_missing_count: number;
+  total_hours_current: number;
+  total_hours_saveable: number;
+  highest_value_targets: string[];
+  cost_per_verified_unit: number | null;
+  needs_cost_profile: boolean;
+  rule_debt_count: number;
+  bottleneck_view: BottleneckRow[];
+  work_graph_summary: {
+    sequence_edges: number; shared_object_edges: number;
+    shared_resource_edges: number; reciprocal_edges: number; reciprocal_computed: boolean;
+  };
+};
+
+export type ScoutSession = {
+  id: number;
+  type: (typeof INTERVIEW_TYPES)[number];
+  interviewee_name: string;
+  status: "in_progress" | "completed";
+  completeness_pct: number;
+  consent_receipt_id: number | null;
+  dimensions: ScoutDimension[];
+  units: ScoutCapturedUnit[];
+  created_at: string;
+  updated_at: string;
+};

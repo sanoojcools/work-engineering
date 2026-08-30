@@ -1,5 +1,5 @@
 """H5-H7: cost to do, cost to verify, exceptions, ontology maintenance."""
-from sqlalchemy import Float, ForeignKey
+from sqlalchemy import Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db import Base
@@ -24,5 +24,6 @@ class CostProfile(Base):
     maintenance_hours: Mapped[float] = mapped_column(Float, default=0)
     # Discipline 4: attribution credibility — fraction of time directly attributable
     attribution_confidence: Mapped[float] = mapped_column(Float, default=1.0)  # 0..1
+    origin: Mapped[str] = mapped_column(String(20), default="confirmed")  # inferred | confirmed
 
     work_unit: Mapped["WorkUnit"] = relationship(back_populates="cost_profile")

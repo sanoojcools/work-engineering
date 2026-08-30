@@ -24,7 +24,7 @@ export default function Ontology() {
 
   return (
     <>
-      <h2>Ontology</h2>
+      <h2 data-tour="ontology">Ontology</h2>
       <p className="lede">
         Layer 0: what kinds of things exist, their instances and current state, and how they connect
         in the Enterprise Graph. The Work Graph is a different graph — it hangs on Work Units.

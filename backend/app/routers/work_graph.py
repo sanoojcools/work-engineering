@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from ..dependencies import DbDep
 from ..models.graph import WorkEdge
@@ -11,8 +11,11 @@ router = APIRouter()
 
 
 @router.get("/edges", response_model=Page[WorkEdgeOut])
-def list_edges(db: DbDep) -> Page[WorkEdgeOut]:
+def list_edges(db: DbDep, client_id: int | None = Query(default=None)) -> Page[WorkEdgeOut]:
     rows = db.query(WorkEdge).order_by(WorkEdge.id).all()
+    if client_id is not None:
+        ids = {u.id for u in db.query(WorkUnit).filter(WorkUnit.client_id == client_id).all()}
+        rows = [r for r in rows if r.source_id in ids and r.target_id in ids]
     return Page(total=len(rows), items=rows)
 
 

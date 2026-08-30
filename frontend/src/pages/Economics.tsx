@@ -1,13 +1,18 @@
 import { useState } from "react";
 import { api, errorMessage } from "../api";
+import { CompanyBanner } from "../components/CompanyBanner";
+import { useCompany } from "../company";
 import { useApi } from "../hooks";
+import { withClient } from "../lib/withClient";
 import type { CostProfile, EconomicsProjection, Page, WorkUnit } from "../types";
+import { LabelWithInfo } from "../components/InfoTooltip";
 import { Banner, DataTable, Field, Form, Loading } from "../ui";
 
 export default function Economics() {
-  const profiles = useApi<Page<CostProfile>>("/economics/");
-  const projection = useApi<EconomicsProjection>("/projections/economics");
-  const units = useApi<Page<WorkUnit>>("/work-units/");
+  const { client } = useCompany();
+  const profiles = useApi<Page<CostProfile>>(withClient("/economics/", client?.id));
+  const projection = useApi<EconomicsProjection>(withClient("/projections/economics", client?.id));
+  const units = useApi<Page<WorkUnit>>(withClient("/work-units/", client?.id));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<CostProfile | null>(null);
 
@@ -16,13 +21,25 @@ export default function Economics() {
 
   return (
     <>
-      <h2>Economics</h2>
+      <h2>
+        <LabelWithInfo label="Economics">Economics</LabelWithInfo>
+      </h2>
       <p className="lede">
         Four costing disciplines: include cost to verify, exceptions, ontology maintenance, then
         filter by attribution credibility. Cost per verified unit only where the count is credible.
+        Example: 2 minutes × 50 hires/month = 100 minutes. Saving a profile here confirms it;
+        census will not overwrite confirmed minutes.
       </p>
+      <CompanyBanner />
       {error && <Banner kind="error">{error}</Banner>}
       {profiles.error && <Banner kind="error">{profiles.error}</Banner>}
+      {totals && (
+        <Banner kind="ok">
+          Honest case: {totals.gross_hours.toFixed(1)} gross hours → {totals.attributed_hours.toFixed(1)} attributed
+          hours → {totals.fte.toFixed(2)} FTE. This is the smaller number after cost to verify, exceptions, and
+          attribution.
+        </Banner>
+      )}
       <div className="metrics">
         <div className="metric">
           <div className="n">{totals ? totals.gross_hours.toFixed(1) : "—"}</div>
@@ -62,6 +79,10 @@ export default function Economics() {
                 const value = r.computed?.attributed_hours;
                 return typeof value === "number" ? value.toFixed(2) : "—";
               },
+            },
+            {
+              key: "origin",
+              header: "Origin",
             },
             {
               key: "id",
@@ -114,7 +135,9 @@ export default function Economics() {
             </select>
           </Field>
           <Field label="Executions / month"><input name="executions_per_month" type="number" defaultValue={100} /></Field>
-          <Field label="Minutes to do"><input name="minutes_per_execution" type="number" defaultValue={6} /></Field>
+          <Field label={<LabelWithInfo label="Economics">Minutes to do</LabelWithInfo>}>
+            <input name="minutes_per_execution" type="number" defaultValue={6} />
+          </Field>
           <Field label="Minutes to verify"><input name="verification_minutes" type="number" defaultValue={3} /></Field>
           <Field label="Failure rate 0–1"><input name="failure_rate" type="number" step="0.01" defaultValue={0.05} /></Field>
           <Field label="Minutes per exception"><input name="exception_minutes" type="number" defaultValue={20} /></Field>

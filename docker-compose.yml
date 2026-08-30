@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: wep
       POSTGRES_DB: wep
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -19,7 +19,10 @@ services:
     build: ./backend
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+psycopg2://wep:wep@db:5432/wep
+      # wep_app: non-superuser, RLS-bound (see alembic f198c4aadd2c). Migrations
+      # run separately with the wep superuser — see backend/Dockerfile / README.
+      DATABASE_URL: postgresql+psycopg2://wep_app:wep_app_dev_pw@db:5432/wep
+      SYSTEM_DATABASE_URL: postgresql+psycopg2://wep:wep@db:5432/wep
     ports:
       - "8000:8000"
     depends_on:

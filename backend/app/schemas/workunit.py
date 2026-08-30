@@ -25,6 +25,7 @@ class WorkUnitCreate(BaseModel):
     owner: str = ""
     actor_type: ActorType = ActorType.human
     is_sustaining: bool = False
+    client_id: int | None = None
 
 
 class WorkUnitUpdate(BaseModel):
@@ -76,6 +77,7 @@ class WorkUnitOut(BaseModel):
     is_sustaining: bool
     machine_readable: bool = False
     missing_attributes: list[str] = Field(default_factory=list)
+    client_id: int | None = None
 
     model_config = {"from_attributes": True}
 

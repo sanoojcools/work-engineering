@@ -2,12 +2,19 @@ from fastapi import APIRouter
 
 from . import (
     admin,
+    census,
+    clients,
+    consent,
     discovery,
     economics,
+    files,
+    genome,
     health,
     ontology,
+    org,
     projections,
     regulatory,
+    scout,
     spec,
     verification,
     verdict,
@@ -18,6 +25,10 @@ from . import (
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
 api_router.include_router(admin.router, tags=["admin"])
+api_router.include_router(clients.router, prefix="/clients", tags=["clients"])
+api_router.include_router(genome.router, prefix="/genome", tags=["genome"])
+api_router.include_router(files.router, prefix="/files", tags=["files"])
+api_router.include_router(census.router, prefix="/census", tags=["census"])
 api_router.include_router(ontology.router, prefix="/ontology", tags=["ontology"])
 api_router.include_router(work_units.router, prefix="/work-units", tags=["work-units"])
 api_router.include_router(work_graph.router, prefix="/work-graph", tags=["work-graph"])
@@ -28,3 +39,6 @@ api_router.include_router(discovery.router, prefix="/discovery", tags=["discover
 api_router.include_router(verification.router, prefix="/verification", tags=["verification"])
 api_router.include_router(spec.router, prefix="/spec", tags=["spec"])
 api_router.include_router(projections.router, prefix="/projections", tags=["projections"])
+api_router.include_router(org.router, prefix="/org", tags=["org"])
+api_router.include_router(consent.router, prefix="/consent", tags=["consent"])
+api_router.include_router(scout.router, prefix="/scout", tags=["scout"])

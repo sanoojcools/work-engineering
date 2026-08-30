@@ -1,57 +1,387 @@
-import { useState } from "react";
-import { api, errorMessage } from "../api";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ApiError, api, errorMessage, getSpecKey } from "../api";
+import { EducationalNudge } from "../components/EducationalNudge";
+import { LabelWithInfo } from "../components/InfoTooltip";
+import { BulkUploadButton } from "../components/WorkUnits/BulkUploadButton";
+import { FunctionGroup } from "../components/WorkUnits/FunctionGroup";
+import { CompanyBanner } from "../components/CompanyBanner";
+import { useCompany } from "../company";
 import { useApi } from "../hooks";
-import type { EntityType, Page, WorkUnit } from "../types";
+import { DEMO_HR_SOP } from "../lib/demoSop";
+import { parseWorkUnitFile, summarizeUpload, workUnitPayload } from "../lib/excelUpload";
+import { FUNCTION_ORDER, groupWorkUnits, matchesSearch } from "../lib/groupWorkUnits";
+import { withClient } from "../lib/withClient";
+import { bulkCreatePassingRuns, isPromotionFriction, passedCountFor } from "../lib/runs";
+import type { CostProfile, EntityType, Page, VerificationRun, WorkUnit } from "../types";
 import { ACTOR_TYPES, METHODS, PROVENANCE } from "../types";
-import { Badge, Banner, DataTable, Field, Form, Loading } from "../ui";
+import { Badge, Banner, Field, Form, Loading } from "../ui";
+
+const STORAGE_KEY = "workUnitsExpandedGroups";
+const DEFAULT_EXPANDED = new Set(["HR & People Ops"]);
+
+const LEVELS = [1, 2, 3, 4, 5, 6];
 
 export default function WorkUnits() {
-  const list = useApi<Page<WorkUnit>>("/work-units/");
+  const { client, reload: reloadCompanies } = useCompany();
+  const list = useApi<Page<WorkUnit>>(client ? `/work-units/?client_id=${client.id}` : null);
   const types = useApi<Page<EntityType>>("/ontology/types");
+  const runs = useApi<Page<VerificationRun>>("/verification/runs");
+  const nav = useNavigate();
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [createdNudge, setCreatedNudge] = useState(false);
+  const [friction, setFriction] = useState<{ title: string; message: string; toVerify?: boolean } | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [levelFilter, setLevelFilter] = useState("");
+  const [readableFilter, setReadableFilter] = useState("");
+  const [methodFilter, setMethodFilter] = useState("");
+  const [sopText, setSopText] = useState(DEMO_HR_SOP);
+  const [censusBusy, setCensusBusy] = useState(false);
+  const [expandedFunctions, setExpandedFunctions] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return new Set(JSON.parse(raw) as string[]);
+    } catch {
+      /* ignore */
+    }
+    return new Set(DEFAULT_EXPANDED);
+  });
+  const [collapsedIndustries, setCollapsedIndustries] = useState<Set<string>>(new Set());
 
-  const selected = (list.data?.items ?? []).find((u) => u.id === selectedId) ?? null;
+  const items = list.data?.items ?? [];
+  const profiles = useApi<Page<CostProfile>>(withClient("/economics/", client?.id));
+  const hoursByUnitId = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const row of profiles.data?.items ?? []) {
+      const gross = row.computed?.gross_hours;
+      if (typeof gross === "number") map.set(row.work_unit_id, gross);
+    }
+    return map;
+  }, [profiles.data]);
+  const selected = items.find((u) => u.id === selectedId) ?? null;
+  const employeeType = (types.data?.items ?? []).find((t) => t.name.toLowerCase() === "employee");
+  const passed = selected ? passedCountFor(runs.data?.items ?? [], selected.id) : 0;
+
+  const filtered = useMemo(() => {
+    return items.filter((u) => {
+      if (!matchesSearch(u, search)) return false;
+      if (statusFilter && u.status !== statusFilter) return false;
+      if (levelFilter && String(u.autonomy_level) !== levelFilter) return false;
+      if (readableFilter === "yes" && !u.machine_readable) return false;
+      if (readableFilter === "no" && u.machine_readable) return false;
+      if (methodFilter && u.verification_method !== methodFilter) return false;
+      return true;
+    });
+  }, [items, search, statusFilter, levelFilter, readableFilter, methodFilter]);
+
+  const groups = useMemo(() => groupWorkUnits(filtered, hoursByUnitId), [filtered, hoursByUnitId]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...expandedFunctions]));
+  }, [expandedFunctions]);
+
+  useEffect(() => {
+    if (search.trim().length < 2) return;
+    const fns = new Set<string>();
+    for (const group of groups) {
+      if (group.units.length > 0) fns.add(group.name);
+    }
+    setExpandedFunctions(fns);
+    setCollapsedIndustries(new Set());
+  }, [search, groups]);
+
+  useEffect(() => {
+    if (!highlightedId) return;
+    const row = document.querySelector(`[data-row-id="${highlightedId}"]`);
+    if (row) row.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightedId, items.length]);
 
   async function act(fn: () => Promise<unknown>, ok?: string) {
     setError(null);
     setInfo(null);
+    setFriction(null);
     try {
       await fn();
       if (ok) setInfo(ok);
       list.reload();
+      runs.reload();
+    } catch (err) {
+      const message = errorMessage(err);
+      if (isPromotionFriction(message)) {
+        setFriction({
+          title: message.toLowerCase().includes("one level")
+            ? "Promotion moves one level at a time"
+            : "Needs 5 verification runs",
+          message: message.toLowerCase().includes("one level")
+            ? "For safety you can only go L1 to L2, then L2 to L3. Use the stepper."
+            : `Promotion needs proof. You have ${passed}/5. Bulk create 5 passing runs.`,
+          toVerify: !message.toLowerCase().includes("one level"),
+        });
+        return;
+      }
+      setError(message);
+    }
+  }
+
+  async function ensureBusinessObject(name: string, cache: Map<string, number>): Promise<number> {
+    const key = name.trim() || "Employee";
+    const cached = cache.get(key.toLowerCase());
+    if (cached) return cached;
+    const known = (types.data?.items ?? []).find((t) => t.name.toLowerCase() === key.toLowerCase());
+    if (known) {
+      cache.set(key.toLowerCase(), known.id);
+      return known.id;
+    }
+    try {
+      const created = await api.post<EntityType>("/ontology/types", {
+        name: key,
+        kind: "business_object",
+        description: `${key} (bulk upload)`,
+        state_machine: '["draft","pre_joining","active","on_hold","offboarded","exited"]',
+      });
+      cache.set(key.toLowerCase(), created.id);
+      return created.id;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        types.reload();
+        const page = await api.get<Page<EntityType>>("/ontology/types");
+        const match = page.items.find((t) => t.name.toLowerCase() === key.toLowerCase());
+        if (match) {
+          cache.set(key.toLowerCase(), match.id);
+          return match.id;
+        }
+      }
+      throw err;
+    }
+  }
+
+  async function uploadExcel(file: File) {
+    setError(null);
+    setInfo(null);
+    setFriction(null);
+    setUploadBusy(true);
+    try {
+      const rows = await parseWorkUnitFile(file);
+      if (rows.length === 0) {
+        setError("No Work Unit rows found in that workbook.");
+        return;
+      }
+      const specKey = getSpecKey();
+      const typeCache = new Map<string, number>();
+      const known = new Set(items.map((u) => u.code));
+      const existing: string[] = [];
+      const failed: string[] = [];
+      let created = 0;
+      setUploadProgress({ current: 0, total: rows.length });
+      for (let i = 0; i < rows.length; i += 1) {
+        const row = rows[i];
+        setUploadProgress({ current: i + 1, total: rows.length });
+        if (known.has(row.code)) {
+          existing.push(row.code);
+          continue;
+        }
+        try {
+          const typeId = await ensureBusinessObject(row.business_object, typeCache);
+          await api.post<WorkUnit>("/work-units/", workUnitPayload(row, typeId, client?.id), specKey);
+          known.add(row.code);
+          created += 1;
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 409) {
+            existing.push(row.code);
+            known.add(row.code);
+          } else {
+            failed.push(row.code);
+          }
+        }
+      }
+      setInfo(summarizeUpload(created, existing, failed));
+      list.reload();
+      types.reload();
+      reloadCompanies();
     } catch (err) {
       setError(errorMessage(err));
+    } finally {
+      setUploadBusy(false);
+      setUploadProgress(null);
     }
   }
 
   return (
     <>
-      <h2>Work Units</h2>
+      <h2>
+        <LabelWithInfo label="Work Unit">Work Units</LabelWithInfo>
+      </h2>
       <p className="lede">
         Independently accountable commitments. All 18 contract attributes must be present for
         machine-readability. Click a row for promotion, reconciliation, and missing fields.
       </p>
+      <CompanyBanner />
+      {createdNudge && (
+        <EducationalNudge
+          title="Work Unit created"
+          message="Scroll to the highlighted row, click it, then Reconcile. Next: score VERDICT."
+          nextLabel="Go to VERDICT"
+          nextAction={() => nav("/verdict")}
+          onDismiss={() => setCreatedNudge(false)}
+          type="success"
+        />
+      )}
+      {friction && (
+        <EducationalNudge
+          title={friction.title}
+          message={friction.message}
+          nextLabel={friction.toVerify ? "Create 5 runs now" : undefined}
+          nextAction={friction.toVerify ? () => nav("/verification") : undefined}
+          onDismiss={() => setFriction(null)}
+          type="warning"
+        />
+      )}
       {error && <Banner kind="error">{error}</Banner>}
       {info && <Banner kind="ok">{info}</Banner>}
       {list.error && <Banner kind="error">{list.error}</Banner>}
       <div className="toolbar">
-        <button className="primary" onClick={() => setShowCreate((v) => !v)}>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search code or name"
+          aria-label="Search Work Units"
+        />
+        <button type="button" onClick={() => setExpandedFunctions(new Set(FUNCTION_ORDER))}>
+          Expand All
+        </button>
+        <button type="button" onClick={() => { setExpandedFunctions(new Set()); setCollapsedIndustries(new Set()); }}>
+          Collapse All
+        </button>
+        <button className="primary" data-tour="new-work-unit" onClick={() => setShowCreate((v) => !v)}>
           {showCreate ? "Close form" : "New Work Unit"}
         </button>
-        <span className="muted">{list.data?.total ?? 0} in inventory</span>
+        <BulkUploadButton busy={uploadBusy} onFile={(file) => void uploadExcel(file)} />
+        <span className="muted">
+          {list.data?.total ?? 0} in {client?.name ?? "inventory"}
+          {client?.kind === "catalog" ? " · test lab" : ""}
+        </span>
       </div>
+      <div className="wu-filters">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter status">
+          <option value="">Status</option>
+          <option value="draft">draft</option>
+          <option value="reconciled">reconciled</option>
+          <option value="authoritative">authoritative</option>
+        </select>
+        <select value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)} aria-label="Filter L">
+          <option value="">L</option>
+          {LEVELS.map((n) => <option key={n} value={n}>L{n}</option>)}
+        </select>
+        <select value={readableFilter} onChange={(e) => setReadableFilter(e.target.value)} aria-label="Filter readable">
+          <option value="">Readable</option>
+          <option value="yes">yes</option>
+          <option value="no">no</option>
+        </select>
+        <select value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)} aria-label="Filter verification method">
+          <option value="">Verification method</option>
+          {METHODS.map((m) => <option key={m}>{m}</option>)}
+        </select>
+      </div>
+      {client && client.kind !== "catalog" && (
+        <section className="card">
+          <h3>Function census — {client.name}</h3>
+          <p className="hint">
+            One pass for HR &amp; People Ops in this company: draft VERDICT from the contract, infer
+            cost where missing, compare the SOP, add graph edges, then download the pack.
+            Drafts are inferred. Confirming a score on VERDICT protects it from a re-run.
+          </p>
+          <textarea
+            rows={4}
+            style={{ width: "100%" }}
+            value={sopText}
+            onChange={(e) => setSopText(e.target.value)}
+            placeholder="Paste this company's HR SOP or JD (optional)"
+          />
+          <div className="toolbar">
+            <button
+              className="primary"
+              type="button"
+              disabled={censusBusy}
+              onClick={() =>
+                void act(async () => {
+                  setCensusBusy(true);
+                  try {
+                    const result = await api.post<{
+                      units: number;
+                      verdict_drafted: number;
+                      cost_attached: number;
+                      gaps: number;
+                      l4_plus: number;
+                      economics: { attributed_hours: number; fte: number };
+                      note: string;
+                    }>("/census/run", {
+                      client_id: client.id,
+                      function: "HR & People Ops",
+                      sop_text: sopText,
+                    });
+                    setInfo(
+                      `Census: ${result.verdict_drafted}/${result.units} VERDICT, ${result.cost_attached} costed, ${result.gaps} gaps, L4+ ${result.l4_plus}. ${result.note}`,
+                    );
+                    reloadCompanies();
+                  } finally {
+                    setCensusBusy(false);
+                  }
+                })
+              }
+            >
+              {censusBusy ? "Running…" : "Run census for HR & People Ops"}
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const pack = await api.get<Record<string, unknown>>(
+                  `/census/pack/${client.id}?function=${encodeURIComponent("HR & People Ops")}`,
+                );
+                const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `${client.slug}-hr-census-pack.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              Download HR pack
+            </button>
+          </div>
+        </section>
+      )}
+      {uploadProgress && (
+        <div className="upload-progress" aria-live="polite">
+          <div className="upload-progress-label">
+            Creating {uploadProgress.current} of {uploadProgress.total}
+          </div>
+          <div className="upload-bar">
+            <span style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }} />
+          </div>
+        </div>
+      )}
       {showCreate && (
         <section className="card">
           <h3>New contract</h3>
+          <p className="hint">
+            Prefills WU-ONB-04 Pre-Joining Communication. Owner and authority are HR Ops SPOC, not Order Desk.
+          </p>
           <Form
+            key={employeeType?.id ?? "pending-types"}
             onSubmit={(event) => {
               const form = event.currentTarget;
               const data = new FormData(form);
               return act(async () => {
-                await api.post("/work-units/", {
+                const created = await api.post<WorkUnit>("/work-units/", {
                   code: data.get("code"),
                   name: data.get("name"),
                   business_object_type_id: Number(data.get("business_object_type_id")),
@@ -70,42 +400,66 @@ export default function WorkUnits() {
                   provenance: data.get("provenance"),
                   owner: data.get("owner"),
                   actor_type: data.get("actor_type"),
+                  client_id: client?.id,
                 });
                 form.reset();
                 setShowCreate(false);
-              }, "Work Unit created");
+                setSelectedId(created.id);
+                setHighlightedId(created.id);
+                setCreatedNudge(true);
+              });
             }}
           >
-            <Field label="Code"><input name="code" required placeholder="WU-OTC-17" /></Field>
-            <Field label="Name"><input name="name" required /></Field>
-            <Field label="Business object">
-              <select name="business_object_type_id" required>
+            <Field label={<LabelWithInfo label="Work Unit">Code</LabelWithInfo>}>
+              <input name="code" required defaultValue="WU-ONB-04" placeholder="WU-ONB-04" />
+            </Field>
+            <Field label="Name">
+              <input name="name" required defaultValue="Pre-Joining Communication" />
+            </Field>
+            <Field label={<LabelWithInfo label="Business Object">Business object</LabelWithInfo>}>
+              <select name="business_object_type_id" required defaultValue={employeeType?.id ?? ""}>
                 <option value="">Select</option>
                 {(types.data?.items ?? []).map((t) => (
                   <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
             </Field>
-            <Field label="Owner"><input name="owner" /></Field>
-            <Field label="Current condition"><input name="current_condition" required /></Field>
-            <Field label="Desired condition"><input name="desired_condition" required /></Field>
-            <Field label="Context" span2><input name="context" /></Field>
-            <Field label="Trigger"><input name="trigger" /></Field>
-            <Field label="Inputs"><input name="inputs" /></Field>
-            <Field label="Authority"><input name="authority" /></Field>
-            <Field label="Actor constraints"><input name="actor_constraints" /></Field>
-            <Field label="Acceptance criteria" span2><input name="acceptance_criteria" /></Field>
-            <Field label="Evidence required" span2><input name="evidence_required" /></Field>
-            <Field label="Verification method">
+            <Field label={<LabelWithInfo label="Authority / Owner">Owner</LabelWithInfo>}>
+              <input name="owner" defaultValue="HR Ops SPOC" />
+            </Field>
+            <Field label={<LabelWithInfo label="Current Condition">Current condition</LabelWithInfo>}>
+              <input name="current_condition" required defaultValue="Offer status = signed in Zoho" />
+            </Field>
+            <Field label={<LabelWithInfo label="Desired Condition">Desired condition</LabelWithInfo>}>
+              <input name="desired_condition" required defaultValue="Welcome mail status = delivered" />
+            </Field>
+            <Field label="Context" span2>
+              <input name="context" defaultValue="Pre-joining welcome for a signed offer" />
+            </Field>
+            <Field label="Trigger"><input name="trigger" defaultValue="Offer signed in Zoho" /></Field>
+            <Field label="Inputs"><input name="inputs" defaultValue="Candidate name, joining date, offer id" /></Field>
+            <Field label={<LabelWithInfo label="Authority / Owner">Authority</LabelWithInfo>}>
+              <input name="authority" defaultValue="HR Ops SPOC" />
+            </Field>
+            <Field label="Actor constraints"><input name="actor_constraints" defaultValue="agent" /></Field>
+            <Field label={<LabelWithInfo label="Acceptance Criteria">Acceptance criteria</LabelWithInfo>} span2>
+              <input name="acceptance_criteria" defaultValue="Outlook mail log exists AND Teams invite exists" />
+            </Field>
+            <Field label={<LabelWithInfo label="Evidence / Evidence Ref">Evidence required</LabelWithInfo>} span2>
+              <input name="evidence_required" defaultValue="Outlook message ID + Teams invite ID" />
+            </Field>
+            <Field label={<LabelWithInfo label="Verification Method">Verification method</LabelWithInfo>}>
               <select name="verification_method">{METHODS.map((m) => <option key={m}>{m}</option>)}</select>
             </Field>
             <Field label="SLA hours"><input name="sla_hours" type="number" defaultValue={8} /></Field>
-            <Field label="Failure semantics" span2><input name="failure_semantics" /></Field>
-            <Field label="Provenance">
-              <select name="provenance">{PROVENANCE.map((p) => <option key={p}>{p}</option>)}</select>
+            <Field label="Failure semantics" span2>
+              <input name="failure_semantics" defaultValue="Retry send; escalate to HR Ops SPOC" />
             </Field>
-            <Field label="Actor type">
-              <select name="actor_type">{ACTOR_TYPES.map((a) => <option key={a}>{a}</option>)}</select>
+            <Field label="Provenance">
+              <select name="provenance" defaultValue="designed">{PROVENANCE.map((p) => <option key={p}>{p}</option>)}</select>
+            </Field>
+            <Field label={<LabelWithInfo label="Owner Type">Actor type</LabelWithInfo>}>
+              <select name="actor_type" defaultValue="agent">{ACTOR_TYPES.map((a) => <option key={a}>{a}</option>)}</select>
             </Field>
             <button className="primary" type="submit">Create</button>
           </Form>
@@ -114,22 +468,38 @@ export default function WorkUnits() {
       <div className="split">
         <div>
           {list.loading ? <Loading /> : (
-            <DataTable
-              rows={list.data?.items ?? []}
-              selectedId={selectedId}
-              onRowClick={(row) => setSelectedId(row.id)}
-              columns={[
-                { key: "code", header: "Code" },
-                { key: "name", header: "Name" },
-                { key: "status", header: "Status" },
-                { key: "autonomy_level", header: "L", render: (r) => `L${r.autonomy_level}` },
-                {
-                  key: "machine_readable",
-                  header: "Readable",
-                  render: (r) => <Badge ok={r.machine_readable}>{r.machine_readable ? "yes" : "no"}</Badge>,
-                },
-              ]}
-            />
+            <>
+              {filtered.length === 0 && <p className="muted">No Work Units match this search.</p>}
+              {groups.map((group) => (
+                <FunctionGroup
+                  key={group.name}
+                  group={group}
+                  expanded={expandedFunctions.has(group.name)}
+                  expandedIndustries={new Set(group.industries.filter((ind) => !collapsedIndustries.has(`${group.name}::${ind.name}`)).map((ind) => `${group.name}::${ind.name}`))}
+                  onToggle={() => {
+                    setExpandedFunctions((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(group.name)) next.delete(group.name);
+                      else next.add(group.name);
+                      return next;
+                    });
+                  }}
+                  onToggleIndustry={(industry) => {
+                    const key = `${group.name}::${industry}`;
+                    setCollapsedIndustries((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(key)) next.delete(key);
+                      else next.add(key);
+                      return next;
+                    });
+                  }}
+                  selectedId={selectedId}
+                  highlightedId={highlightedId}
+                  search={search}
+                  onSelect={(row) => setSelectedId(row.id)}
+                />
+              ))}
+            </>
           )}
         </div>
         <aside className="card">
@@ -150,6 +520,8 @@ export default function WorkUnits() {
                 <p className="muted">Missing: {selected.missing_attributes.join(", ")}</p>
               )}
               <dl>
+                <dt className="muted">Provenance</dt>
+                <dd>{selected.provenance}</dd>
                 <dt className="muted">Authority</dt>
                 <dd>{selected.authority || "—"}</dd>
                 <dt className="muted">Acceptance</dt>
@@ -160,34 +532,81 @@ export default function WorkUnits() {
                 <dd>{selected.verification_method}</dd>
               </dl>
               <div className="toolbar">
-                <button onClick={() => void act(() => api.post(`/work-units/${selected.id}/reconcile`), "Reconciled")}>
+                <button data-tour="reconcile" onClick={() => void act(() => api.post(`/work-units/${selected.id}/reconcile`), "Reconciled")}>
                   Reconcile
                 </button>
                 <button onClick={() => void act(() => api.post(`/work-units/${selected.id}/authoritative`), "Authoritative")}>
                   Make authoritative
                 </button>
               </div>
-              <Form
-                onSubmit={(event) => {
-                  const data = new FormData(event.currentTarget);
-                  return act(
-                    () =>
-                      api.post(`/work-units/${selected.id}/promote`, {
-                        to_level: Number(data.get("to_level")),
-                        approved_by: data.get("approved_by"),
-                        reason: data.get("reason"),
-                      }),
-                    "Promoted",
-                  );
-                }}
-              >
-                <Field label="Promote to">
-                  <input name="to_level" type="number" min={2} max={6} defaultValue={selected.autonomy_level + 1} />
-                </Field>
-                <Field label="Approved by"><input name="approved_by" required /></Field>
-                <Field label="Reason" span2><input name="reason" /></Field>
-                <button className="primary" type="submit">Promote (human)</button>
-              </Form>
+
+              <h3>
+                <LabelWithInfo label="Promotion">Promotion (one level at a time)</LabelWithInfo>
+              </h3>
+              <div className="stepper" data-tour="promote">
+                {LEVELS.map((level, i) => (
+                  <span key={level} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    {i > 0 && <span className="step-line" />}
+                    <span
+                      className={
+                        level < selected.autonomy_level
+                          ? "step done"
+                          : level === selected.autonomy_level
+                            ? "step current"
+                            : "step"
+                      }
+                    >
+                      L{level}
+                      {level === selected.autonomy_level + 1 ? " →" : ""}
+                    </span>
+                  </span>
+                ))}
+              </div>
+              <p>
+                <span className="runs-chip">
+                  <LabelWithInfo label="Verification Run">{passed}/5 runs</LabelWithInfo>
+                </span>
+                {passed < 5 && (
+                  <span className="muted">Need 5 passing runs to promote.</span>
+                )}
+              </p>
+              <div className="toolbar">
+                <button
+                  className="primary"
+                  type="button"
+                  disabled={selected.autonomy_level >= 6}
+                  onClick={() =>
+                    void act(
+                      () =>
+                        api.post(`/work-units/${selected.id}/promote`, {
+                          to_level: selected.autonomy_level + 1,
+                          approved_by: selected.owner || selected.authority || "HR Ops SPOC",
+                          reason: `Promote L${selected.autonomy_level} to L${selected.autonomy_level + 1}`,
+                        }),
+                      `Promoted to L${selected.autonomy_level + 1}`,
+                    )
+                  }
+                >
+                  Promote to L{Math.min(6, selected.autonomy_level + 1)}
+                </button>
+                <button
+                  type="button"
+                  disabled={bulkBusy || passed >= 5}
+                  onClick={() =>
+                    void act(async () => {
+                      setBulkBusy(true);
+                      try {
+                        await bulkCreatePassingRuns(selected.id, 5);
+                      } finally {
+                        setBulkBusy(false);
+                      }
+                    }, "5 passing runs recorded")
+                  }
+                >
+                  {bulkBusy ? "Creating…" : "Bulk create 5"}
+                </button>
+              </div>
+
               <Form
                 onSubmit={(event) => {
                   const data = new FormData(event.currentTarget);

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Query, status
 
 from ..dependencies import DbDep
 from ..models.verdict import VerdictScore
@@ -7,13 +7,18 @@ from ..schemas.common import Page
 from ..schemas.graph import VerdictIn, VerdictOut
 from ..services import work_units as wu_svc
 from ..services.lookup import get_or_404
+from ..services.tenants import units_query
 
 router = APIRouter()
 
 
 @router.get("/", response_model=Page[VerdictOut])
-def list_scores(db: DbDep) -> Page[VerdictOut]:
-    rows = db.query(VerdictScore).order_by(VerdictScore.id).all()
+def list_scores(db: DbDep, client_id: int | None = Query(default=None)) -> Page[VerdictOut]:
+    ids = {u.id for u in units_query(db, client_id).all()} if client_id is not None else None
+    q = db.query(VerdictScore).order_by(VerdictScore.id)
+    rows = q.all()
+    if ids is not None:
+        rows = [r for r in rows if r.work_unit_id in ids]
     return Page(total=len(rows), items=[VerdictOut(**wu_svc.verdict_out(r)) for r in rows])
 
 

@@ -1,24 +1,103 @@
+import { CompanyBanner } from "../components/CompanyBanner";
+import { LabelWithInfo } from "../components/InfoTooltip";
+import { useCompany } from "../company";
 import { useApi } from "../hooks";
+import { api } from "../api";
+import { withClient } from "../lib/withClient";
 import type { AllocationItem, EconomicsProjection, GraphProjection, WorkUnit } from "../types";
 import { Banner, DataTable, Loading } from "../ui";
 
 export default function Projections() {
-  const inventory = useApi<{ total: number; items: WorkUnit[] }>("/projections/inventory");
-  const graph = useApi<GraphProjection>("/projections/work-graph");
-  const verification = useApi<{ items: Array<Record<string, string | number>> }>("/projections/verification");
-  const allocation = useApi<{ items: AllocationItem[] }>("/projections/allocation");
-  const economics = useApi<EconomicsProjection>("/projections/economics");
+  const { client } = useCompany();
+  const q = client?.id;
+  const inventory = useApi<{ total: number; items: WorkUnit[] }>(withClient("/projections/inventory", q));
+  const graph = useApi<GraphProjection>(withClient("/projections/work-graph", q));
+  const verification = useApi<{ items: Array<Record<string, string | number>> }>(withClient("/projections/verification", q));
+  const allocation = useApi<{ items: AllocationItem[] }>(withClient("/projections/allocation", q));
+  const economics = useApi<EconomicsProjection>(withClient("/projections/economics", q));
 
   const err = inventory.error || graph.error || verification.error || allocation.error || economics.error;
+  const onb = (inventory.data?.items ?? []).find((u) => u.code === "WU-ONB-04");
+  const onbAlloc = (allocation.data?.items ?? []).find((u) => u.code === "WU-ONB-04");
 
   return (
     <>
-      <h2>Projections</h2>
+      <h2 data-tour="projections">Projections — 5 views of the same truth</h2>
       <p className="lede">
-        Five outputs, one record. These views are not a queue of artefacts — they are projections of
-        the Work Unit inventory.
+        Five outputs, one record (C3). These are not a queue of artefacts — they are projections of
+        this company&apos;s Work Units: inventory, graph, verification, allocation, economics.
       </p>
+      <CompanyBanner />
       {err && <Banner kind="error">{err}</Banner>}
+      {economics.data && (
+        <Banner kind="ok">
+          Honest case: {economics.data.totals.gross_hours.toFixed(1)} gross hours →{" "}
+          {economics.data.totals.attributed_hours.toFixed(1)} attributed → {economics.data.totals.fte.toFixed(2)} FTE.
+          VERDICT L4+ automation candidates:{" "}
+          {(allocation.data?.items ?? []).filter((r) => (r.recommended_level ?? 0) >= 4).length}.
+          Inferred drafts: {(allocation.data?.items ?? []).filter((r) => r.origin === "inferred").length} VERDICT.
+          Attributed is the smaller number (H5). Confirm scores before treating as measured.
+        </Banner>
+      )}
+      <div className="toolbar">
+        <button
+          type="button"
+          className="primary"
+          onClick={async () => {
+            const path = !client
+              ? "/projections/pack"
+              : client.kind === "catalog"
+                ? `/projections/pack?client_id=${client.id}`
+                : `/census/pack/${client.id}?function=${encodeURIComponent("HR & People Ops")}`;
+            const pack = await api.get<Record<string, unknown>>(path);
+            const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${client?.slug ?? "census"}-pack.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >
+          Download census pack
+        </button>
+      </div>
+
+      <div className="view-grid">
+        <section className="card">
+          <h3><LabelWithInfo label="Work Unit">Inventory</LabelWithInfo></h3>
+          <p className="muted">All {inventory.data?.total ?? "—"} Work Units with L-level. HR units such as WU-ONB-04 appear here.</p>
+        </section>
+        <section className="card">
+          <h3>Work Graph</h3>
+          <p className="muted">Dependencies between units. {graph.data?.edges.length ?? "—"} edges.</p>
+        </section>
+        <section className="card">
+          <h3><LabelWithInfo label="Verification Run">Verification</LabelWithInfo></h3>
+          <p className="muted">0/5 runs = cannot promote. After bulk create, the contract still shows here.</p>
+        </section>
+        <section className="card">
+          <h3><LabelWithInfo label="Allocation">Allocation</LabelWithInfo></h3>
+          <p className="muted">make = human, agent = robot + check, automate = fully robot, buy = external.</p>
+        </section>
+        <section className="card">
+          <h3><LabelWithInfo label="Economics">Economics</LabelWithInfo></h3>
+          <p className="muted">FTE math: do-time × volume, then verify, exceptions, and attribution.</p>
+        </section>
+      </div>
+
+      {onb && (
+        <section className="card">
+          <h3>WU-ONB-04 in this view</h3>
+          <p className="muted">
+            {onb.code} · {onb.owner || "HR Ops SPOC"} · {onb.actor_type} · authorised L{onb.autonomy_level}
+            {onbAlloc ? ` · VERDICT ${onbAlloc.recommended_level ?? "—"} · ${onbAlloc.allocation}` : ""}
+          </p>
+          <p className="hint">
+            Authorised level is what you promoted. VERDICT is the cap. The gap is remaining potential.
+          </p>
+        </section>
+      )}
 
       <div className="metrics">
         <div className="metric">
@@ -95,6 +174,7 @@ export default function Projections() {
               { key: "actor_type", header: "Actor (execution)" },
               { key: "autonomy_level", header: "Authorised L" },
               { key: "recommended_level", header: "VERDICT L" },
+              { key: "origin", header: "Score origin" },
               { key: "allocation", header: "Make/agent/automate/buy" },
               { key: "gates", header: "Gates" },
             ]}
