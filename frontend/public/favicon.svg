@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" fill="#1f4e79"/>
+  <!-- Three stacked bars: a Work Unit's current condition, the contract, the
+       desired condition. The middle bar is the specification layer. -->
+  <rect x="7" y="8" width="18" height="3" fill="#fffefb" opacity="0.55"/>
+  <rect x="7" y="14.5" width="18" height="3" fill="#fffefb"/>
+  <rect x="7" y="21" width="18" height="3" fill="#fffefb" opacity="0.55"/>
+</svg>

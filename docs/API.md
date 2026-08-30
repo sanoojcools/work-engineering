@@ -173,11 +173,26 @@ RLS on `scout_contradictions` same as the direct-`client_id` tables.
 
 `frontend/src/pages/Genome.tsx` (route `/genome/:versionId`) is a UI over the existing `genome.py` router below — no new backend endpoints. It renders the GQS header (score, gates passed, ratify-whole-version), a Business Objects tab (L1 card list → L2 work-unit table → L3 full 18-attribute detail, plus ratify-one-business-object), and an Automation Index tab (L1–L6 autonomy counts, hours current/saveable, cost-per-unit banner, bottleneck view, work-graph edge counts). `FuturePreview.tsx`'s post-generate result links to `/genome/{version_id}` regardless of whether the gate passed, so the "what did Scout actually produce" question is always one click away. See `HONESTY.md` for the browser-verified GQS structural-cap finding for Scout-sourced genomes (declared, not observed, provenance) and the resulting empty-state behavior for a gate-failed version's Business Objects / Automation Index.
 
+## Demo bootstrap
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/demo/prepare` | Seeds Catalog's 12 HR units, clones them to Client A, runs the inferred HR census. Cross-tenant, so it runs on the system session (`SystemDbDep`) — on the RLS-bound per-request session every `work_units` INSERT is rejected outright. |
+| POST | `/demo/bootstrap` | `prepare` **plus** first API keys for Client A and a separate **Sample Genome Co** tenant, each plaintext returned once. This is the one-command local demo setup; before it existed, obtaining a first key meant a hand-written `org_api_keys` INSERT, because `/org/keys/rotate` can only rotate a key you already hold. Returns a credential over an unauthenticated request, so it is gated by `DEMO_BOOTSTRAP_ENABLED` and must be `false` outside a throwaway local database. Sample Genome Co exists because the shipped sample genome and the Client A HR seed share work unit ids. |
+
+## Org keys
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/org/whoami` | Which tenant the presented `X-Spec-Key` belongs to. The UI had no way to know this, so the company switcher could sit on a company the key couldn't read and every tenant-scoped page rendered empty. |
+| POST | `/org/keys/rotate` | Rotates; the old key keeps authenticating for `ROTATION_GRACE_MINUTES`. |
+
 ## Genome (Layer 1/2/3, ratify, automation index)
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/genome/import` | See `HONESTY.md`'s per-attribute enforcement matrix. |
+| GET | `/genome/versions` | Every genome version for the calling tenant, newest first. Declared above `/{version_id}` so the literal path wins the match. Without it, an imported genome was unreachable from the UI — every other route needs a `version_id` the caller had to have kept. |
+| POST | `/genome/import` | See `HONESTY.md`'s per-attribute enforcement matrix. Work unit ids are validated against the tenant's existing ids in a pre-pass (`work_unit_id_already_exists`) and against each other (`duplicate_work_unit_id`) before anything is written; the write phase is one rollback boundary, so a rejected import writes none of its rows. |
 | GET | `/genome/{version_id}/gqs` | Score, breakdown, gates passed/failed, `ratified`. |
 | GET | `/genome/{version_id}` | Full version detail. |
 | POST | `/genome/{version_id}/ratify` | Body `{business_object?, work_unit_ids?, approved, comment}`; requires `gates_passed == ["gqs", "pydantic_validation"]`. |

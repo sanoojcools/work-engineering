@@ -44,7 +44,39 @@ Load the 16-unit order-to-cash census (idempotent):
 - In the UI: Overview → **Load order-to-cash census**
 - Or: `POST http://localhost:8000/api/seed`
 
-The frontend proxies `/api` to the backend. Spec API calls from the UI send header `X-Spec-Key` (default `dev-spec-key-change-me`).
+The frontend proxies `/api` to the backend. Tenant-scoped routes authenticate with a per-org `X-Spec-Key` (see **Set up the demo** below).
+
+## Set up the demo
+
+One command seeds the demo tenants and mints their API keys:
+
+```bash
+curl -X POST http://localhost:8000/api/demo/bootstrap
+```
+
+That seeds Client A's HR census, imports the shipped sample genome, and returns:
+
+| Field | Use |
+|---|---|
+| `api_key` | **Client A** — the HR census walkthrough. Paste it into the app's key banner (Scout Interview or Genome) once; the browser stores and reuses it. |
+| `sample_genome_api_key` | **Sample Genome Co** — the tenant holding the imported sample genome (GQS 94.29, clears the gate). Use this key to open it under Genome. |
+| `sample_genome_import` | The import result: version id, GQS, and the supplied `dual_scoring_kappa`. |
+
+Keys are shown **once** and are not recoverable — the database stores only their hash. Re-running is safe and idempotent: it will not re-issue an existing key (rotate with `POST /api/org/keys/rotate`) and will not re-import the sample.
+
+Two things worth knowing, because both were silent traps:
+
+- The sample lives in its **own tenant** because it and the Client A HR seed both define `WU-OFF-03` and `WU-OFF-04`, and `work_units` is unique on `(client_id, code)`. They are two genomes for two employers, not one genome to reconcile.
+- The sample file carries no `dual_scoring_kappa`, and GQS awards that a flat 10 points — so on its own the file scores **84.29 and is blocked**. Bootstrap supplies `0.85` explicitly and reports it. That value is a stated demo input, not a measurement: nothing in this system produces two independent scorings to compute kappa from (see `docs/HONESTY.md`).
+
+`POST /api/demo/bootstrap` returns a credential over an unauthenticated request. It is gated by `DEMO_BOOTSTRAP_ENABLED` (default `true`) — set it to `false` anywhere that is not a throwaway local database.
+
+### Walking it through
+
+1. **Overview** — Prepare Client A HR demo, then Work Units → Discovery → Projections → VERDICT. This is a specified, verifiable inventory.
+2. **Scout Interview** — start an SME session and fill the Work Capture Grid live; watch Genome Strength climb. Tour the five elevations.
+3. **Future Preview → Generate V8 Work Units** — the generated genome is scored by the same GQS gate as any import, and is *expected* to be blocked. Scout data is honestly labelled `declared` provenance, and GQS weights `observed` at 40%, so a Scout-only genome is structurally capped below the gate. The gate reporting that gap is the point, not a bug.
+4. **Genome** — switch the key to `sample_genome_api_key` and open the imported sample (GQS 94.29): ratify it, drill L1 → L2 → L3 through the full 18-attribute contract, then read the Automation Index. Same page, same pipeline as step 3 — the difference is that this genome's provenance is document-backed.
 
 ## Quick start — local
 

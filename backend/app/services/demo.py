@@ -2,15 +2,18 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import secrets
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
 from ..models.client import Client
 from ..models.ontology import EntityKind, EntityType, Provenance
-from ..models.security import OrgApiKey
+from ..models.security import GenomeVersion, OrgApiKey
 from ..models.workunit import ActorType, UnitStatus, VerificationMethod, WorkUnit
 from ..services.census import run_census
+from ..services.genome_import import import_genome
 from ..services.tenants import (
     bootstrap_tenants,
     clone_cross_industry_hr,
@@ -178,21 +181,120 @@ def issue_first_key(db: Session, client: Client, label: str = "demo") -> tuple[s
     return plaintext, row.id
 
 
+SAMPLE_GENOME_SLUG = "sample-genome-co"
+SAMPLES_DIR = Path(__file__).resolve().parents[3] / "samples"
+SAMPLE_GENOME_FILE = SAMPLES_DIR / "Private-Genome-MVP-HR-Ops-FIXED.json"
+
+# The shipped sample carries no dual_scoring_kappa, and GQS gives kappa a flat
+# 10 points — so the file on its own scores 84.29 and is blocked by the gate,
+# despite being the sample that is meant to demonstrate a passing genome.
+# Supplied here explicitly rather than written into the sample file, because
+# kappa is caller-supplied by design: nothing in this system produces two
+# independent scorings to compute it from (see HONESTY.md). This is a stated
+# demo input, not a measurement.
+SAMPLE_GENOME_KAPPA = 0.85
+
+
+def get_or_create_sample_genome_tenant(db: Session) -> Client:
+    """Separate tenant for the shipped observed-provenance genome sample.
+
+    samples/Private-Genome-MVP-HR-Ops-FIXED.json and the Client A HR seed
+    both define WU-OFF-03 and WU-OFF-04, and work_units is UNIQUE on
+    (client_id, code) — so importing the sample into Client A is rejected by
+    design. They are two different genomes for two different employers, so
+    they belong in two different tenants rather than being reconciled into
+    one."""
+    row = db.query(Client).filter(Client.slug == SAMPLE_GENOME_SLUG).one_or_none()
+    if row:
+        return row
+    row = Client(
+        slug=SAMPLE_GENOME_SLUG,
+        name="Sample Genome Co",
+        industry="HR & People Ops",
+        description=(
+            "Holds samples/Private-Genome-MVP-HR-Ops-FIXED.json — an observed-provenance genome "
+            "that clears the GQS gate. Kept apart from Client A, whose HR seed shares work unit ids."
+        ),
+        kind="client",
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def import_sample_genome(db: Session, tenant: Client) -> dict:
+    """Import the shipped observed-provenance genome into its own tenant.
+
+    Done here rather than left as a documented curl for two reasons: the file
+    needs SAMPLE_GENOME_KAPPA supplied to clear the gate at all, and it has to
+    land in a tenant that does not already own its work unit ids. Both were
+    silent traps — the documented import returned a 400 and the sample named
+    "FIXED" looked broken.
+
+    Idempotent: re-running bootstrap reports the existing version rather than
+    importing a second colliding copy."""
+    existing = (
+        db.query(GenomeVersion)
+        .filter(GenomeVersion.client_id == tenant.id)
+        .order_by(GenomeVersion.id)
+        .first()
+    )
+    if existing is not None:
+        return {
+            "version_id": existing.id,
+            "gqs": existing.gqs_score,
+            "accepted": bool(json.loads(existing.gates_passed or "[]")),
+            "note": "Already imported for this tenant; not re-imported.",
+        }
+
+    if not SAMPLE_GENOME_FILE.exists():
+        return {"version_id": None, "gqs": None, "accepted": False,
+                "note": f"Sample genome not found at {SAMPLE_GENOME_FILE}."}
+
+    with open(SAMPLE_GENOME_FILE, encoding="utf-8") as handle:
+        genome = json.load(handle)
+    genome["dual_scoring_kappa"] = SAMPLE_GENOME_KAPPA
+
+    result = import_genome(db, tenant.id, genome, actor="demo-bootstrap")
+    return {
+        "version_id": result["version_id"],
+        "gqs": result["gqs"],
+        "accepted": result["accepted"],
+        "dual_scoring_kappa": SAMPLE_GENOME_KAPPA,
+        "note": (
+            f"dual_scoring_kappa={SAMPLE_GENOME_KAPPA} was supplied by this bootstrap, not measured — "
+            "nothing in this system produces two independent scorings to compute it from. Without it "
+            "the shipped sample scores 84.29 and the gate blocks it."
+        ),
+    }
+
+
 def bootstrap_demo(db: Session) -> dict:
-    """prepare_demo + a usable key, in one unauthenticated call, so a local
+    """prepare_demo + usable keys, in one unauthenticated call, so a local
     demo is one command instead of a Python snippet against the database.
     Gated by settings.demo_bootstrap_enabled (see routers/admin.py)."""
     result = prepare_demo(db)
+
     client_a = get_or_create_client_a(db)
     plaintext, key_id = issue_first_key(db, client_a)
     result["api_key"] = plaintext
     result["api_key_id"] = key_id
+
+    sample_tenant = get_or_create_sample_genome_tenant(db)
+    sample_key, sample_key_id = issue_first_key(db, sample_tenant, label="sample-genome")
+    result["sample_genome_client_id"] = sample_tenant.id
+    result["sample_genome_api_key"] = sample_key
+    result["sample_genome_api_key_id"] = sample_key_id
+    result["sample_genome_import"] = import_sample_genome(db, sample_tenant)
+
+    already = plaintext is None
     result["api_key_note"] = (
-        "Paste this into the app's key banner (Scout Interview / Genome). Shown once and never "
-        "recoverable — the database stores only its hash. Client A already had an active key, so "
-        "none was minted; rotate via POST /api/org/keys/rotate if you need a fresh one."
-        if plaintext is None else
-        "Paste this into the app's key banner (Scout Interview / Genome). Shown once and never "
-        "recoverable — the database stores only its hash."
+        "Keys are shown once and never recoverable — the database stores only their hash. "
+        + ("This tenant already had an active key, so none was minted; rotate via "
+           "POST /api/org/keys/rotate for a fresh one. " if already else "")
+        + "Paste api_key into the app's key banner for the Client A walkthrough, or "
+          "sample_genome_api_key to open the imported sample genome. The sample lives in its own "
+          "tenant because it shares work unit ids with the Client A HR seed."
     )
     return result
