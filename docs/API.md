@@ -169,6 +169,23 @@ RLS on `scout_contradictions` same as the direct-`client_id` tables.
 | GET | `/scout/sessions/{id}/future-preview` | `unlocked` is `completeness_pct >= 100`. `time_saved_min_per_day` reuses the pain-heatmap total (no separate estimate). No confetti — see `HONESTY.md`. |
 | POST | `/scout/sessions/{id}/generate-genome` | Calls the **existing** `services/genome_import.import_genome` — no parallel write path. Maps each captured unit to the 18-attribute contract (`services/scout_genome.py`); several attributes the Work Capture Grid never asks for (`trigger`, `actor_constraints`, `acceptance_criteria`, `evidence_required`, `failure_semantics`) get one honest literal placeholder string rather than fabricated content. `provenance.source_type` is `"declared"` (self-reported in a structured interview), not `"observed"`. Goes through the **same GQS gate** as any other import — a thin session's genome is expected to score low and get blocked, not pass on a relaxed rule; verified in `tests/test_scout_future_preview.py` (a 1-unit session scores GQS 30, `accepted: false`).
 
+### Frontend — stitching Scout to V8 delivery
+
+`frontend/src/pages/Genome.tsx` (route `/genome/:versionId`) is a UI over the existing `genome.py` router below — no new backend endpoints. It renders the GQS header (score, gates passed, ratify-whole-version), a Business Objects tab (L1 card list → L2 work-unit table → L3 full 18-attribute detail, plus ratify-one-business-object), and an Automation Index tab (L1–L6 autonomy counts, hours current/saveable, cost-per-unit banner, bottleneck view, work-graph edge counts). `FuturePreview.tsx`'s post-generate result links to `/genome/{version_id}` regardless of whether the gate passed, so the "what did Scout actually produce" question is always one click away. See `HONESTY.md` for the browser-verified GQS structural-cap finding for Scout-sourced genomes (declared, not observed, provenance) and the resulting empty-state behavior for a gate-failed version's Business Objects / Automation Index.
+
+## Genome (Layer 1/2/3, ratify, automation index)
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/genome/import` | See `HONESTY.md`'s per-attribute enforcement matrix. |
+| GET | `/genome/{version_id}/gqs` | Score, breakdown, gates passed/failed, `ratified`. |
+| GET | `/genome/{version_id}` | Full version detail. |
+| POST | `/genome/{version_id}/ratify` | Body `{business_object?, work_unit_ids?, approved, comment}`; requires `gates_passed == ["gqs", "pydantic_validation"]`. |
+| GET | `/genome/{version_id}/business-objects` | L1. Empty for a gate-failed version — `import_genome` only persists `WorkUnit` rows on gate pass. |
+| GET | `/genome/{version_id}/business-objects/{bo_name}/work-units` | L2. |
+| GET | `/genome/{version_id}/work-units/{wu_code}` | L3, full 18 attributes. |
+| GET | `/genome/{version_id}/automation-index` | Metrics, bottleneck view, work-graph edge summary. |
+
 ## Projections (C3)
 
 | Method | Path |

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { apiFetch, NeedsApiKeyError } from "../../lib/apiFetch";
 
 type Preview = {
@@ -97,16 +98,17 @@ export function FuturePreview({ sessionId, onNeedsKey }: { sessionId: number; on
             {result.accepted ? (
               <>
                 Genome version {result.version_id} created — GQS {result.gqs.toFixed(1)}, {result.work_unit_count}{" "}
-                work unit(s). View it under Genome / Business Objects.
+                work unit(s).{" "}
               </>
             ) : (
               <>
                 Blocked by the quality gate: GQS {result.gqs.toFixed(1)} (needs 90). This session's captured units
                 are missing several of the 18 required attributes (trigger, acceptance criteria, evidence,
                 failure semantics) that Scout's interview screens don't ask for yet — the gate is telling the
-                truth about that gap, not a bug.
+                truth about that gap, not a bug.{" "}
               </>
             )}
+            <Link to={`/genome/${result.version_id}`}>View genome version {result.version_id} →</Link>
           </div>
         )}
       </div>

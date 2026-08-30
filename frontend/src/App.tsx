@@ -3,6 +3,7 @@ import { GuidedTour } from "./components/GuidedTour";
 import AppShell from "./layout/AppShell";
 import Discovery from "./pages/Discovery";
 import Economics from "./pages/Economics";
+import Genome from "./pages/Genome";
 import Ontology from "./pages/Ontology";
 import Overview from "./pages/Overview";
 import Projections from "./pages/Projections";
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/spec" element={<Spec />} />
           <Route path="/projections" element={<Projections />} />
           <Route path="/scout/interview/:sessionId" element={<ScoutInterview />} />
+          <Route path="/genome/:versionId" element={<Genome />} />
         </Route>
       </Routes>
     </>
