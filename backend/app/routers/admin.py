@@ -18,10 +18,20 @@ def run_seed(db: DbDep) -> dict:
 
 
 @router.post("/demo/prepare")
-def prepare_demo(db: DbDep) -> dict:
-    """Catalog 12 HR units, clone to Client A, run inferred HR census with sample SOP."""
+def prepare_demo() -> dict:
+    """Catalog 12 HR units, clone to Client A, run inferred HR census with sample SOP.
+    Cross-tenant by nature (writes both the shared Catalog client and Client A), so —
+    like run_consent_purge and bootstrap_tenants below — this opens its own
+    SystemSessionLocal rather than using the per-request DbDep, which has no
+    app.current_client_id set and gets rejected outright by RLS on work_units."""
+    from ..db import SystemSessionLocal
     from ..services.demo import prepare_demo as run
-    return run(db)
+    db = SystemSessionLocal()
+    try:
+        result = run(db)
+    finally:
+        db.close()
+    return result
 
 
 @router.post("/admin/consent/purge")
