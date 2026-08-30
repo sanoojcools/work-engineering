@@ -14,6 +14,7 @@ from . import (
     org,
     projections,
     regulatory,
+    scout,
     spec,
     verification,
     verdict,
@@ -40,3 +41,4 @@ api_router.include_router(spec.router, prefix="/spec", tags=["spec"])
 api_router.include_router(projections.router, prefix="/projections", tags=["projections"])
 api_router.include_router(org.router, prefix="/org", tags=["org"])
 api_router.include_router(consent.router, prefix="/consent", tags=["consent"])
+api_router.include_router(scout.router, prefix="/scout", tags=["scout"])

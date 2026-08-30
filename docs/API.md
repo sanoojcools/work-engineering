@@ -116,6 +116,23 @@ Requires `X-Spec-Key` (per-org). `consent_receipts` carries RLS same as `work_un
 | POST | `/consent/receipts/{id}/revoke` | Body: `{ withdrawal_method? }`. Sets `status=withdrawn`, `revoked_at=now()`. Audits `org.consent.receipt.revoke`. |
 | POST | `/admin/consent/purge` | Unauthenticated maintenance trigger (same trust level as `/seed`, `/demo/prepare`) for the daily auto-purge sweep. Tombstones every `status=active` receipt past `expires_at` (`status=purged`, `purged_at=now()`) across every tenant — cross-tenant by nature, so it runs on the RLS-bypassing system session, not a per-org key. Returns `{ purged: <count> }`. `withdrawn` receipts are left alone: the timer isn't a second purge path for a consent already withdrawn. Reports `0` until a receipt actually ages past its `expires_at` — that's expected, it proves the path runs end to end. |
 
+## Scout Elevated V2 — interview sessions (PR1: Core)
+
+Requires `X-Spec-Key` (per-org). `scout_interview_sessions` and `scout_captured_units` carry RLS same as `work_units` — a session or unit id from another org is a `404`. `scout_captured_units` is scoped via its parent session's `client_id`, not its own `client_id` column (kept only for query convenience).
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/scout/sessions` | Body: `{ type: "founder"\|"sme", interviewee_name, consent_receipt_id? }`. Returns the session with 8 completeness dimensions (all zero, no units yet). Audits `scout.session.create`. |
+| GET | `/scout/sessions` | List own org's sessions. |
+| GET | `/scout/sessions/{id}` | `404` if the session belongs to another org. |
+| POST | `/scout/sessions/{id}/units` | Body: `{ name, inputs?, outputs?, systems?, frequency?, time_minutes?, pain?, handoffs?, decision_rule? }`. Appends a Work Capture Grid row, recomputes and stores `completeness_pct`. Audits `scout.unit.create`. |
+| PATCH | `/scout/sessions/{id}/units/{unit_id}` | Partial update (any subset of the above fields) for inline-edit. `404` if the unit doesn't belong to `{id}`. Recomputes completeness. Audits `scout.unit.update`. |
+| POST | `/scout/sessions/{id}/complete` | Sets `status=completed`. Audits `scout.session.complete`. |
+
+**Completeness is not what the design doc originally specified.** The doc's formula was "captured / expected, expected from JD + logs baseline" — no JD or log ingestion exists, so `services/scout.py` uses a published constant (`EXPECTED_UNITS_PER_SESSION = 8`, same spirit as `BUS_FACTOR_WU_THRESHOLD` elsewhere) for the "Work Units Captured" dimension, and per-unit field-fill percentage for six more. The 8th dimension, **Knowledge Artifacts** (policies/JD/papers linked), has no real field to measure yet — it's returned with `computed: false` rather than a fake `0%`, and `completeness_pct` averages only the 7 dimensions that are actually computed (same `reciprocal_computed: false` honesty pattern as automation-index's cycle detection).
+
+**No LLM calls anywhere in this surface.** `LLM_PROVIDER=none` in this environment. The 5 "elevation" modules from the design doc (Time-Travel Replay, Contradiction Resolver, Pain Heatmap, Story-to-Structure live trace, Future Preview) are not built in PR1 — see `HONESTY.md`.
+
 ## Projections (C3)
 
 | Method | Path |

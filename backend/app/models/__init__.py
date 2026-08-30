@@ -24,6 +24,12 @@ from .ontology import (  # noqa: F401
     RelationKind,
 )
 from .regulatory import RegulatoryEntry  # noqa: F401
+from .scout import (  # noqa: F401
+    InterviewStatus,
+    InterviewType,
+    ScoutCapturedUnit,
+    ScoutInterviewSession,
+)
 from .security import (  # noqa: F401
     AuditLog,
     ConsentReceipt,

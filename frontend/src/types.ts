@@ -237,3 +237,43 @@ export const VERDICT_KEYS = [
   "compliance",
   "tacitness",
 ] as const;
+
+// Scout Elevated V2 PR1
+export const INTERVIEW_TYPES = ["founder", "sme"] as const;
+
+export type ScoutCapturedUnit = {
+  id: number;
+  name: string;
+  inputs: string;
+  outputs: string;
+  systems: string;
+  frequency: string;
+  time_minutes: number | null;
+  pain: string;
+  handoffs: string;
+  decision_rule: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ScoutDimension = {
+  key: string;
+  label: string;
+  captured: number;
+  expected: number;
+  pct: number;
+  computed: boolean;
+};
+
+export type ScoutSession = {
+  id: number;
+  type: (typeof INTERVIEW_TYPES)[number];
+  interviewee_name: string;
+  status: "in_progress" | "completed";
+  completeness_pct: number;
+  consent_receipt_id: number | null;
+  dimensions: ScoutDimension[];
+  units: ScoutCapturedUnit[];
+  created_at: string;
+  updated_at: string;
+};

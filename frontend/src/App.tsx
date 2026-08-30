@@ -6,6 +6,7 @@ import Economics from "./pages/Economics";
 import Ontology from "./pages/Ontology";
 import Overview from "./pages/Overview";
 import Projections from "./pages/Projections";
+import ScoutInterview from "./pages/ScoutInterview";
 import Spec from "./pages/Spec";
 import Verdict from "./pages/Verdict";
 import Verification from "./pages/Verification";
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/verification" element={<Verification />} />
           <Route path="/spec" element={<Spec />} />
           <Route path="/projections" element={<Projections />} />
+          <Route path="/scout/interview/:sessionId" element={<ScoutInterview />} />
         </Route>
       </Routes>
     </>

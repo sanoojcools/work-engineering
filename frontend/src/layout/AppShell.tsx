@@ -5,6 +5,7 @@ import { api } from "../api";
 
 const links = [
   ["/", "Overview"],
+  ["/scout/interview/new", "Scout Interview"],
   ["/ontology", "Ontology"],
   ["/work-units", "Work Units"],
   ["/work-graph", "Work Graph"],
