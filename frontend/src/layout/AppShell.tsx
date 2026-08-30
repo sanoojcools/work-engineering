@@ -3,22 +3,30 @@ import { ProgressTracker } from "../components/ProgressTracker";
 import { useCompany } from "../company";
 import { api } from "../api";
 
-const links = [
-  ["/", "Overview"],
-  ["/scout/interview/new", "Scout Interview"],
-  ["/ontology", "Ontology"],
-  ["/work-units", "Work Units"],
-  ["/work-graph", "Work Graph"],
-  ["/verdict", "VERDICT"],
-  ["/economics", "Economics"],
-  ["/discovery", "Discovery"],
-  ["/verification", "Verification"],
-  ["/spec", "Spec API"],
-  ["/projections", "Projections"],
+/** Grouped so the two halves of the product read as two halves: what Scout
+ * captures, then what the specification layer does with it. As one flat list
+ * this was eleven equal-weight links, and Genome had no entry at all — the
+ * delivery side of the Scout handoff was reachable only by typing a URL. */
+const SECTIONS = [
+  { label: null, links: [["/", "Overview"]] },
+  { label: "Capture", links: [["/scout/interview/new", "Scout Interview"], ["/discovery", "Discovery"]] },
+  {
+    label: "Specification",
+    links: [["/genome", "Genome"], ["/ontology", "Ontology"], ["/work-units", "Work Units"], ["/work-graph", "Work Graph"]],
+  },
+  {
+    label: "Analysis",
+    links: [["/verdict", "VERDICT"], ["/economics", "Economics"], ["/verification", "Verification"], ["/projections", "Projections"]],
+  },
+  { label: "Integration", links: [["/spec", "Spec API"]] },
 ] as const;
 
 export default function AppShell() {
-  const { clients, client, setClientId, reload } = useCompany();
+  const { clients, client, keyClientId, setClientId, reload } = useCompany();
+  // RLS scopes every tenant-read to the key's client, so viewing a different
+  // company renders empty tables that look like missing data. Say so instead.
+  const keyMismatch = keyClientId !== null && client !== null && client.id !== keyClientId;
+  const keyCompany = clients.find((c) => c.id === keyClientId);
 
   return (
     <div className="shell">
@@ -53,13 +61,31 @@ export default function AppShell() {
         >
           New company
         </button>
-        {client?.kind === "catalog" && (
+        {keyMismatch && keyCompany && (
+          <p className="hint" style={{ color: "var(--warn)" }}>
+            Your API key belongs to <strong>{keyCompany.name}</strong>, so tenant-scoped pages will look
+            empty while <strong>{client?.name}</strong> is selected.{" "}
+            <button
+              type="button"
+              onClick={() => setClientId(keyCompany.id)}
+              style={{ padding: "2px 8px", fontSize: 12, marginTop: 4 }}
+            >
+              Switch to {keyCompany.name}
+            </button>
+          </p>
+        )}
+        {!keyMismatch && client?.kind === "catalog" && (
           <p className="hint">Catalog is the test lab. Switch to Client A, then Overview → Prepare Client A HR demo.</p>
         )}
-        {links.map(([to, label]) => (
-          <NavLink key={to} to={to} end={to === "/"} className={({ isActive }) => (isActive ? "active" : "")}>
-            {label}
-          </NavLink>
+        {SECTIONS.map((section) => (
+          <div key={section.label ?? "root"}>
+            {section.label && <div className="nav-section">{section.label}</div>}
+            {section.links.map(([to, label]) => (
+              <NavLink key={to} to={to} end={to === "/"} className={({ isActive }) => (isActive ? "active" : "")}>
+                {label}
+              </NavLink>
+            ))}
+          </div>
         ))}
       </nav>
       <div className="workspace">

@@ -12,6 +12,7 @@ from fastapi import APIRouter
 from sqlalchemy import text
 
 from ..dependencies import ROTATION_GRACE_MINUTES, OrgKeyDep, TenantDbDep
+from ..models.client import Client
 from ..models.security import AuditLog, OrgApiKey
 
 router = APIRouter()
@@ -29,6 +30,24 @@ def _rebind_tenant(db: TenantDbDep, key: OrgApiKey) -> None:
     class and same fix as routers/scout.py::_rebind_tenant — re-apply the
     tenant binding after every commit, before any further read."""
     db.execute(text("SET app.current_client_id = :cid"), {"cid": str(key.client_id)})
+
+
+@router.get("/whoami")
+def whoami(db: TenantDbDep, key: OrgKeyDep) -> dict:
+    """Which tenant the presented X-Spec-Key belongs to.
+
+    Nothing exposed this, so the UI could not tell which company it was
+    actually authenticated as. The company switcher defaulted to Catalog
+    while the key belonged to Client A, and every tenant-scoped read then
+    came back empty — correct RLS behaviour rendered as a screen of zeros
+    with nothing explaining why."""
+    client = db.query(Client).filter(Client.id == key.client_id).one_or_none()
+    return {
+        "client_id": key.client_id,
+        "client_slug": client.slug if client else None,
+        "client_name": client.name if client else None,
+        "key_label": key.label,
+    }
 
 
 @router.post("/keys/rotate")

@@ -4,8 +4,19 @@ export function Banner({ kind, children }: { kind: "error" | "info" | "ok" | "wa
   return <div className={`banner ${kind}`}>{children}</div>;
 }
 
-export function Loading() {
-  return <p className="health">Loading…</p>;
+export function Loading({ label = "Loading…" }: { label?: string }) {
+  return <p className="skeleton" role="status">{label}</p>;
+}
+
+/** A blank region reads as breakage. Every "nothing here yet" should say what
+ * would put something here, so an empty demo screen looks deliberate. */
+export function Empty({ title, hint }: { title: string; hint?: ReactNode }) {
+  return (
+    <div className="empty">
+      <div className="empty-title">{title}</div>
+      {hint && <div className="empty-hint">{hint}</div>}
+    </div>
+  );
 }
 
 export function Field({
@@ -63,7 +74,7 @@ export function DataTable<T extends { id: number }>({
   highlightedId?: number | null;
 }) {
   if (rows.length === 0) {
-    return <p className="health">No rows yet.</p>;
+    return <Empty title="No rows yet" hint="Records created here will appear in this table." />;
   }
   return (
     <div className="table-wrap">

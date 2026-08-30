@@ -2,7 +2,7 @@ import re
 
 from fastapi import APIRouter, status
 
-from ..dependencies import DbDep
+from ..dependencies import DbDep, SystemDbDep
 from ..models.client import Client
 from ..models.workunit import WorkUnit
 from ..schemas.client import ClientCreate, ClientOut
@@ -23,7 +23,14 @@ def _out(row: Client, count: int) -> ClientOut:
 
 
 @router.get("/", response_model=Page[ClientOut])
-def list_clients(db: DbDep) -> Page[ClientOut]:
+def list_clients(db: SystemDbDep) -> Page[ClientOut]:
+    """Enumerating every tenant is cross-tenant by definition — this backs the
+    company switcher — so it runs on the system session.
+
+    On the RLS-bound per-request session it still returned the client rows,
+    but the per-client work_unit_count below was filtered to nothing, so every
+    company reported 0 units: the switcher read "Client A (0)" and Overview's
+    headline Work Units tile read 0 on a fully seeded tenant."""
     try:
         bootstrap_tenants(db)
     except Exception:

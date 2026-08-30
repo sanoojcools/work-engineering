@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
 import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
 import type { AutomationIndex, BoWorkUnit, BusinessObject, WorkUnitFull } from "../types";
-import { Banner, Loading } from "../ui";
+import { Banner, Empty, Loading } from "../ui";
+
+const GATE_THRESHOLD = 90;
 
 type GqsDetail = {
   version_id: number;
@@ -100,26 +102,45 @@ export default function Genome() {
   }
 
   if (error) return <Banner kind="error">{error}</Banner>;
-  if (!gqs || !businessObjects) return <Loading />;
+  if (!gqs || !businessObjects) return <Loading label={`Loading genome v${vid}…`} />;
+
+  const gatePassed = gqs.gqs !== null && gqs.gqs >= GATE_THRESHOLD && gqs.gates_passed.length > 0;
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+      <p style={{ margin: "0 0 10px", fontSize: 13 }}>
+        <Link to="/genome">← All genome versions</Link>
+      </p>
+
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0 }}>Genome v{vid}</h2>
-        <span className={`badge ${gqs.gqs !== null && gqs.gqs >= 90 ? "ok" : ""}`}>
-          GQS {gqs.gqs !== null ? gqs.gqs.toFixed(1) : "—"}
+        <span className={`badge ${gatePassed ? "ok" : ""}`}>
+          GQS {gqs.gqs !== null ? gqs.gqs.toFixed(2) : "—"} / {GATE_THRESHOLD}
         </span>
         <span className="badge">{gqs.work_unit_count} work units</span>
-        {gqs.ratified ? <span className="badge ok">Ratified</span> : <span className="badge">Not ratified</span>}
+        {gqs.ratified && <span className="badge ok">Ratified</span>}
       </div>
-      <p className="lede">
-        Gates passed: {gqs.gates_passed.join(", ") || "none"}.{" "}
-        {!gqs.ratified && (
-          <button type="button" disabled={busy} onClick={ratifyWhole} style={{ marginLeft: 8 }}>
-            Ratify whole version
-          </button>
-        )}
-      </p>
+
+      {gatePassed ? (
+        <div className="banner ok" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span>
+            Quality gate passed ({gqs.gates_passed.join(", ")}).
+            {gqs.ratified ? " This version is ratified." : " Ready to ratify."}
+          </span>
+          {!gqs.ratified && (
+            <button type="button" className="primary" disabled={busy} onClick={ratifyWhole} style={{ marginLeft: "auto" }}>
+              {busy ? "Ratifying…" : "Ratify whole version"}
+            </button>
+          )}
+        </div>
+      ) : (
+        <Banner kind="warn">
+          <strong>Blocked by the quality gate.</strong> GQS{" "}
+          {gqs.gqs !== null ? gqs.gqs.toFixed(2) : "—"} is below the {GATE_THRESHOLD} threshold, so no work
+          units were written for this version and it cannot be ratified. The gate is reporting a real gap in
+          the source data, not a failure of the import.
+        </Banner>
+      )}
 
       <div className="tabs">
         <button aria-selected={tab === "business-objects"} onClick={() => setTab("business-objects")}>
@@ -140,6 +161,12 @@ export default function Genome() {
         <div className="split" style={{ gridTemplateColumns: "0.9fr 1.1fr" }}>
           <div>
             <h3>Business objects (L1)</h3>
+            {businessObjects.length === 0 && (
+              <Empty
+                title="No business objects"
+                hint="This version was blocked by the quality gate, so none of its work units were written."
+              />
+            )}
             <div className="stack">
               {businessObjects.map((bo) => (
                 <div
@@ -162,7 +189,12 @@ export default function Genome() {
           </div>
 
           <div>
-            {!selectedBo && <p className="health">Select a business object to see its work units (L2).</p>}
+            {!selectedBo && businessObjects.length > 0 && (
+              <Empty
+                title="Select a business object"
+                hint="Its work units (L2) appear here; open one to see the full 18-attribute contract (L3)."
+              />
+            )}
             {selectedBo && (
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -171,7 +203,7 @@ export default function Genome() {
                     Ratify this object
                   </button>
                 </div>
-                {!boUnits && <p className="health">Loading…</p>}
+                {!boUnits && <Loading label="Loading work units…" />}
                 {boUnits && (
                   <div className="table-wrap" style={{ marginTop: 10 }}>
                     <table>
