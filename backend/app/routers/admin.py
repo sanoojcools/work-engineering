@@ -33,12 +33,16 @@ def prepare_demo(db: SystemDbDep) -> dict:
 
 
 @router.post("/demo/bootstrap")
-def bootstrap_demo(db: SystemDbDep) -> dict:
+def bootstrap_demo(db: SystemDbDep, new_keys: bool = False) -> dict:
     """One-call local demo setup: seeds Client A's HR census AND mints its
     first org API key, returning the plaintext once. Before this existed,
     standing up a demo meant running a Python snippet against the database
     by hand to insert an org_api_keys row (routers/org.py can only rotate a
     key you already hold), which is where local setup reliably fell over.
+
+    Pass ?new_keys=true to retire the current keys and issue fresh ones —
+    the recovery path for a key that was lost, since /org/keys/rotate needs
+    the key you no longer have.
 
     Hands out a credential over an unauthenticated request, so it is gated
     by settings.demo_bootstrap_enabled and must be false outside a
@@ -50,7 +54,7 @@ def bootstrap_demo(db: SystemDbDep) -> dict:
             "over an unauthenticated request and is only for a local demo database.",
         )
     from ..services.demo import bootstrap_demo as run
-    return run(db)
+    return run(db, new_keys=new_keys)
 
 
 @router.post("/admin/consent/purge")

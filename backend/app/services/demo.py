@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -150,7 +151,9 @@ def prepare_demo(db: Session, run: bool = True) -> dict:
     }
 
 
-def issue_first_key(db: Session, client: Client, label: str = "demo") -> tuple[str | None, int | None]:
+def issue_first_key(
+    db: Session, client: Client, label: str = "demo", *, replace: bool = False
+) -> tuple[str | None, int | None]:
     """Mint a tenant's FIRST org API key. Until this existed, standing a demo
     up meant a hand-written `INSERT INTO org_api_keys` with a manually
     computed sha256 — routers/org.py could only ROTATE a key you already had,
@@ -159,15 +162,22 @@ def issue_first_key(db: Session, client: Client, label: str = "demo") -> tuple[s
     Returns (plaintext, key_id), or (None, None) when the tenant already has
     an active key: a key's plaintext exists only at the moment it is minted
     (the table stores the hash), so this can never "show me the existing
-    key" — rotate it instead, which is why re-running is a no-op rather than
-    an error."""
-    existing = (
+    key", and re-running is a no-op rather than an error.
+
+    `replace=True` retires the existing active keys and mints a fresh one.
+    That is the recovery path for a key that was lost — rotation needs the
+    old key, so without this, mislaying it mid-demo meant going back to
+    hand-written SQL."""
+    existing_keys = (
         db.query(OrgApiKey)
         .filter(OrgApiKey.client_id == client.id, OrgApiKey.is_active.is_(True))
-        .first()
+        .all()
     )
-    if existing is not None:
+    if existing_keys and not replace:
         return None, None
+    for row in existing_keys:
+        row.is_active = False
+        row.rotated_at = datetime.now(timezone.utc)
     plaintext = secrets.token_urlsafe(24)
     row = OrgApiKey(
         client_id=client.id,
@@ -270,19 +280,23 @@ def import_sample_genome(db: Session, tenant: Client) -> dict:
     }
 
 
-def bootstrap_demo(db: Session) -> dict:
+def bootstrap_demo(db: Session, *, new_keys: bool = False) -> dict:
     """prepare_demo + usable keys, in one unauthenticated call, so a local
     demo is one command instead of a Python snippet against the database.
-    Gated by settings.demo_bootstrap_enabled (see routers/admin.py)."""
+    Gated by settings.demo_bootstrap_enabled (see routers/admin.py).
+
+    `new_keys=True` retires the existing keys and issues fresh ones — the
+    recovery path when a key has been lost, since rotation requires the key
+    you no longer have."""
     result = prepare_demo(db)
 
     client_a = get_or_create_client_a(db)
-    plaintext, key_id = issue_first_key(db, client_a)
+    plaintext, key_id = issue_first_key(db, client_a, replace=new_keys)
     result["api_key"] = plaintext
     result["api_key_id"] = key_id
 
     sample_tenant = get_or_create_sample_genome_tenant(db)
-    sample_key, sample_key_id = issue_first_key(db, sample_tenant, label="sample-genome")
+    sample_key, sample_key_id = issue_first_key(db, sample_tenant, label="sample-genome", replace=new_keys)
     result["sample_genome_client_id"] = sample_tenant.id
     result["sample_genome_api_key"] = sample_key
     result["sample_genome_api_key_id"] = sample_key_id
@@ -291,8 +305,8 @@ def bootstrap_demo(db: Session) -> dict:
     already = plaintext is None
     result["api_key_note"] = (
         "Keys are shown once and never recoverable — the database stores only their hash. "
-        + ("This tenant already had an active key, so none was minted; rotate via "
-           "POST /api/org/keys/rotate for a fresh one. " if already else "")
+        + ("This tenant already had an active key, so none was minted. Re-run with "
+           "?new_keys=true to retire it and issue a fresh one. " if already else "")
         + "Paste api_key into the app's key banner for the Client A walkthrough, or "
           "sample_genome_api_key to open the imported sample genome. The sample lives in its own "
           "tenant because it shares work unit ids with the Client A HR seed."

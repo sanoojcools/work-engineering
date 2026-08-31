@@ -62,7 +62,15 @@ That seeds Client A's HR census, imports the shipped sample genome, and returns:
 | `sample_genome_api_key` | **Sample Genome Co** — the tenant holding the imported sample genome (GQS 94.29, clears the gate). Use this key to open it under Genome. |
 | `sample_genome_import` | The import result: version id, GQS, and the supplied `dual_scoring_kappa`. |
 
-Keys are shown **once** and are not recoverable — the database stores only their hash. Re-running is safe and idempotent: it will not re-issue an existing key (rotate with `POST /api/org/keys/rotate`) and will not re-import the sample.
+Keys are shown **once** — the database stores only their hash. Re-running is safe and idempotent: it will not re-issue an existing key and will not re-import the sample.
+
+**Lost the key mid-demo?**
+
+```bash
+curl -X POST "http://localhost:8000/api/demo/bootstrap?new_keys=true"
+```
+
+That retires the current keys and issues fresh ones. (`POST /api/org/keys/rotate` can't help here — it needs the key you no longer have.) Paste the new key into the app's banner and carry on.
 
 Two things worth knowing, because both were silent traps:
 
