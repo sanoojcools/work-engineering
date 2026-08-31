@@ -13,6 +13,8 @@ type Preview = {
 type GenerateResult = {
   accepted: boolean;
   version_id: number;
+  /** Tenant-scoped version number; version_id is the global key used in URLs. */
+  sequence: number;
   gqs: number;
   work_unit_count: number;
   violations: { code?: string; detail?: string }[];
@@ -97,7 +99,7 @@ export function FuturePreview({ sessionId, onNeedsKey }: { sessionId: number; on
           <div className={`banner ${result.accepted ? "ok" : "warn"}`} style={{ marginTop: 12 }}>
             {result.accepted ? (
               <>
-                Genome version {result.version_id} created — GQS {result.gqs.toFixed(1)}, {result.work_unit_count}{" "}
+                Genome version v{result.sequence} created — GQS {result.gqs.toFixed(1)}, {result.work_unit_count}{" "}
                 work unit(s).{" "}
               </>
             ) : (
@@ -108,7 +110,7 @@ export function FuturePreview({ sessionId, onNeedsKey }: { sessionId: number; on
                 truth about that gap, not a bug.{" "}
               </>
             )}
-            <Link to={`/genome/${result.version_id}`}>View genome version {result.version_id} →</Link>
+            <Link to={`/genome/${result.version_id}`}>View genome version v{result.sequence} →</Link>
           </div>
         )}
       </div>

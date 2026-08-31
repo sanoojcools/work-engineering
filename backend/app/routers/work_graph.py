@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, status
 
-from ..dependencies import DbDep
+from ..dependencies import OptionalTenantDbDep
 from ..models.graph import WorkEdge
 from ..models.workunit import WorkUnit
 from ..schemas.common import Page
@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.get("/edges", response_model=Page[WorkEdgeOut])
-def list_edges(db: DbDep, client_id: int | None = Query(default=None)) -> Page[WorkEdgeOut]:
+def list_edges(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> Page[WorkEdgeOut]:
     rows = db.query(WorkEdge).order_by(WorkEdge.id).all()
     if client_id is not None:
         ids = {u.id for u in db.query(WorkUnit).filter(WorkUnit.client_id == client_id).all()}
@@ -20,7 +20,7 @@ def list_edges(db: DbDep, client_id: int | None = Query(default=None)) -> Page[W
 
 
 @router.post("/edges", response_model=WorkEdgeOut, status_code=status.HTTP_201_CREATED)
-def create_edge(payload: WorkEdgeCreate, db: DbDep) -> WorkEdge:
+def create_edge(payload: WorkEdgeCreate, db: OptionalTenantDbDep) -> WorkEdge:
     if payload.source_id == payload.target_id:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "A unit cannot depend on itself")
     get_or_404(db, WorkUnit, payload.source_id, "WorkUnit")
@@ -33,7 +33,7 @@ def create_edge(payload: WorkEdgeCreate, db: DbDep) -> WorkEdge:
 
 
 @router.delete("/edges/{edge_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_edge(edge_id: int, db: DbDep) -> None:
+def delete_edge(edge_id: int, db: OptionalTenantDbDep) -> None:
     row = get_or_404(db, WorkEdge, edge_id, "WorkEdge")
     db.delete(row)
     db.commit()

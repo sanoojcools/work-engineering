@@ -86,6 +86,11 @@ def get_gqs(version_id: int, db: TenantDbDep, key: OrgKeyDep) -> dict:
     version = get_or_404(db, GenomeVersion, version_id, "GenomeVersion")
     return {
         "version_id": version.id,
+        # The tenant-scoped version number. version_id is a global primary key
+        # and the UI was labelling versions with it, so the very first import
+        # into a fresh database announced itself as "v27" — the sequence value
+        # that the same row had carried as 1 all along.
+        "sequence": version.sequence,
         "gqs": version.gqs_score,
         "gates_passed": json.loads(version.gates_passed),
         "gates_failed": json.loads(version.gates_failed),
@@ -100,6 +105,7 @@ def get_genome(version_id: int, db: TenantDbDep, key: OrgKeyDep) -> dict:
     wus = db.query(WorkUnit).filter(WorkUnit.genome_version_id == version_id).order_by(WorkUnit.id).all()
     return {
         "version_id": version.id,
+        "sequence": version.sequence,
         "gqs": version.gqs_score,
         "ratified": version.ratified,
         "work_unit_count": len(wus),

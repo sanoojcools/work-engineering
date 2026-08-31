@@ -31,7 +31,7 @@ type BootstrapResult = {
   sample_genome_client_id: number;
   sample_genome_api_key: string | null;
   census: { units: number; gaps: number } | null;
-  sample_genome_import: { version_id: number | null; gqs: number | null; accepted: boolean };
+  sample_genome_import: { version_id: number | null; sequence: number | null; gqs: number | null; accepted: boolean };
 };
 
 /** One button that stands the demo up.
@@ -143,7 +143,7 @@ export function DemoSetup() {
             {result.census && <>Client A census: {result.census.units} work units, {result.census.gaps} gaps. </>}
             {result.sample_genome_import.version_id !== null && (
               <>
-                Sample genome v{result.sample_genome_import.version_id} imported at GQS{" "}
+                Sample genome v{result.sample_genome_import.sequence} imported at GQS{" "}
                 {result.sample_genome_import.gqs}.{" "}
               </>
             )}

@@ -10,6 +10,14 @@ default. Every other router listed here (ontology, discovery, projections,
 verdict, work-graph, economics, regulatory, verification, clients, admin)
 is unauthenticated.
 
+`discovery`, `projections`, `verdict`, `work-graph`, `economics` and
+`verification` stay unauthenticated but will *use* an `X-Spec-Key` if you
+send one, to pin the request to that tenant. These routes run as the
+RLS-bound app role, so without a tenant binding they returned whatever the
+pooled connection was carrying — usually nothing. Send the key and you get
+your own rows; omit it and the response is a 200 exactly as before. An
+unrecognised key is ignored, not rejected.
+
 List endpoints return `{ "total": n, "items": [...] }`.
 
 ## Health and seed
@@ -192,9 +200,9 @@ RLS on `scout_contradictions` same as the direct-`client_id` tables.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/genome/versions` | Every genome version for the calling tenant, newest first. Declared above `/{version_id}` so the literal path wins the match. Without it, an imported genome was unreachable from the UI — every other route needs a `version_id` the caller had to have kept. |
+| GET | `/genome/versions` | Every genome version for the calling tenant, newest first. Declared above `/{version_id}` so the literal path wins the match. Without it, an imported genome was unreachable from the UI — every other route needs a `version_id` the caller had to have kept. Each row carries both `version_id` (global primary key; what URLs and every other genome route address) and `sequence` (this tenant's own count, starting at 1). **Show `sequence` to people, address by `version_id`.** The UI once labelled versions with `version_id`, so a tenant's first import announced itself as "v27". `sequence` counts attempts, not successes — a blocked import is still recorded, so it still takes a number. |
 | POST | `/genome/import` | See `HONESTY.md`'s per-attribute enforcement matrix. Work unit ids are validated against the tenant's existing ids in a pre-pass (`work_unit_id_already_exists`) and against each other (`duplicate_work_unit_id`) before anything is written; the write phase is one rollback boundary, so a rejected import writes none of its rows. |
-| GET | `/genome/{version_id}/gqs` | Score, breakdown, gates passed/failed, `ratified`. |
+| GET | `/genome/{version_id}/gqs` | Score, breakdown, gates passed/failed, `ratified`, and `sequence`. |
 | GET | `/genome/{version_id}` | Full version detail. |
 | POST | `/genome/{version_id}/ratify` | Body `{business_object?, work_unit_ids?, approved, comment}`; requires `gates_passed == ["gqs", "pydantic_validation"]`. |
 | GET | `/genome/{version_id}/business-objects` | L1. Empty for a gate-failed version — `import_genome` only persists `WorkUnit` rows on gate pass. |
@@ -203,6 +211,9 @@ RLS on `scout_contradictions` same as the direct-`client_id` tables.
 | GET | `/genome/{version_id}/automation-index` | Metrics, bottleneck view, work-graph edge summary. |
 
 ## Projections (C3)
+
+Send `X-Spec-Key` to scope these to your tenant — see the auth note at the
+top. Without it they are open, but unpinned.
 
 | Method | Path |
 |---|---|

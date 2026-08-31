@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, status
 
-from ..dependencies import DbDep
+from ..dependencies import OptionalTenantDbDep
 from ..models.verdict import VerdictScore
 from ..models.workunit import WorkUnit
 from ..schemas.common import Page
@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=Page[VerdictOut])
-def list_scores(db: DbDep, client_id: int | None = Query(default=None)) -> Page[VerdictOut]:
+def list_scores(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> Page[VerdictOut]:
     ids = {u.id for u in units_query(db, client_id).all()} if client_id is not None else None
     q = db.query(VerdictScore).order_by(VerdictScore.id)
     rows = q.all()
@@ -23,14 +23,14 @@ def list_scores(db: DbDep, client_id: int | None = Query(default=None)) -> Page[
 
 
 @router.put("/{work_unit_id}", response_model=VerdictOut)
-def upsert_score(work_unit_id: int, payload: VerdictIn, db: DbDep) -> VerdictOut:
+def upsert_score(work_unit_id: int, payload: VerdictIn, db: OptionalTenantDbDep) -> VerdictOut:
     wu = get_or_404(db, WorkUnit, work_unit_id, "WorkUnit")
     row = wu_svc.apply_verdict(db, wu, payload.model_dump())
     return VerdictOut(**wu_svc.verdict_out(row))
 
 
 @router.get("/{work_unit_id}", response_model=VerdictOut)
-def get_score(work_unit_id: int, db: DbDep) -> VerdictOut:
+def get_score(work_unit_id: int, db: OptionalTenantDbDep) -> VerdictOut:
     get_or_404(db, WorkUnit, work_unit_id, "WorkUnit")
     row = db.query(VerdictScore).filter(VerdictScore.work_unit_id == work_unit_id).one_or_none()
     if row is None:

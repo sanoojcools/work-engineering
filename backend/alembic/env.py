@@ -16,7 +16,16 @@ from app.db import Base  # noqa: E402
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Migrations run as the owning superuser (SYSTEM_DATABASE_URL), not as the
+# app role. database_url is wep_app: deliberately a non-superuser bound by the
+# RLS policies migration f198c4aadd2c installed, so it does not own the tables
+# it reads. Pointing Alembic at it made the documented `alembic upgrade head`
+# fail with "must be owner of table work_edges" against any database that had
+# already reached that migration — the schema is Alembic-owned since the P0
+# foundation migration removed create_all(), so that error left the operator
+# with no way to build the schema at all. Falls back to database_url for a
+# setup that runs everything as one role.
+config.set_main_option("sqlalchemy.url", settings.system_database_url or settings.database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

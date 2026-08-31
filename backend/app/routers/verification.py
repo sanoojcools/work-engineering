@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status
 
-from ..dependencies import DbDep
+from ..dependencies import OptionalTenantDbDep
 from ..models.verification import AutonomyChange, VerificationRun
 from ..models.workunit import WorkUnit
 from ..schemas.common import Page
@@ -12,13 +12,13 @@ router = APIRouter()
 
 
 @router.get("/runs", response_model=Page[VerificationRunOut])
-def list_runs(db: DbDep) -> Page[VerificationRunOut]:
+def list_runs(db: OptionalTenantDbDep) -> Page[VerificationRunOut]:
     rows = db.query(VerificationRun).order_by(VerificationRun.id).all()
     return Page(total=len(rows), items=rows)
 
 
 @router.post("/runs", response_model=VerificationRunOut, status_code=status.HTTP_201_CREATED)
-def create_run(payload: VerificationRunCreate, db: DbDep) -> VerificationRun:
+def create_run(payload: VerificationRunCreate, db: OptionalTenantDbDep) -> VerificationRun:
     wu = get_or_404(db, WorkUnit, payload.work_unit_id, "WorkUnit")
     row = VerificationRun(**payload.model_dump())
     db.add(row)
@@ -30,6 +30,6 @@ def create_run(payload: VerificationRunCreate, db: DbDep) -> VerificationRun:
 
 
 @router.get("/autonomy-changes", response_model=Page[AutonomyChangeOut])
-def list_changes(db: DbDep) -> Page[AutonomyChangeOut]:
+def list_changes(db: OptionalTenantDbDep) -> Page[AutonomyChangeOut]:
     rows = db.query(AutonomyChange).order_by(AutonomyChange.id).all()
     return Page(total=len(rows), items=rows)

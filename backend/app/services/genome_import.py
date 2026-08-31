@@ -173,6 +173,7 @@ def _failure_result(gqs_result: dict, version: GenomeVersion, violations: list[d
     return {
         "accepted": False,
         "version_id": version.id,
+        "sequence": version.sequence,
         "gqs": gqs_result["gqs"],
         "gate_threshold": GATE_PASS_THRESHOLD,
         "breakdown": gqs_result["breakdown"],
@@ -393,6 +394,9 @@ def _write_genome(
     return {
         "accepted": True,
         "version_id": version.id,
+        # Callers render this to humans; version_id is a global key and reads
+        # as an arbitrary number to anyone who did not import the row.
+        "sequence": version.sequence,
         "gqs": gqs_result["gqs"],
         "gate_threshold": GATE_PASS_THRESHOLD,
         "breakdown": gqs_result["breakdown"],

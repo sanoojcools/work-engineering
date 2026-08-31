@@ -37,7 +37,7 @@ docker compose up --build
 - UI: http://localhost:5173
 - API: http://localhost:8000
 - OpenAPI: http://localhost:8000/docs
-- Postgres: localhost:5432 (`wep` / `wep` / `wep`)
+- Postgres: localhost:5433 (`wep` / `wep` / `wep`)
 
 Load the 16-unit order-to-cash census (idempotent):
 
@@ -114,7 +114,7 @@ You need **Python 3.11 or 3.12**, Node 20+, and Postgres 16. Python 3.14 cannot 
 docker compose up db
 ```
 
-Copy `.env.example` to `.env` at the repo root. `DATABASE_URL` already points at `localhost:5432`.
+Copy `.env.example` to `.env` at the repo root. `DATABASE_URL` already points at `localhost:5433` (not 5432 — a Postgres you already run locally usually owns that port).
 
 ### Backend
 
@@ -132,7 +132,19 @@ copy ..\.env .env               # Windows
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Tables are created on startup (`create_all`). There is no Alembic migration set yet.
+Create the schema before first run. It is Alembic-owned — the app no longer calls
+`create_all()`, and it will start against an empty database and fail every request:
+
+```bash
+python -m alembic upgrade head
+```
+
+Run this from `backend/`. Alembic connects with `SYSTEM_DATABASE_URL` (the `wep` superuser
+that owns the tables), not `DATABASE_URL` (`wep_app`, the non-superuser the app serves under
+so that row-level security binds it). Running migrations as `wep_app` fails with
+`must be owner of table work_edges`, so keep both URLs in your `.env`.
+
+`docker compose up` runs this step for you before starting the API.
 
 Seed from `backend/`:
 

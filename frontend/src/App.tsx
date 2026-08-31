@@ -1,10 +1,11 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { GuidedTour } from "./components/GuidedTour";
 import AppShell from "./layout/AppShell";
 import Discovery from "./pages/Discovery";
 import Economics from "./pages/Economics";
 import Genome from "./pages/Genome";
 import GenomeVersions from "./pages/GenomeVersions";
+import NotFound from "./pages/NotFound";
 import Ontology from "./pages/Ontology";
 import Overview from "./pages/Overview";
 import Projections from "./pages/Projections";
@@ -32,8 +33,15 @@ export default function App() {
           <Route path="/spec" element={<Spec />} />
           <Route path="/projections" element={<Projections />} />
           <Route path="/scout/interview/:sessionId" element={<ScoutInterview />} />
+          {/* "/scout" is the obvious URL to try for the Capture section, and
+              it matched nothing. Send it to the interview entry point. */}
+          <Route path="/scout" element={<Navigate to="/scout/interview/new" replace />} />
+          <Route path="/scout/interview" element={<Navigate to="/scout/interview/new" replace />} />
           <Route path="/genome" element={<GenomeVersions />} />
           <Route path="/genome/:versionId" element={<Genome />} />
+          {/* Catch-all inside the shell: an unmatched URL keeps its navigation
+              instead of rendering a blank page. */}
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </>

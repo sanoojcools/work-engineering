@@ -93,7 +93,7 @@ export default function GenomeVersions() {
                 const passed = row.gqs !== null && row.gqs >= GATE_THRESHOLD && row.accepted;
                 return (
                   <tr key={row.version_id}>
-                    <td><strong>v{row.version_id}</strong></td>
+                    <td><strong>v{row.sequence}</strong></td>
                     <td>{row.gqs !== null ? row.gqs.toFixed(2) : "—"}</td>
                     <td>{row.work_unit_count}</td>
                     <td>

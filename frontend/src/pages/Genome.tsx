@@ -9,6 +9,10 @@ const GATE_THRESHOLD = 90;
 
 type GqsDetail = {
   version_id: number;
+  /** Tenant-scoped version number — what a human should be shown. The route
+   * param is the global primary key, so heading off it made the first import
+   * into a fresh database read "Genome v27". */
+  sequence: number;
   gqs: number | null;
   gates_passed: string[];
   gates_failed: unknown[];
@@ -95,14 +99,14 @@ export default function Genome() {
   if (needsKey) {
     return (
       <div>
-        <h2>Genome v{vid}</h2>
+        <h2>Genome</h2>
         <ApiKeyBanner onSaved={async () => { setNeedsKey(false); await loadCore(); }} />
       </div>
     );
   }
 
   if (error) return <Banner kind="error">{error}</Banner>;
-  if (!gqs || !businessObjects) return <Loading label={`Loading genome v${vid}…`} />;
+  if (!gqs || !businessObjects) return <Loading label="Loading genome…" />;
 
   const gatePassed = gqs.gqs !== null && gqs.gqs >= GATE_THRESHOLD && gqs.gates_passed.length > 0;
 
@@ -113,7 +117,7 @@ export default function Genome() {
       </p>
 
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
-        <h2 style={{ margin: 0 }}>Genome v{vid}</h2>
+        <h2 style={{ margin: 0 }}>Genome v{gqs.sequence}</h2>
         <span className={`badge ${gatePassed ? "ok" : ""}`}>
           GQS {gqs.gqs !== null ? gqs.gqs.toFixed(2) : "—"} / {GATE_THRESHOLD}
         </span>

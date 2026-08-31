@@ -1,7 +1,7 @@
 """C3: five outputs are projections of the same Work Unit records."""
 from fastapi import APIRouter, Query
 
-from ..dependencies import DbDep
+from ..dependencies import OptionalTenantDbDep
 from ..models.economics import CostProfile
 from ..models.graph import WorkEdge
 from ..models.workunit import WorkUnit
@@ -18,13 +18,13 @@ def _units(db, client_id: int | None) -> list[WorkUnit]:
 
 
 @router.get("/inventory")
-def inventory(db: DbDep, client_id: int | None = Query(default=None)) -> dict:
+def inventory(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> dict:
     units = _units(db, client_id)
     return {"total": len(units), "items": [wu_svc.to_out(u).model_dump() for u in units]}
 
 
 @router.get("/work-graph")
-def work_graph(db: DbDep, client_id: int | None = Query(default=None)) -> dict:
+def work_graph(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> dict:
     units = _units(db, client_id)
     ids = {u.id for u in units}
     edges = [
@@ -41,7 +41,7 @@ def work_graph(db: DbDep, client_id: int | None = Query(default=None)) -> dict:
 
 
 @router.get("/verification")
-def verification(db: DbDep, client_id: int | None = Query(default=None)) -> dict:
+def verification(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> dict:
     units = _units(db, client_id)
     return {
         "items": [
@@ -59,7 +59,7 @@ def verification(db: DbDep, client_id: int | None = Query(default=None)) -> dict
 
 
 @router.get("/allocation")
-def allocation(db: DbDep, client_id: int | None = Query(default=None)) -> dict:
+def allocation(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> dict:
     units = _units(db, client_id)
     items = []
     for u in units:
@@ -82,7 +82,7 @@ def allocation(db: DbDep, client_id: int | None = Query(default=None)) -> dict:
 
 
 @router.get("/economics")
-def economics(db: DbDep, client_id: int | None = Query(default=None)) -> dict:
+def economics(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> dict:
     units = _units(db, client_id)
     ids = {u.id for u in units}
     profiles = [
@@ -114,7 +114,7 @@ def economics(db: DbDep, client_id: int | None = Query(default=None)) -> dict:
 
 
 @router.get("/pack")
-def pack(db: DbDep, client_id: int | None = Query(default=None)) -> dict:
+def pack(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> dict:
     alloc = allocation(db, client_id)
     l4 = sum(1 for row in alloc["items"] if (row.get("recommended_level") or 0) >= 4)
     econ = economics(db, client_id)

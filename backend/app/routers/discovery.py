@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query, status
 
 from ..config import settings
-from ..dependencies import DbDep
+from ..dependencies import OptionalTenantDbDep
 from ..models.discovery import ConformanceGap, DiscoveryCandidate, IntentSource, TraceEvent
 from ..schemas.common import Page
 from ..schemas.discovery import (
@@ -26,13 +26,13 @@ router = APIRouter()
 
 
 @router.get("/traces", response_model=Page[TraceOut])
-def list_traces(db: DbDep) -> Page[TraceOut]:
+def list_traces(db: OptionalTenantDbDep) -> Page[TraceOut]:
     rows = db.query(TraceEvent).order_by(TraceEvent.id).all()
     return Page(total=len(rows), items=rows)
 
 
 @router.post("/traces", response_model=TraceOut, status_code=status.HTTP_201_CREATED)
-def create_trace(payload: TraceCreate, db: DbDep) -> TraceEvent:
+def create_trace(payload: TraceCreate, db: OptionalTenantDbDep) -> TraceEvent:
     row = TraceEvent(**payload.model_dump())
     db.add(row)
     db.commit()
@@ -41,7 +41,7 @@ def create_trace(payload: TraceCreate, db: DbDep) -> TraceEvent:
 
 
 @router.get("/intent", response_model=Page[IntentOut])
-def list_intent(db: DbDep, client_id: int | None = Query(default=None)) -> Page[IntentOut]:
+def list_intent(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> Page[IntentOut]:
     q = db.query(IntentSource)
     if client_id is not None:
         q = q.filter(IntentSource.client_id == client_id)
@@ -50,7 +50,7 @@ def list_intent(db: DbDep, client_id: int | None = Query(default=None)) -> Page[
 
 
 @router.post("/intent", response_model=IntentOut, status_code=status.HTTP_201_CREATED)
-def create_intent(payload: IntentCreate, db: DbDep) -> IntentSource:
+def create_intent(payload: IntentCreate, db: OptionalTenantDbDep) -> IntentSource:
     row = IntentSource(**payload.model_dump())
     db.add(row)
     db.commit()
@@ -59,7 +59,7 @@ def create_intent(payload: IntentCreate, db: DbDep) -> IntentSource:
 
 
 @router.get("/candidates", response_model=Page[CandidateOut])
-def list_candidates(db: DbDep, client_id: int | None = Query(default=None)) -> Page[CandidateOut]:
+def list_candidates(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> Page[CandidateOut]:
     q = db.query(DiscoveryCandidate)
     if client_id is not None:
         q = q.filter(DiscoveryCandidate.client_id == client_id)
@@ -68,7 +68,7 @@ def list_candidates(db: DbDep, client_id: int | None = Query(default=None)) -> P
 
 
 @router.post("/candidates", response_model=CandidateOut, status_code=status.HTTP_201_CREATED)
-def create_candidate(payload: CandidateCreate, db: DbDep) -> DiscoveryCandidate:
+def create_candidate(payload: CandidateCreate, db: OptionalTenantDbDep) -> DiscoveryCandidate:
     row = DiscoveryCandidate(**payload.model_dump())
     db.add(row)
     db.commit()
@@ -77,13 +77,13 @@ def create_candidate(payload: CandidateCreate, db: DbDep) -> DiscoveryCandidate:
 
 
 @router.post("/candidates/{candidate_id}/reject", response_model=CandidateOut)
-def reject_candidate(candidate_id: int, db: DbDep) -> DiscoveryCandidate:
+def reject_candidate(candidate_id: int, db: OptionalTenantDbDep) -> DiscoveryCandidate:
     row = get_or_404(db, DiscoveryCandidate, candidate_id, "Candidate")
     return discovery_svc.reject_candidate(db, row)
 
 
 @router.post("/candidates/{candidate_id}/accept", response_model=WorkUnitOut)
-def accept_candidate(candidate_id: int, db: DbDep) -> WorkUnitOut:
+def accept_candidate(candidate_id: int, db: OptionalTenantDbDep) -> WorkUnitOut:
     row = get_or_404(db, DiscoveryCandidate, candidate_id, "Candidate")
     try:
         wu = discovery_svc.accept_candidate(db, row)
@@ -93,7 +93,7 @@ def accept_candidate(candidate_id: int, db: DbDep) -> WorkUnitOut:
 
 
 @router.post("/candidates/{candidate_id}/merge", response_model=CandidateOut)
-def merge_candidate(candidate_id: int, payload: MergeIn, db: DbDep) -> DiscoveryCandidate:
+def merge_candidate(candidate_id: int, payload: MergeIn, db: OptionalTenantDbDep) -> DiscoveryCandidate:
     row = get_or_404(db, DiscoveryCandidate, candidate_id, "Candidate")
     try:
         return discovery_svc.merge_candidate(db, row, payload.work_unit_id)
@@ -102,7 +102,7 @@ def merge_candidate(candidate_id: int, payload: MergeIn, db: DbDep) -> Discovery
 
 
 @router.get("/gaps", response_model=Page[GapOut])
-def list_gaps(db: DbDep, client_id: int | None = Query(default=None)) -> Page[GapOut]:
+def list_gaps(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> Page[GapOut]:
     q = db.query(ConformanceGap)
     if client_id is not None:
         q = q.filter(ConformanceGap.client_id == client_id)
@@ -111,7 +111,7 @@ def list_gaps(db: DbDep, client_id: int | None = Query(default=None)) -> Page[Ga
 
 
 @router.post("/gaps", response_model=GapOut, status_code=status.HTTP_201_CREATED)
-def create_gap(payload: GapCreate, db: DbDep) -> ConformanceGap:
+def create_gap(payload: GapCreate, db: OptionalTenantDbDep) -> ConformanceGap:
     row = ConformanceGap(**payload.model_dump())
     db.add(row)
     db.commit()
@@ -120,13 +120,13 @@ def create_gap(payload: GapCreate, db: DbDep) -> ConformanceGap:
 
 
 @router.post("/gaps/scan", response_model=Page[GapOut])
-def scan_gaps(db: DbDep, client_id: int | None = Query(default=None)) -> Page[GapOut]:
+def scan_gaps(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> Page[GapOut]:
     rows = discovery_svc.scan_gaps(db, client_id=client_id)
     return Page(total=len(rows), items=rows)
 
 
 @router.post("/suggest")
-def suggest(payload: SuggestIn, db: DbDep) -> dict:
+def suggest(payload: SuggestIn, db: OptionalTenantDbDep) -> dict:
     """LLM-assisted candidates, persisted. Deterministic splitter when LLM is off."""
     if payload.persist:
         intent, rows = discovery_svc.persist_intake(

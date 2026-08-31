@@ -144,6 +144,8 @@ class GenerateGenomeOut(BaseModel):
 
     accepted: bool
     version_id: int
+    # Tenant-scoped version number, distinct from the global version_id key.
+    sequence: int
     gqs: float
     work_unit_count: int
     violations: list[dict] = Field(default_factory=list)

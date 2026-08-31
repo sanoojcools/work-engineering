@@ -253,13 +253,14 @@ def import_sample_genome(db: Session, tenant: Client) -> dict:
     if existing is not None:
         return {
             "version_id": existing.id,
+            "sequence": existing.sequence,
             "gqs": existing.gqs_score,
             "accepted": bool(json.loads(existing.gates_passed or "[]")),
             "note": "Already imported for this tenant; not re-imported.",
         }
 
     if not SAMPLE_GENOME_FILE.exists():
-        return {"version_id": None, "gqs": None, "accepted": False,
+        return {"version_id": None, "sequence": None, "gqs": None, "accepted": False,
                 "note": f"Sample genome not found at {SAMPLE_GENOME_FILE}."}
 
     with open(SAMPLE_GENOME_FILE, encoding="utf-8") as handle:
@@ -269,6 +270,7 @@ def import_sample_genome(db: Session, tenant: Client) -> dict:
     result = import_genome(db, tenant.id, genome, actor="demo-bootstrap")
     return {
         "version_id": result["version_id"],
+        "sequence": result["sequence"],
         "gqs": result["gqs"],
         "accepted": result["accepted"],
         "dual_scoring_kappa": SAMPLE_GENOME_KAPPA,

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, status
 
-from ..dependencies import DbDep
+from ..dependencies import OptionalTenantDbDep
 from ..models.economics import CostProfile
 from ..models.workunit import WorkUnit
 from ..schemas.common import Page
@@ -18,7 +18,7 @@ def _out(row: CostProfile) -> CostOut:
 
 
 @router.get("/", response_model=Page[CostOut])
-def list_profiles(db: DbDep, client_id: int | None = Query(default=None)) -> Page[CostOut]:
+def list_profiles(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> Page[CostOut]:
     ids = {u.id for u in units_query(db, client_id).all()} if client_id is not None else None
     rows = db.query(CostProfile).order_by(CostProfile.id).all()
     if ids is not None:
@@ -27,7 +27,7 @@ def list_profiles(db: DbDep, client_id: int | None = Query(default=None)) -> Pag
 
 
 @router.put("/{work_unit_id}", response_model=CostOut)
-def upsert_profile(work_unit_id: int, payload: CostIn, db: DbDep) -> CostOut:
+def upsert_profile(work_unit_id: int, payload: CostIn, db: OptionalTenantDbDep) -> CostOut:
     get_or_404(db, WorkUnit, work_unit_id, "WorkUnit")
     row = db.query(CostProfile).filter(CostProfile.work_unit_id == work_unit_id).one_or_none()
     if row is None:
@@ -43,7 +43,7 @@ def upsert_profile(work_unit_id: int, payload: CostIn, db: DbDep) -> CostOut:
 
 
 @router.get("/{work_unit_id}", response_model=CostOut)
-def get_profile(work_unit_id: int, db: DbDep) -> CostOut:
+def get_profile(work_unit_id: int, db: OptionalTenantDbDep) -> CostOut:
     get_or_404(db, WorkUnit, work_unit_id, "WorkUnit")
     row = db.query(CostProfile).filter(CostProfile.work_unit_id == work_unit_id).one_or_none()
     if row is None:
