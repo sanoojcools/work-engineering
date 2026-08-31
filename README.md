@@ -129,22 +129,21 @@ pip install -r requirements.txt
 # settings read .env from the process working directory — copy it here, or start from repo root with DATABASE_URL set
 copy ..\.env .env               # Windows
 # cp ../.env .env               # macOS/Linux
+
+# Create the schema FIRST — see below. Then serve:
+python -m alembic upgrade head
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Create the schema before first run. It is Alembic-owned — the app no longer calls
-`create_all()`, and it will start against an empty database and fail every request:
+The schema is Alembic-owned: the app no longer calls `create_all()`, so without
+`alembic upgrade head` it starts against an empty database and fails every request.
 
-```bash
-python -m alembic upgrade head
-```
+Alembic connects with `SYSTEM_DATABASE_URL` (the `wep` superuser that owns the tables),
+not `DATABASE_URL` (`wep_app`, the non-superuser the app serves under so that row-level
+security binds it). Migrating as `wep_app` fails with `must be owner of table work_edges`,
+so keep both URLs in your `.env`.
 
-Run this from `backend/`. Alembic connects with `SYSTEM_DATABASE_URL` (the `wep` superuser
-that owns the tables), not `DATABASE_URL` (`wep_app`, the non-superuser the app serves under
-so that row-level security binds it). Running migrations as `wep_app` fails with
-`must be owner of table work_edges`, so keep both URLs in your `.env`.
-
-`docker compose up` runs this step for you before starting the API.
+`docker compose up` runs the migration for you before starting the API.
 
 Seed from `backend/`:
 
@@ -152,7 +151,9 @@ Seed from `backend/`:
 python -m app.seed
 ```
 
-Tests (SQLite in-memory; Postgres not required):
+Tests. Most run on in-memory SQLite, but the RLS and tenant-isolation suites need the real
+Postgres from `docker compose up db` — without it they skip rather than fail, so a green run
+with ~67 skips means those never executed:
 
 ```bash
 pytest
