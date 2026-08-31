@@ -4,9 +4,24 @@ from sqlalchemy import create_engine
 from fastapi.testclient import TestClient
 import pytest
 
+from app.config import settings
 from app.db import Base, get_db, get_system_db
 from app.main import create_app
 import app.models  # noqa: F401
+
+
+@pytest.fixture(autouse=True)
+def _no_live_llm(monkeypatch):
+    """No test may call a model.
+
+    Every LLM-touching path has a deterministic fallback, and that is what the
+    suite asserts on. Without this, a developer with LLM_PROVIDER=anthropic in
+    their .env silently turns `pytest` into something that makes live, billed
+    network calls — it added ~45s and real spend to a local run before this
+    fixture existed, and made results depend on the model's mood.
+    """
+    monkeypatch.setattr(settings, "llm_provider", "none")
+    monkeypatch.setattr(settings, "llm_api_key", "")
 
 engine = create_engine(
     "sqlite://",

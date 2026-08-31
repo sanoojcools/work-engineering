@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { apiFetch, NeedsApiKeyError } from "../../lib/apiFetch";
+import { HR_SAMPLE_ROWS } from "../../lib/scoutSamples";
 import type { ScoutCapturedUnit, ScoutSession } from "../../types";
 
 type DraftUnit = Omit<ScoutCapturedUnit, "id" | "created_at" | "updated_at">;
@@ -33,6 +34,9 @@ export function WorkCaptureGrid({
   const [editingField, setEditingField] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const capturedNames = new Set(session.units.map((u) => u.name.trim().toLowerCase()));
+  const remainingSamples = HR_SAMPLE_ROWS.filter((r) => !capturedNames.has(r.name.toLowerCase())).length;
+
   async function addRow() {
     if (!draft.name.trim()) return;
     setBusy(true);
@@ -43,6 +47,28 @@ export function WorkCaptureGrid({
       });
       onChange(updated);
       setDraft(EMPTY_DRAFT);
+    } catch (err) {
+      if (err instanceof NeedsApiKeyError) onNeedsKey();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Load sample rows. Typing eight rows by hand mid-demo is dead air, and a
+   * half-filled grid can't reach the 100% that unlocks Future Preview. Rows
+   * land through the same POST as a hand-typed one, so the completeness meter
+   * recomputes exactly as it would otherwise — nothing here is faked. */
+  async function loadSamples(count: number) {
+    const existing = new Set(session.units.map((u) => u.name.trim().toLowerCase()));
+    const pending = HR_SAMPLE_ROWS.filter((r) => !existing.has(r.name.toLowerCase())).slice(0, count);
+    if (pending.length === 0) return;
+    setBusy(true);
+    try {
+      let latest = session;
+      for (const row of pending) {
+        latest = await apiFetch.post<ScoutSession>(`/scout/sessions/${session.id}/units`, row);
+        onChange(latest);
+      }
     } catch (err) {
       if (err instanceof NeedsApiKeyError) onNeedsKey();
     } finally {
@@ -67,7 +93,21 @@ export function WorkCaptureGrid({
 
   return (
     <div className="card">
-      <h3>Work Capture Grid</h3>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <h3 style={{ marginBottom: 12 }}>Work Capture Grid</h3>
+        <div className="toolbar" style={{ marginBottom: 12 }}>
+          <button type="button" disabled={busy || remainingSamples === 0} onClick={() => void loadSamples(1)}>
+            Add sample row
+          </button>
+          <button type="button" disabled={busy || remainingSamples === 0} onClick={() => void loadSamples(HR_SAMPLE_ROWS.length)}>
+            {busy ? "Loading…" : `Load all ${HR_SAMPLE_ROWS.length} sample rows`}
+          </button>
+        </div>
+      </div>
+      <p className="hint" style={{ marginTop: -6, marginBottom: 12 }}>
+        Samples are HR &amp; People Ops — the same function as the Client A census. They are saved exactly like
+        typed rows, so the strength meter reflects them honestly.
+      </p>
       <div className="table-wrap" style={{ marginBottom: 12 }}>
         <table>
           <thead>

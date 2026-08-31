@@ -538,6 +538,62 @@ mark { background: #cfe0ee; padding: 0 2px; border-radius: 2px; }
 .graph-edge { stroke: var(--muted); fill: none; }
 .gap-counts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 
+/* ---------- demo setup ---------- */
+.demo-setup { border-left: 3px solid var(--accent); }
+.demo-tenants {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-faint);
+}
+.demo-tenants-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--faint); font-weight: 600;
+}
+.demo-tenants button[aria-pressed="true"] {
+  background: var(--accent-wash);
+  border-color: var(--accent-edge);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+/* ---------- story to structure ---------- */
+.story-chunk {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: 12px 14px;
+  box-shadow: var(--lift-1);
+}
+.story-chunk-quote {
+  font-size: 13px;
+  color: var(--ink-2);
+  font-style: italic;
+  border-left: 2px solid var(--accent-edge);
+  padding-left: 11px;
+  line-height: 1.55;
+}
+.story-chunk-name { font-weight: 620; font-size: 13.5px; margin-bottom: 7px; }
+.story-fields {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 10px;
+  margin: 0;
+  font-size: 12px;
+}
+.story-fields dt {
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+  padding-top: 2px;
+}
+.story-fields dd { margin: 0; color: var(--ink-2); }
+.story-field-empty { color: var(--faint); font-style: italic; }
+@media (max-width: 900px) {
+  .story-chunk { grid-template-columns: 1fr; }
+}
+
 /* ---------- empty + loading states ----------
    A blank region reads as breakage. Every "nothing here" says what would
    put something here. */

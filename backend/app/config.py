@@ -16,10 +16,12 @@ class Settings(BaseSettings):
     system_database_url: str = "postgresql+psycopg2://wep:wep@localhost:5433/wep"
     allowed_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
-    # LLM-assisted discovery
+    # LLM-assisted discovery and Scout story extraction. With provider "none"
+    # (the default) every caller uses its deterministic path — that is a
+    # supported state, not a broken one.
     llm_provider: str = "none"  # anthropic | openai | none
     llm_api_key: str = ""
-    llm_model: str = "claude-sonnet-4-5"
+    llm_model: str = "claude-opus-5"
     llm_base_url: str = "https://api.openai.com/v1"
 
     # P0: pgcrypto symmetric key for field-level PII encryption (pii.py).

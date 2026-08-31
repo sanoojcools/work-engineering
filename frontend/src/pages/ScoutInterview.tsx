@@ -6,7 +6,7 @@ import { DiscoveryPartner } from "../components/scout/DiscoveryPartner";
 import { FuturePreview } from "../components/scout/FuturePreview";
 import { GenomeStrengthMeter } from "../components/scout/GenomeStrengthMeter";
 import { PainHeatmap } from "../components/scout/PainHeatmap";
-import { StoryToStructure } from "../components/scout/StoryToStructure";
+import { StoryToStructure, type StoryChunk } from "../components/scout/StoryToStructure";
 import { TimeTravelReplay } from "../components/scout/TimeTravelReplay";
 import { WorkCaptureGrid } from "../components/scout/WorkCaptureGrid";
 import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
@@ -163,7 +163,7 @@ export default function ScoutInterview() {
         <GenomeStrengthMeter session={session} />
       </div>
 
-      <ElevationModules session={session} onNeedsKey={() => setNeedsKey(true)} />
+      <ElevationModules session={session} onNeedsKey={() => setNeedsKey(true)} onChange={setSession} />
     </div>
   );
 }
@@ -176,8 +176,35 @@ const ELEVATIONS = [
   "Future Preview",
 ] as const;
 
-function ElevationModules({ session, onNeedsKey }: { session: ScoutSession; onNeedsKey: () => void }) {
+function ElevationModules({
+  session,
+  onNeedsKey,
+  onChange,
+}: {
+  session: ScoutSession;
+  onNeedsKey: () => void;
+  onChange: (s: ScoutSession) => void;
+}) {
   const [open, setOpen] = useState<(typeof ELEVATIONS)[number] | null>(null);
+
+  /** An extracted span becomes a real captured unit through the same endpoint
+   * the grid uses — so it is subject to the same completeness recomputation,
+   * and carries no marker claiming it was machine-derived beyond what the
+   * fields themselves say. */
+  async function addExtracted(chunk: StoryChunk) {
+    const created = await apiFetch.post<ScoutSession>(`/scout/sessions/${session.id}/units`, {
+      name: chunk.suggested_name || chunk.text.slice(0, 80),
+      inputs: chunk.inputs ?? "",
+      outputs: chunk.outputs ?? "",
+      systems: chunk.systems ?? "",
+      frequency: chunk.frequency ?? "",
+      pain: chunk.pain ?? "",
+      handoffs: chunk.handoffs ?? "",
+      decision_rule: chunk.decision_rule ?? "",
+      time_minutes: chunk.time_minutes ?? null,
+    });
+    onChange(created);
+  }
 
   return (
     <div style={{ marginTop: 20 }}>
@@ -196,7 +223,7 @@ function ElevationModules({ session, onNeedsKey }: { session: ScoutSession; onNe
             <ContradictionResolver sessionId={session.id} onNeedsKey={onNeedsKey} />
           )}
           {open === "Pain Heatmap" && <PainHeatmap sessionId={session.id} onNeedsKey={onNeedsKey} />}
-          {open === "Story to Structure" && <StoryToStructure onNeedsKey={onNeedsKey} />}
+          {open === "Story to Structure" && <StoryToStructure onNeedsKey={onNeedsKey} onAdd={addExtracted} />}
           {open === "Future Preview" && <FuturePreview sessionId={session.id} onNeedsKey={onNeedsKey} />}
         </div>
       )}

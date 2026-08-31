@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api, errorMessage } from "../api";
 import { CompanyBanner } from "../components/CompanyBanner";
+import { DemoSetup } from "../components/DemoSetup";
 import { LabelWithInfo } from "../components/InfoTooltip";
 import { useCompany } from "../company";
 import { useApi } from "../hooks";
@@ -92,6 +93,8 @@ export default function Overview() {
           </strong>
         </p>
       )}
+
+      <DemoSetup />
 
       <section className="card" data-tour="demo-walk">
         <h3>Colleague walkthrough (10 minutes)</h3>

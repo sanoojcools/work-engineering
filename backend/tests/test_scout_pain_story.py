@@ -127,7 +127,9 @@ def test_story_extraction_deterministic_fallback(real_client, tenant):
     # Guardrail: every chunk is a literal substring of what was said.
     for chunk in body["chunks"]:
         assert chunk["text"] in story
-    assert "no llm configured" in body["note"].lower()
+    # The note must name the reason, so a deterministic split is never mistaken
+    # for extraction. Assert the durable marker, not the prose around it.
+    assert "LLM_PROVIDER=none" in body["note"]
 
 
 @pg_skip

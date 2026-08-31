@@ -8,6 +8,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from ..config import settings
+from . import llm
 from ..models.discovery import (
     CandidateStatus,
     ConformanceGap,
@@ -39,7 +40,7 @@ def suggest_candidates(text: str, origin: Origin) -> list[dict]:
             "current_condition, desired_condition, notes.\n\n" + text
         )
         try:
-            body = _anthropic(prompt) if settings.llm_provider == "anthropic" else _openai(prompt)
+            body = _openai(prompt) if settings.llm_provider == "openai" else llm.complete(prompt)
             items = _parse_candidates(body, origin)
         except Exception:
             items = []
@@ -335,25 +336,6 @@ def wu_suffix(db: Session) -> int:
 
 def _header_only(line: str) -> bool:
     return line.lower() in {"code", "title", "name", "work units"}
-
-
-def _anthropic(prompt: str) -> str:
-    response = httpx.post(
-        "https://api.anthropic.com/v1/messages",
-        headers={
-            "x-api-key": settings.llm_api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-        json={
-            "model": settings.llm_model,
-            "max_tokens": 1024,
-            "messages": [{"role": "user", "content": prompt}],
-        },
-        timeout=30.0,
-    )
-    response.raise_for_status()
-    return response.json()["content"][0]["text"]
 
 
 def _openai(prompt: str) -> str:

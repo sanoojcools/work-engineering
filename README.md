@@ -48,7 +48,9 @@ The frontend proxies `/api` to the backend. Tenant-scoped routes authenticate wi
 
 ## Set up the demo
 
-One command seeds the demo tenants and mints their API keys:
+**In the app:** open http://localhost:5173 and click **Set up the demo** on the Overview page. It seeds both tenants, imports the sample genome, issues the API keys, and signs the browser in — nothing to copy, no terminal. Switching between Client A and Sample Genome Co afterwards is one click from the same panel.
+
+Everything below is the same thing from the command line, if you prefer it:
 
 ```bash
 curl -X POST http://localhost:8000/api/demo/bootstrap
@@ -78,6 +80,22 @@ Two things worth knowing, because both were silent traps:
 - The sample file carries no `dual_scoring_kappa`, and GQS awards that a flat 10 points — so on its own the file scores **84.29 and is blocked**. Bootstrap supplies `0.85` explicitly and reports it. That value is a stated demo input, not a measurement: nothing in this system produces two independent scorings to compute kappa from (see `docs/HONESTY.md`).
 
 `POST /api/demo/bootstrap` returns a credential over an unauthenticated request. It is gated by `DEMO_BOOTSTRAP_ENABLED` (default `true`) — set it to `false` anywhere that is not a throwaway local database.
+
+### Enabling the model (optional)
+
+Scout's **Story to Structure** and Discovery's candidate suggestion use Claude when a key is configured, and fall back to a deterministic splitter when it isn't. Both states are supported; the UI says which one ran.
+
+Add to `.env` (gitignored — never commit a key):
+
+```
+LLM_PROVIDER=anthropic
+LLM_API_KEY=sk-ant-...
+LLM_MODEL=claude-opus-5
+```
+
+Restart the backend. Story to Structure then returns candidate work units with the grid's fields filled in, and **every quoted span is verified to be a literal substring of what was said** — anything the model paraphrased is discarded rather than shown. Fields the transcript doesn't cover come back as "not stated" rather than guessed.
+
+The test suite always runs with the model off (`tests/conftest.py`), so `pytest` never makes billed network calls even with a key in your `.env`.
 
 ### Walking it through
 
