@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { api, getSpecKey } from "./api";
+import { api, getSpecKey, SPEC_KEY_CHANGED } from "./api";
 import type { Page } from "./types";
 
 type WhoAmI = { client_id: number; client_slug: string | null; client_name: string | null };
@@ -48,7 +48,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
   const [keyClientId, setKeyClientId] = useState<number | null>(null);
 
-  function load() {
+  /** `followKey` — a newly pasted key should move the view to that key's
+   * company. RLS scopes every tenant read to it, so staying on the previous
+   * company can only ever render empty. On first load the stored selection is
+   * kept instead, so a deliberate choice survives a refresh. */
+  function load(followKey = false) {
     // Resolve the key's tenant first: it decides the sensible default. Landing
     // on Catalog while the key belongs to Client A meant every tenant-scoped
     // read was correctly filtered to nothing and the whole screen read 0,
@@ -62,9 +66,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       .then(([page, ownedId]) => {
         setClients(page.items);
         setKeyClientId(ownedId);
+        const owned = ownedId && page.items.some((c) => c.id === ownedId) ? ownedId : null;
         setClientIdState((current) => {
+          if (followKey && owned) return owned;
           if (current && page.items.some((c) => c.id === current)) return current;
-          if (ownedId && page.items.some((c) => c.id === ownedId)) return ownedId;
+          if (owned) return owned;
           const firstClient = page.items.find((c) => c.kind === "client");
           return firstClient?.id ?? page.items[0]?.id ?? null;
         });
@@ -74,6 +80,12 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     load();
+    // Pasting a different tenant's key has to re-resolve which company the
+    // session is actually authenticated as; otherwise the switcher keeps
+    // showing the previous tenant and its pages render empty.
+    const onKeyChange = () => load(true);
+    window.addEventListener(SPEC_KEY_CHANGED, onKeyChange);
+    return () => window.removeEventListener(SPEC_KEY_CHANGED, onKeyChange);
   }, []);
 
   useEffect(() => {

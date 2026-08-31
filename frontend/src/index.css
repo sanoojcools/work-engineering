@@ -120,6 +120,34 @@ code {
 .company-new { width: calc(100% - 16px); margin: 0 8px 20px; font-size: 12.5px; }
 .nav .hint { padding: 0 8px; margin-bottom: 16px; }
 
+/* Which tenant the session is authenticated as, and a way to change it —
+   the key banner only ever appears on a 401, so without this there was no
+   route to a second tenant's key from inside the app. */
+.org-key {
+  margin: 0 8px 18px;
+  padding: 9px 10px;
+  background: var(--panel-sunk);
+  border: 1px solid var(--line-faint);
+}
+.org-key-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.org-key-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--faint); font-weight: 600;
+}
+.org-key-edit {
+  padding: 1px 7px; font-size: 11px; box-shadow: none;
+  background: transparent; border-color: var(--line);
+}
+.org-key-status { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+.org-key-status strong { color: var(--ink-2); font-weight: 600; }
+.org-key-bad { color: var(--warn); }
+.org-key-form { display: grid; gap: 6px; margin-top: 7px; }
+.org-key-form input {
+  width: 100%; font-size: 11.5px; padding: 5px 7px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+.org-key-form button { font-size: 12px; padding: 5px 10px; }
+
 .nav a {
   display: block;
   padding: 7px 10px;

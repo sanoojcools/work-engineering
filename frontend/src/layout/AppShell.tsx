@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { OrgKeyControl } from "../components/OrgKeyControl";
 import { ProgressTracker } from "../components/ProgressTracker";
 import { useCompany } from "../company";
 import { api } from "../api";
@@ -61,6 +62,7 @@ export default function AppShell() {
         >
           New company
         </button>
+        <OrgKeyControl />
         {keyMismatch && keyCompany && (
           <p className="hint" style={{ color: "var(--warn)" }}>
             Your API key belongs to <strong>{keyCompany.name}</strong>, so tenant-scoped pages will look

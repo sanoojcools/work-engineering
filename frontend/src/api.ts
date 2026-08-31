@@ -28,6 +28,13 @@ export function errorMessage(err: unknown): string {
 
 const SPEC_KEY = "we-spec-key";
 
+/** Fired when the org key changes, so anything holding key-derived state can
+ * re-resolve it. Without this, pasting a different tenant's key mid-session
+ * left the company switcher on the previous tenant — and the "your key
+ * belongs to another company" warning never appeared, because it is resolved
+ * once on mount. */
+export const SPEC_KEY_CHANGED = "we-spec-key-changed";
+
 export function getSpecKey(): string {
   try {
     return localStorage.getItem(SPEC_KEY) || "dev-spec-key-change-me";
@@ -38,6 +45,7 @@ export function getSpecKey(): string {
 
 export function setSpecKey(value: string): void {
   localStorage.setItem(SPEC_KEY, value);
+  window.dispatchEvent(new CustomEvent(SPEC_KEY_CHANGED));
 }
 
 async function request<T>(path: string, init: RequestInit & { specKey?: string } = {}): Promise<T> {
