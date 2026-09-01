@@ -32,9 +32,31 @@ def work_graph(db: OptionalTenantDbDep, client_id: int | None = Query(default=No
         if e.source_id in ids and e.target_id in ids
     ]
     return {
-        "nodes": [{"id": u.id, "code": u.code, "name": u.name} for u in units],
+        "nodes": [
+            {
+                "id": u.id,
+                "code": u.code,
+                "name": u.name,
+                # Everything below was already captured on the Work Unit —
+                # the diagram just never read it, so a graph of 14 nodes
+                # and 20 edges rendered as identical unlabeled boxes with
+                # no way to tell "Onboarding" from "Offboarding" apart, or
+                # a hub unit from a leaf one, without leaving the page.
+                "business_object": u.business_object_type.name if u.business_object_type else None,
+                "owner": u.owner,
+                "autonomy_level": u.autonomy_level,
+                "verification_method": u.verification_method.value,
+            }
+            for u in units
+        ],
         "edges": [
-            {"id": e.id, "source_id": e.source_id, "target_id": e.target_id, "edge_type": e.edge_type.value}
+            {
+                "id": e.id,
+                "source_id": e.source_id,
+                "target_id": e.target_id,
+                "edge_type": e.edge_type.value,
+                "reason": e.reason,
+            }
             for e in edges
         ],
     }

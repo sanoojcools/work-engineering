@@ -170,8 +170,16 @@ export type SpecCheck = {
 };
 
 export type GraphProjection = {
-  nodes: { id: number; code: string; name: string }[];
-  edges: { id: number; source_id: number; target_id: number; edge_type: string }[];
+  nodes: {
+    id: number;
+    code: string;
+    name: string;
+    business_object: string | null;
+    owner: string;
+    autonomy_level: number;
+    verification_method: string;
+  }[];
+  edges: { id: number; source_id: number; target_id: number; edge_type: string; reason: string }[];
 };
 
 export type AllocationItem = {
