@@ -11,6 +11,10 @@ import HrMap from "./pages/HrMap";
 import HrOps from "./pages/HrOps";
 import NotFound from "./pages/NotFound";
 import OfferDesk from "./pages/OfferDesk";
+import OfferDeskFunctionLeader from "./pages/OfferDeskFunctionLeader";
+import OfferDeskPlayback from "./pages/OfferDeskPlayback";
+import OfferDeskRashmi from "./pages/OfferDeskRashmi";
+import OfferDeskSubFunctionLead from "./pages/OfferDeskSubFunctionLead";
 import Ontology from "./pages/Ontology";
 import Overview from "./pages/Overview";
 import Projections from "./pages/Projections";
@@ -41,6 +45,10 @@ export default function App() {
           <Route path="/discovery" element={<Discovery />} />
           <Route path="/scout/blast-radius" element={<BlastRadius />} />
           <Route path="/scout/offer-desk" element={<OfferDesk />} />
+          <Route path="/scout/offer-desk/function-leader" element={<OfferDeskFunctionLeader />} />
+          <Route path="/scout/offer-desk/sub-function-lead" element={<OfferDeskSubFunctionLead />} />
+          <Route path="/scout/offer-desk/rashmi" element={<OfferDeskRashmi />} />
+          <Route path="/scout/offer-desk/playback" element={<OfferDeskPlayback />} />
           <Route path="/verification" element={<Verification />} />
           <Route path="/spec" element={<Spec />} />
           <Route path="/projections" element={<Projections />} />

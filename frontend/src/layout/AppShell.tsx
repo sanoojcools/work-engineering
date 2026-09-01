@@ -13,6 +13,10 @@ const SECTIONS = [
       ["/hr", "CHRO map"],
       ["/hr/operations", "HR operations"],
       ["/scout/offer-desk", "Offer Desk"],
+      ["/scout/offer-desk/function-leader", "1. Function leader"],
+      ["/scout/offer-desk/sub-function-lead", "2. Sub-function lead"],
+      ["/scout/offer-desk/rashmi", "3. Rashmi"],
+      ["/scout/offer-desk/playback", "Playback"],
     ],
   },
   {
@@ -104,7 +108,7 @@ export default function AppShell() {
           <div key={section.label ?? "root"}>
             {section.label && <div className="nav-section">{section.label}</div>}
             {section.links.map(([to, label]) => (
-              <NavLink key={to} to={to} end={to === "/"} className={({ isActive }) => (isActive ? "active" : "")}>
+              <NavLink key={to} to={to} end={to === "/" || to === "/scout/offer-desk"} className={({ isActive }) => (isActive ? "active" : "")}>
                 {label}
               </NavLink>
             ))}
