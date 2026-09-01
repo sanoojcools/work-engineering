@@ -4,36 +4,49 @@ import { ProgressTracker } from "../components/ProgressTracker";
 import { useCompany } from "../company";
 import { api } from "../api";
 
-/** Grouped so the two halves of the product read as two halves: what Scout
- * captures, then what the specification layer does with it. As one flat list
- * this was eleven equal-weight links, and Genome had no entry at all — the
- * delivery side of the Scout handoff was reachable only by typing a URL. */
 const SECTIONS = [
-  { label: null, links: [["/", "Overview"]] },
+  {
+    label: "V9 path",
+    links: [
+      ["/", "Home"],
+      ["/enterprise", "Enterprise"],
+      ["/hr", "CHRO map"],
+      ["/hr/operations", "HR operations"],
+      ["/scout/offer-desk", "Offer Desk"],
+    ],
+  },
   {
     label: "Capture",
     links: [
       ["/scout/blast-radius", "Function Scope"],
-      ["/scout/offer-desk", "Offer Desk (worked example)"],
       ["/scout/interview/new", "Scout Interview"],
       ["/discovery", "Discovery"],
     ],
   },
   {
     label: "Specification",
-    links: [["/genome", "Genome"], ["/ontology", "Ontology"], ["/work-units", "Work Units"], ["/work-graph", "Work Graph"]],
+    links: [
+      ["/overview", "V8 Overview"],
+      ["/genome", "Genome"],
+      ["/ontology", "Ontology"],
+      ["/work-units", "Work Units"],
+      ["/work-graph", "Work Graph"],
+    ],
   },
   {
     label: "Analysis",
-    links: [["/verdict", "VERDICT"], ["/economics", "Economics"], ["/verification", "Verification"], ["/projections", "Projections"]],
+    links: [
+      ["/verdict", "VERDICT"],
+      ["/economics", "Economics"],
+      ["/verification", "Verification"],
+      ["/projections", "Projections"],
+    ],
   },
   { label: "Integration", links: [["/spec", "Spec API"]] },
 ] as const;
 
 export default function AppShell() {
   const { clients, client, keyClientId, setClientId, reload } = useCompany();
-  // RLS scopes every tenant-read to the key's client, so viewing a different
-  // company renders empty tables that look like missing data. Say so instead.
   const keyMismatch = keyClientId !== null && client !== null && client.id !== keyClientId;
   const keyCompany = clients.find((c) => c.id === keyClientId);
 
@@ -41,7 +54,7 @@ export default function AppShell() {
     <div className="shell">
       <nav className="nav">
         <h1>Work Engineering</h1>
-        <p>V8 · specification layer</p>
+        <p>V9 on V8 · specification layer</p>
         <label className="company-switch">
           <span>Company</span>
           <select
@@ -85,7 +98,7 @@ export default function AppShell() {
           </p>
         )}
         {!keyMismatch && client?.kind === "catalog" && (
-          <p className="hint">Catalog is the test lab. Switch to Client A, then Overview → Prepare Client A HR demo.</p>
+          <p className="hint">Catalog is the test lab. Switch to Client A for the census.</p>
         )}
         {SECTIONS.map((section) => (
           <div key={section.label ?? "root"}>
