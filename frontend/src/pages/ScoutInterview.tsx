@@ -10,7 +10,7 @@ import { StoryToStructure, type StoryChunk } from "../components/scout/StoryToSt
 import { TimeTravelReplay } from "../components/scout/TimeTravelReplay";
 import { WorkCaptureGrid } from "../components/scout/WorkCaptureGrid";
 import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
-import { INTERVIEW_TYPES } from "../types";
+import { INTERVIEW_TYPE_LABELS, INTERVIEW_TYPES } from "../types";
 import type { ScoutSession } from "../types";
 import { Banner, Loading } from "../ui";
 
@@ -33,8 +33,9 @@ function NewSessionForm({
         <label>
           <span>Track</span>
           <select value={type} onChange={(e) => setType(e.target.value as (typeof INTERVIEW_TYPES)[number])}>
-            <option value="founder">Founder</option>
-            <option value="sme">SME</option>
+            {INTERVIEW_TYPES.map((t) => (
+              <option key={t} value={t}>{INTERVIEW_TYPE_LABELS[t]}</option>
+            ))}
           </select>
         </label>
         <label>
@@ -69,7 +70,10 @@ export default function ScoutInterview() {
   // Lifted out of NewSessionForm so a key-banner retry can re-submit the
   // same track/name the interviewer already typed, instead of clearing the
   // form or making them click Start a second time.
-  const [type, setType] = useState<(typeof INTERVIEW_TYPES)[number]>("sme");
+  // Defaults to function_head: the natural first session in the top-down
+  // flow (CHRO/function head -> sub-function lead -> SME) this three-layer
+  // model exists to support.
+  const [type, setType] = useState<(typeof INTERVIEW_TYPES)[number]>("function_head");
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
 
@@ -113,7 +117,7 @@ export default function ScoutInterview() {
     return (
       <div>
         <h2>Scout Interview</h2>
-        <p className="lede">Elevated discovery interview — Founder or SME track, live capture, completeness meter.</p>
+        <p className="lede">Elevated discovery interview — Function Head, Sub-function Lead, or SME track, live capture, completeness meter.</p>
         {needsKey && <ApiKeyBanner onSaved={createSession} />}
         <NewSessionForm
           type={type} setType={setType}
@@ -149,7 +153,7 @@ export default function ScoutInterview() {
       >
         <strong>{session.interviewee_name}</strong>
         <span className="muted">
-          {session.type === "founder" ? "Founder track" : "SME track"} &middot; {session.status.replace("_", " ")}
+          {INTERVIEW_TYPE_LABELS[session.type]} track &middot; {session.status.replace("_", " ")}
         </span>
         <span className="scout-completeness-summary" style={{ marginLeft: "auto", fontSize: 12, color: "var(--muted)" }}>
           You are {session.completeness_pct.toFixed(0)}% to a complete genome

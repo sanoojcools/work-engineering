@@ -1,5 +1,5 @@
 """Scout Elevated V2 PR2: Time-Travel Replay (deterministic timeline) +
-Contradiction Resolver (deterministic founder-vs-SME diff). No LLM in
+Contradiction Resolver (deterministic function-head-vs-SME diff). No LLM in
 either -- see services/scout_timeline.py and services/scout_contradictions.py
 docstrings. Same _make_tenant/pg_skip/cleanup pattern as test_rls_http.py.
 """
@@ -148,16 +148,16 @@ def test_timeline_manual_edit_persists_and_survives_get(real_client, tenant):
 
 
 @pg_skip
-def test_contradiction_detected_between_founder_and_sme(real_client, tenant):
+def test_contradiction_detected_between_function_head_and_sme(real_client, tenant):
     headers = tenant["headers"]
-    founder_sid = real_client.post("/api/scout/sessions", headers=headers, json={
-        "type": "founder", "interviewee_name": "Founder",
+    function_head_sid = real_client.post("/api/scout/sessions", headers=headers, json={
+        "type": "function_head", "interviewee_name": "Function Head",
     }).json()["id"]
     sme_sid = real_client.post("/api/scout/sessions", headers=headers, json={
         "type": "sme", "interviewee_name": "Anjali",
     }).json()["id"]
 
-    real_client.post(f"/api/scout/sessions/{founder_sid}/units", headers=headers, json={
+    real_client.post(f"/api/scout/sessions/{function_head_sid}/units", headers=headers, json={
         "name": "Payroll Run", "systems": "HRIS only", "frequency": "monthly",
     })
     real_client.post(f"/api/scout/sessions/{sme_sid}/units", headers=headers, json={
@@ -187,13 +187,13 @@ def test_contradiction_detected_between_founder_and_sme(real_client, tenant):
 @pg_skip
 def test_no_contradiction_when_answers_agree(real_client, tenant):
     headers = tenant["headers"]
-    founder_sid = real_client.post("/api/scout/sessions", headers=headers, json={
-        "type": "founder", "interviewee_name": "Founder",
+    function_head_sid = real_client.post("/api/scout/sessions", headers=headers, json={
+        "type": "function_head", "interviewee_name": "Function Head",
     }).json()["id"]
     sme_sid = real_client.post("/api/scout/sessions", headers=headers, json={
         "type": "sme", "interviewee_name": "Anjali",
     }).json()["id"]
-    real_client.post(f"/api/scout/sessions/{founder_sid}/units", headers=headers, json={
+    real_client.post(f"/api/scout/sessions/{function_head_sid}/units", headers=headers, json={
         "name": "Onboarding", "systems": "HRIS",
     })
     real_client.post(f"/api/scout/sessions/{sme_sid}/units", headers=headers, json={
@@ -208,7 +208,7 @@ def test_contradictions_isolated_across_tenants(real_client, two_tenants):
     headers_a = two_tenants["headers_a"]
     headers_b = two_tenants["headers_b"]
     f_a = real_client.post("/api/scout/sessions", headers=headers_a, json={
-        "type": "founder", "interviewee_name": "F",
+        "type": "function_head", "interviewee_name": "F",
     }).json()["id"]
     s_a = real_client.post("/api/scout/sessions", headers=headers_a, json={
         "type": "sme", "interviewee_name": "S",

@@ -112,7 +112,7 @@ def test_scout_no_key_401(real_client):
     wrong = {"X-Spec-Key": "not-a-real-key"}
     for headers in (no_header, wrong):
         assert real_client.post("/api/scout/sessions", headers=headers, json={
-            "type": "founder", "interviewee_name": "x",
+            "type": "function_head", "interviewee_name": "x",
         }).status_code == 401
         assert real_client.get("/api/scout/sessions", headers=headers).status_code == 401
 
@@ -199,7 +199,7 @@ def test_unit_cross_session_404(real_client, two_tenants):
 def test_complete_session(real_client, two_tenants):
     headers_a = two_tenants["headers_a"]
     sid = real_client.post("/api/scout/sessions", headers=headers_a, json={
-        "type": "founder", "interviewee_name": "Founder",
+        "type": "function_head", "interviewee_name": "Function Head",
     }).json()["id"]
     completed = real_client.post(f"/api/scout/sessions/{sid}/complete", headers=headers_a)
     assert completed.status_code == 200, completed.text

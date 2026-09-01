@@ -1,8 +1,16 @@
 """Elevation 2: Contradiction Resolver. Deterministic text-diff across a
-founder-type session's units and an sme-type session's units for the same
-client -- no LLM, no sentiment model, just "do these two answers for the
-same-named unit disagree." Confidence is not a measured statistic; see
+function_head-type session's units and an sme-type session's units for the
+same client -- no LLM, no sentiment model, just "do these two answers for
+the same-named unit disagree." Confidence is not a measured statistic; see
 ScoutContradiction.confidence's docstring.
+
+Still exactly two-way (function_head vs sme) after the three-layer
+interview model added sub_function_lead: that pairing is the widest gap --
+strategic account vs. operational account -- and is what this elevation
+was built and tested against. Folding sub_function_lead in (three-way
+comparison, or a middle-tier-vs-either-neighbor comparison) is new scope,
+not requested alongside the rename, and left for a deliberate follow-up
+rather than done implicitly here.
 """
 from __future__ import annotations
 
@@ -29,7 +37,7 @@ def detect_and_upsert(db: Session, client_id: int) -> list[ScoutContradiction]:
         .filter(ScoutInterviewSession.client_id == client_id)
         .all()
     )
-    founder_sessions = [s for s in sessions if s.type == InterviewType.founder]
+    founder_sessions = [s for s in sessions if s.type == InterviewType.function_head]
     sme_sessions = [s for s in sessions if s.type == InterviewType.sme]
     if not founder_sessions or not sme_sessions:
         return []

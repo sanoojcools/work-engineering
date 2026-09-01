@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class SessionCreate(BaseModel):
-    type: str = Field(pattern="^(founder|sme)$")
+    type: str = Field(pattern="^(function_head|sub_function_lead|sme)$")
     interviewee_name: str = Field(min_length=1, max_length=160)
     consent_receipt_id: int | None = None
 

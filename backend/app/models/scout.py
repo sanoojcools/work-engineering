@@ -19,7 +19,25 @@ def _utcnow() -> datetime:
 
 
 class InterviewType(str, enum.Enum):
-    founder = "founder"
+    """Three organizational altitudes an interview session captures at.
+    Unrelated to Work Unit autonomy L1-L6 (services/verdict.py) despite the
+    coincidence of small integers nearby — see docs/Work-Engineering-V8.md
+    Part K, which is why business-object disclosure dropped its own former
+    "L1/L2/L3" labels rather than let three different numbering schemes
+    share notation.
+
+    function_head: strategic (e.g. CHRO) - blast radius, ownership, goals.
+    sub_function_lead: functional (e.g. Head of TA, Head of People Ops) -
+      Work Unit definition, systems, frequency.
+    sme: operational (specialist/operator) - task-level detail, exceptions,
+      time-motion. Unchanged from the original two-track design.
+
+    Renamed from ("founder", "sme") via Alembic ALTER TYPE ... RENAME VALUE
+    (existing rows carry the new label automatically) plus one ADD VALUE
+    for the new middle tier -- see the migration for why a value rename,
+    not a new column, was the right tool here."""
+    function_head = "function_head"
+    sub_function_lead = "sub_function_lead"
     sme = "sme"
 
 
@@ -98,10 +116,10 @@ class ContradictionStatus(str, enum.Enum):
 
 
 class ScoutContradiction(Base):
-    """Elevation 2: founder vs SME truth merge. The design doc keys this on
+    """Elevation 2: function_head vs SME truth merge. The design doc keys this on
     work_unit_id, but nothing here is a real WorkUnit yet (captured units
     stay in draft state until genome generation) -- keyed on unit_name
-    instead, matched case-insensitively across a founder-type and an
+    instead, matched case-insensitively across a function_head-type and an
     sme-type session for the same client. Detected on read (GET
     /contradictions re-scans and upserts), not on every unit write --
     cheap enough at this scale and avoids stale rows if either side's

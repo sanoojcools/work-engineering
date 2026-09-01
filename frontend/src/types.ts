@@ -247,7 +247,17 @@ export const VERDICT_KEYS = [
 ] as const;
 
 // Scout Elevated V2 PR1
-export const INTERVIEW_TYPES = ["founder", "sme"] as const;
+// Three organizational altitudes, not Work Unit autonomy L1-L6 (an
+// unrelated scale — see docs/Work-Engineering-V8.md Part K). function_head
+// (e.g. CHRO): strategic. sub_function_lead (e.g. Head of TA, Head of
+// People Ops): functional. sme: operational — unchanged from the
+// original two-track design.
+export const INTERVIEW_TYPES = ["function_head", "sub_function_lead", "sme"] as const;
+export const INTERVIEW_TYPE_LABELS: Record<(typeof INTERVIEW_TYPES)[number], string> = {
+  function_head: "Function Head",
+  sub_function_lead: "Sub-function Lead",
+  sme: "SME",
+};
 
 export type ScoutCapturedUnit = {
   id: number;

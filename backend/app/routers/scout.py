@@ -265,7 +265,7 @@ def resolve_contradiction(
 def get_pain_heatmap(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> PainHeatmapOut:
     """Design doc scopes this org-wide (?org_id=...); this scopes it to one
     session's units instead, consistent with every other elevation here and
-    simpler to reason about (a founder session naming no systems would
+    simpler to reason about (a function_head session naming no systems would
     otherwise dilute an SME session's real pain signal). See HONESTY.md."""
     session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
     return PainHeatmapOut(**pain_svc.build_pain_heatmap(list(session.units)))

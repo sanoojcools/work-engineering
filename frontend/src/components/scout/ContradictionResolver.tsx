@@ -51,8 +51,9 @@ export function ContradictionResolver({ sessionId, onNeedsKey }: { sessionId: nu
   if (items.length === 0) {
     return (
       <p className="muted" style={{ fontSize: 13 }}>
-        No contradictions found yet — this compares this session against any other founder/SME session for the same
-        company that named the same work unit. Nothing to compare against, or everything agrees.
+        No contradictions found yet — this compares this session against any other Function Head/SME session for the
+        same company that named the same work unit (Sub-function Lead sessions aren't compared yet). Nothing to
+        compare against, or everything agrees.
       </p>
     );
   }
@@ -70,7 +71,7 @@ export function ContradictionResolver({ sessionId, onNeedsKey }: { sessionId: nu
           </div>
           <div className="split" style={{ gridTemplateColumns: "1fr 1fr", marginBottom: 10 }}>
             <div style={{ border: "1px solid var(--line)", padding: 10 }}>
-              <div className="hint" style={{ marginBottom: 4 }}>Founder said</div>
+              <div className="hint" style={{ marginBottom: 4 }}>Function Head said</div>
               <div style={{ fontSize: 13 }}>{c.founder_text}</div>
             </div>
             <div style={{ border: "1px solid var(--line)", padding: 10 }}>
