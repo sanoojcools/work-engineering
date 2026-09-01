@@ -49,7 +49,7 @@ Two gates decide whether anything is trustworthy: **GQS** (Genome Quality Score 
 | `discovery.py` | `/discovery` | `OptionalTenantDbDep` | traces, intent, candidates (+accept/reject/merge), gaps (+scan), `POST /suggest` (LLM or deterministic split) |
 | `economics.py` | `/economics` | `OptionalTenantDbDep` | cost profiles: list, upsert (marks `origin=confirmed`), get |
 | `files.py` | `/files` | `TenantDbDep` | upload (server-sha256, 10MiB cap, csv/xlsx), classify (no-LLM header scorer), map-track-a (deterministic mapper → `import_genome`) |
-| `genome.py` | `/genome` | `TenantDbDep` | import, versions list, gqs, detail, ratify (whole or scoped), L1/L2/L3 business-object drill-down, automation-index |
+| `genome.py` | `/genome` | `TenantDbDep` | import, versions list, gqs, detail, ratify (whole or scoped), business-object drill-down (objects → their work units → full 18-attribute detail), automation-index |
 | `health.py` | `/health` | none | status/version/db_ready |
 | `ontology.py` | `/ontology` | `DbDep` | entity types, entities, entity edges — global, not per-tenant |
 | `org.py` | `/org` | `TenantDbDep` | `GET /whoami`, `POST /keys/rotate` (60-minute grace window) |
@@ -108,7 +108,7 @@ Core tables: `clients`, `entity_types`/`entities`/`entity_edges` (Enterprise Gra
 
 ### 3.5 — Frontend routes (`frontend/src/App.tsx`, all nested in `<AppShell/>`)
 
-`/` Overview · `/ontology` · `/work-units` · `/work-graph` (custom SVG renderer, BFS-rank layout, function-coded nodes, typed/styled edges, hover-focus, zoom/pan) · `/verdict` · `/economics` · `/discovery` · `/verification` · `/spec` · `/projections` · `/scout/interview/:sessionId` (hosts all Scout sub-components) · `/scout` and `/scout/interview` (redirect to `/scout/interview/new`) · `/genome` (version index) · `/genome/:versionId` (GQS header, L1→L2→L3, ratify, Automation Index) · `*` (in-shell NotFound, so an unmatched URL keeps navigation rather than rendering blank).
+`/` Overview · `/ontology` · `/work-units` · `/work-graph` (custom SVG renderer, BFS-rank layout, function-coded nodes, typed/styled edges, hover-focus, zoom/pan) · `/verdict` · `/economics` · `/discovery` · `/verification` · `/spec` · `/projections` · `/scout/interview/:sessionId` (hosts all Scout sub-components) · `/scout` and `/scout/interview` (redirect to `/scout/interview/new`) · `/genome` (version index) · `/genome/:versionId` (GQS header, business-object drill-down, ratify, Automation Index) · `*` (in-shell NotFound, so an unmatched URL keeps navigation rather than rendering blank).
 
 ---
 
@@ -160,7 +160,7 @@ No CI runs any of this automatically, on any branch, at any point in this projec
 
 `POST /api/demo/bootstrap` (gated by `settings.demo_bootstrap_enabled`, must be `false` outside a throwaway local database — it mints a plaintext credential over an unauthenticated request) seeds Client A's 12-unit HR census, provisions a separate **Sample Genome Co** tenant (needed because the shipped sample genome and Client A's seed both define `WU-OFF-03`/`WU-OFF-04`, and `work_units` is unique on `(client_id, code)`), imports the sample genome into it with an explicitly-supplied `dual_scoring_kappa=0.85` (stated as a demo input, not a measurement — nothing in this system produces two independent scorings to compute kappa from), and mints both tenants' first API keys. Idempotent; `?new_keys=true` recovers from a lost key without touching the database by hand.
 
-The frontend's `DemoSetup` component calls this on a single click, stores both tenants' keys, and signs the browser in — no terminal step, no copy-pasted secrets. `OrgKeyControl` in the sidebar shows which tenant the browser is currently authenticated as and offers a one-click switch. Verified this session, from a freshly-created and migrated database, with zero pre-seeded state: setup → sample rows to 100% completeness → live Claude extraction with verbatim verification → tenant switch → ratify → L1→L2→L3 drill → Automation Index, with zero console errors and zero HTTP errors throughout (Playwright-driven, not eyeballed).
+The frontend's `DemoSetup` component calls this on a single click, stores both tenants' keys, and signs the browser in — no terminal step, no copy-pasted secrets. `OrgKeyControl` in the sidebar shows which tenant the browser is currently authenticated as and offers a one-click switch. Verified this session, from a freshly-created and migrated database, with zero pre-seeded state: setup → sample rows to 100% completeness → live Claude extraction with verbatim verification → tenant switch → ratify → business-object drill-down → Automation Index, with zero console errors and zero HTTP errors throughout (Playwright-driven, not eyeballed).
 
 ---
 

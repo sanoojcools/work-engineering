@@ -164,7 +164,7 @@ export default function Genome() {
       {tab === "business-objects" && (
         <div className="split" style={{ gridTemplateColumns: "0.9fr 1.1fr" }}>
           <div>
-            <h3>Business objects (L1)</h3>
+            <h3>Business objects</h3>
             {businessObjects.length === 0 && (
               <Empty
                 title="No business objects"
@@ -196,13 +196,13 @@ export default function Genome() {
             {!selectedBo && businessObjects.length > 0 && (
               <Empty
                 title="Select a business object"
-                hint="Its work units (L2) appear here; open one to see the full 18-attribute contract (L3)."
+                hint="Its work units appear here; open one to see the full 18-attribute contract."
               />
             )}
             {selectedBo && (
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <h3 style={{ margin: 0 }}>{selectedBo} (L2)</h3>
+                  <h3 style={{ margin: 0 }}>{selectedBo}</h3>
                   <button type="button" disabled={busy} onClick={() => void ratifyBo(selectedBo)}>
                     Ratify this object
                   </button>
@@ -231,7 +231,7 @@ export default function Genome() {
 
                 {selectedWu && (
                   <div className="card" style={{ marginTop: 14 }}>
-                    <h3>{selectedWu.id} — {selectedWu.name} (L3)</h3>
+                    <h3>{selectedWu.id} — {selectedWu.name}</h3>
                     <div style={{ fontSize: 13, lineHeight: 1.7 }}>
                       <div><strong>Current → desired:</strong> {selectedWu.current_condition} → {selectedWu.desired_condition}</div>
                       <div><strong>Trigger:</strong> {selectedWu.trigger}</div>

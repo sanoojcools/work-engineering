@@ -196,7 +196,7 @@ RLS on `scout_contradictions` same as the direct-`client_id` tables.
 | GET | `/org/whoami` | Which tenant the presented `X-Spec-Key` belongs to. The UI had no way to know this, so the company switcher could sit on a company the key couldn't read and every tenant-scoped page rendered empty. |
 | POST | `/org/keys/rotate` | Rotates; the old key keeps authenticating for `ROTATION_GRACE_MINUTES`. |
 
-## Genome (Layer 1/2/3, ratify, automation index)
+## Genome (business-object drill-down, ratify, automation index)
 
 | Method | Path | Notes |
 |---|---|---|
@@ -205,9 +205,9 @@ RLS on `scout_contradictions` same as the direct-`client_id` tables.
 | GET | `/genome/{version_id}/gqs` | Score, breakdown, gates passed/failed, `ratified`, and `sequence`. |
 | GET | `/genome/{version_id}` | Full version detail. |
 | POST | `/genome/{version_id}/ratify` | Body `{business_object?, work_unit_ids?, approved, comment}`; requires `gates_passed == ["gqs", "pydantic_validation"]`. |
-| GET | `/genome/{version_id}/business-objects` | L1. Empty for a gate-failed version — `import_genome` only persists `WorkUnit` rows on gate pass. |
-| GET | `/genome/{version_id}/business-objects/{bo_name}/work-units` | L2. |
-| GET | `/genome/{version_id}/work-units/{wu_code}` | L3, full 18 attributes. |
+| GET | `/genome/{version_id}/business-objects` | The distinct business-object set on this version. Empty for a gate-failed version — `import_genome` only persists `WorkUnit` rows on gate pass. |
+| GET | `/genome/{version_id}/business-objects/{bo_name}/work-units` | That business object's Work Units. |
+| GET | `/genome/{version_id}/work-units/{wu_code}` | One Work Unit, full 18 attributes. |
 | GET | `/genome/{version_id}/automation-index` | Metrics, bottleneck view, work-graph edge summary. |
 
 ## Projections (C3)

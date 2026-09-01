@@ -187,7 +187,7 @@ def ratify_genome(version_id: int, payload: RatifyIn, db: TenantDbDep, key: OrgK
 
 @router.get("/{version_id}/business-objects")
 def list_business_objects(version_id: int, db: TenantDbDep, key: OrgKeyDep) -> dict:
-    """Slice 2 PR 2a, L1: progressive disclosure entry point — the wedge
+    """Slice 2 PR 2a: business-object drill-down entry point — the wedge
     pitch ("ratify objects, not 1,116 fields") starts here. `ratified` is
     whole-version only for now (BO-level partial ratification is PR 2b, not
     built yet) — every BO on a ratified version shows true, none show
@@ -216,7 +216,7 @@ def list_business_objects(version_id: int, db: TenantDbDep, key: OrgKeyDep) -> d
 
 @router.get("/{version_id}/business-objects/{bo_name}/work-units")
 def list_work_units_for_business_object(version_id: int, bo_name: str, db: TenantDbDep, key: OrgKeyDep) -> dict:
-    """L2: one Business Object's Work Units, not the full 18-attr drill-down (that's L3)."""
+    """One Business Object's Work Units — not the full 18-attribute drill-down (that's get_work_unit_full below)."""
     get_or_404(db, GenomeVersion, version_id, "GenomeVersion")
     wus = (
         db.query(WorkUnit)
@@ -247,7 +247,7 @@ def list_work_units_for_business_object(version_id: int, bo_name: str, db: Tenan
 
 @router.get("/{version_id}/work-units/{wu_code}")
 def get_work_unit_full(version_id: int, wu_code: str, db: TenantDbDep, key: OrgKeyDep) -> dict:
-    """L3: full 18-attr drill-down. Arrays are reconstructed from the
+    """Full 18-attribute drill-down for one Work Unit. Arrays are reconstructed from the
     joined-string DB columns genome_import.py writes them as — the wire
     contract keeps arrays as arrays even though storage doesn't."""
     get_or_404(db, GenomeVersion, version_id, "GenomeVersion")
@@ -259,9 +259,10 @@ def get_work_unit_full(version_id: int, wu_code: str, db: TenantDbDep, key: OrgK
     if wu is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"WorkUnit {wu_code} not found on version {version_id}")
 
-    # genome.read audited here only (L3, single-record drill-down) — L1/L2
-    # list endpoints are not, on volume grounds (playbook F.2: "only if the
-    # volume is acceptable... document the choice").
+    # genome.read audited here only (single-record drill-down) — the
+    # business-object and work-unit list endpoints are not, on volume
+    # grounds (playbook F.2: "only if the volume is acceptable... document
+    # the choice").
     _audit(db, key.client_id, key.label or f"org_api_key:{key.id}", "genome.read.work_unit", wu_code)
     db.commit()
 

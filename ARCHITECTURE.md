@@ -99,22 +99,40 @@ Denied checks are stored. That is the audit trail; the executor must actually st
 
 ## Backend structure
 
+*(Updated 2026-09-01 — the block below described the five-day Cursor-built prototype and had gone stale the moment the foundation-correction work of the next section replaced it. See `V8-STATE-AND-REFERENCE.md` §5.6 for how that happened and `V8-PRODUCTION-ENGINEERING.md` §4.7 for the general lesson.)*
+
 ```
 backend/app/
-  main.py           FastAPI app, CORS, create_all on startup
+  main.py           FastAPI app, CORS, lifespan startup check (schema is
+                    Alembic-owned — create_all() was removed; a missing
+                    migration fails loudly, not silently)
   config.py         pydantic-settings
-  db.py             SQLAlchemy engine + Session
+  db.py             SQLAlchemy engine + Session — two roles, not one:
+                    wep_app (RLS-bound, per-request) and wep (superuser,
+                    migrations + the handful of legitimately cross-tenant
+                    endpoints)
   models/           ORM (see data model below)
   schemas/          Pydantic request/response
-  services/         VERDICT, economics, promotion, spec, contract, discovery
-  routers/          HTTP, thin
+  services/         VERDICT, GQS, economics, promotion, genome import,
+                    Scout (interview capture + five elevations), spec,
+                    contract, discovery
+  routers/          HTTP, thin — admin, census, clients, consent,
+                    discovery, economics, files, genome, health, ontology,
+                    org, projections, regulatory, scout, spec, verdict,
+                    verification, work_graph, work_units
   seed.py           Order-to-cash census (16 units)
-backend/tests/     SQLite; 18 tests
+backend/alembic/   10 migrations, single head, `alembic check` clean
+backend/tests/     140 tests across 26 files. Pure logic runs on SQLite;
+                    73 of the 140 require a real Postgres (Row-Level
+                    Security is a database behaviour, not something SQLite
+                    can stand in for) and self-skip without one — a green
+                    run with Postgres unreachable is a materially weaker
+                    claim than a green run with it reachable.
 ```
 
 Stack: FastAPI 0.115, SQLAlchemy 2, Postgres 16, sync sessions. Docker image is Python 3.12. Local installs need 3.11 or 3.12.
 
-LLM-assisted `POST /api/discovery/suggest` returns `[]` when `LLM_PROVIDER=none` (import-only).
+LLM-assisted `POST /api/discovery/suggest` and Scout's `POST /scout/extract-from-story` both go through one shared client (`services/llm.py`, Anthropic SDK) and return a deterministic fallback when `LLM_PROVIDER=none` — a fully supported state, not a degraded one.
 
 ## Frontend structure
 
@@ -123,14 +141,18 @@ frontend/src/
   api.ts, hooks.ts, types.ts, ui.ts(x)
   layout/AppShell.tsx
   pages/            Overview, Ontology, WorkUnits, WorkGraph, Verdict,
-                    Economics, Discovery, Verification, Spec, Projections
+                    Economics, Discovery, Verification, Spec, Projections,
+                    Genome, GenomeVersions, ScoutInterview, NotFound
+  components/scout/ DiscoveryPartner, WorkCaptureGrid, GenomeStrengthMeter,
+                    TimeTravelReplay, ContradictionResolver, PainHeatmap,
+                    StoryToStructure, FuturePreview
 ```
 
-React 19 + Vite 6. Dev server proxies `/api` to the backend (`VITE_PROXY_TARGET` in Compose). No separate design system.
+React 19 + Vite 6. Dev server proxies `/api` to the backend (`VITE_PROXY_TARGET` in Compose). No separate design system — one hand-authored stylesheet on ~30 CSS custom properties.
 
 ## Data model overview
 
-Postgres tables (SQLAlchemy `create_all`):
+Postgres tables, Alembic-owned (`backend/alembic/versions/`, single head):
 
 | Table | Role |
 |---|---|
@@ -142,19 +164,26 @@ Postgres tables (SQLAlchemy `create_all`):
 | `trace_events`, `intent_sources`, `discovery_candidates`, `conformance_gaps` | Discovery |
 | `verification_runs`, `autonomy_changes` | G3–G4 |
 | `spec_checks`, `trajectories` | Spec consumption + Layer 3 ingest |
+| `clients`, `org_api_keys` | The tenant boundary and its per-org credentials — neither is RLS-protected (the boundary can't police itself; a key must resolve *before* `app.current_client_id` exists) |
+| `genome_versions`, `review_queue`, `uploaded_files` | Import pipeline: GQS score/gates per version, queued-not-guessed rows, server-hashed file uploads |
+| `work_unit_provenance`, `work_unit_regulatory_links`, `pii_field_values`, `ratifications`, `audit_logs` | Provenance detail, regulatory linkage, encrypted PII, per-object/unit ratification, audit trail |
+| `consent_receipts` | DPDP consent: create/revoke/90-day purge — real and tested; not yet cited by `genome_import.py` (see Part K, K9, in `docs/Work-Engineering-V8.md`) |
+| `scout_interview_sessions`, `scout_captured_units`, `scout_contradictions` | Scout's own capture layer — see Part K |
 
 Work Unit attribute 15 (dependencies) is **not** a scalar; it is the Work Graph. Completeness still requires the other contract fields (`services/contract.py`).
 
 ## Key design decisions
 
 1. **Specification, not execution.** Matches C4. No job runner.
-2. **Postgres for both graphs.** Simpler operations than Neo4j for this prototype; edge types still match F3 / A2.
+2. **Postgres for both graphs.** Simpler operations than Neo4j; edge types still match F3 / A2.
 3. **Authorised vs recommended autonomy.** G4: humans promote; VERDICT and failure rates may only lower the authorised level.
 4. **VERDICT mean bands are ours.** Gates are V8. Treat the uncapped function as replaceable.
-5. **No app-user auth yet.** Spec routes use a shared secret. UI and inventory APIs are open on the local network — fine for a prototype, not for production.
-6. **No Alembic.** Schema is create-on-boot. Destructive model changes need a fresh volume.
-7. **Tests on SQLite.** Runtime is Postgres. Enums and JSON-as-text are kept portable.
+5. **Per-org auth, not per-user.** Every tenant-scoped route authenticates a per-org `X-Spec-Key` (hashed at rest, rotatable) against Row-Level Security, not a shared secret — that gap closed in Slice 3. Per-*user* login (an individual signing in, as opposed to an org's credential) is still not built; see "What is intentionally unfinished" below.
+6. **Alembic-owned schema.** `create_all()` was removed once the RLS migration made the schema's shape load-bearing for tenant isolation, not just convenient. Migrations run as the schema-owning superuser, deliberately distinct from the RLS-bound role the app serves under.
+7. **Two-tier tests.** Pure logic runs on SQLite. Anything RLS depends on runs against real Postgres and self-skips without it — SQLite cannot execute `SET app.current_client_id` at all, so there is no faking this tier.
 
 ## What is intentionally unfinished
 
-Alembic, per-user auth, object-centric ingestion connectors, LLM-as-judge on trajectories, and a live executor that *stops* on a denied Spec check. Those belong under execution, or as later Work Engineering increments, not as a restart of V8.
+Per-user auth (as opposed to the per-org auth that is built), object-centric ingestion connectors, LLM-as-judge on trajectories, and a live executor that *stops* on a denied Spec check. Those belong under execution, or as later Work Engineering increments, not as a restart of V8.
+
+Also genuinely open, found during later verification passes rather than designed-around from the start: a quality gate that checks a dependency reference *exists* but not that the graph it forms is acyclic; a completeness metric that cannot distinguish a Work Unit with no legitimate dependency from one with a missing one. Neither blocks the current demo; both are named precisely, with the evidence, in `V8-PRODUCTION-ENGINEERING.md` §4.5–4.6.

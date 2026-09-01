@@ -73,6 +73,18 @@ Version 8 · August 2026 — Concept document. Every load-bearing claim is marke
   - J2. Twelve research propositions, in priority order of what they would settle
   - J3. Three human capital consequences, and only one of them is usually named
   - J4. What is specified and what has actually been built
+- **K. Scout: The Capture Instrument Actually Built** *(added after the original document — see K's opening note on why it is appended rather than interleaved)*
+  - K1. Scout was specified as a seven-stage flow, and this Part records exactly how far the actual build reached
+  - K2. Scout performs Discovery's downward arm through structured interviews; it does not perform the upward arm
+  - K3. Two interview tracks capture the same primitive from two vantage points, and their disagreement is itself a signal
+  - K4. The Work Capture Grid funnels toward the eighteen-attribute contract without filling all eighteen
+  - K5. Genome Strength measures what a session has captured, not what a genome needs to pass the gate
+  - K6. Five elevations turn one session into five analytical views, each honest about its own mechanism
+  - K7. Generating Work Units from a session reuses the existing import pipeline and faces the same gate without exception
+  - K8. Provenance is honestly declared, not observed — with a direct, structural consequence under the quality gate
+  - K9. Consent is now a real, auditable, revocable object, and is not yet load-bearing
+  - K10. The fifteen No-Cracks Gates, revisited against what Scout capture actually added
+  - K11. What was specified and, precisely, still is not built
 - Conclusion
 - Annexure A: How To Read This Document
 - Annexure B: Changes From Version 7
@@ -99,6 +111,7 @@ The parts run in the order the concepts depend on each other. A reader who wants
 | H. Allocation and economics | VERDICT, the autonomy derivation, the two boundaries, and the four costing disciplines | Depends on verification being understood first |
 | I. Position | Prior art, what the literature already settles, the evidence for and against, and the claim register | The argument is complete by here and can now be tested |
 | J. What to do | The wedge, the twelve research propositions, the human capital consequences, and what is built | The reader can now act |
+| K. Scout | The concrete instrument that performs Part D's discovery function through structured interviews — what it was specified to do (a seven-stage flow, fifteen gates) against what actually shipped | Added after the original document, once Scout was built. Placed after J rather than interleaved after D so no existing part's letter has to be renumbered — every cross-reference elsewhere in this document, and in the built system's own docs, cites these letters directly |
 
 > So what: the Work Unit appears in Part E, not Part A. That is deliberate. It is the primitive of a discipline, and a reader needs to know what it is the primitive of before the definition is any use.
 
@@ -854,6 +867,106 @@ Examples (full list in PDF Annexure):
 
 | Execution connectors | Not built: spec consumed via API mock |
 
+> Part K documents Scout, the concrete instrument later built to perform this Part's own Discovery function (D1's downward, declared arm) through structured interviews. It records its own specified-vs-built ledger, in the same honest register as the table above.
+
+
+---
+
+## PART K — SCOUT: THE CAPTURE INSTRUMENT ACTUALLY BUILT
+
+**A note on how this Part came to exist.** Parts A–J are the original Version 8 concept document. Scout — the interview-based capture instrument that performs Part D's discovery function in practice — was designed and built afterward, in a separate but disciplined effort with its own dated planning documents (`Scout-Reference.md`, `Scout-Enhanced-Vision.md`, `Scout-State.md`, `SCOUT_AMBITIOUS_PLAN.md`, `SCOUT_OPERATING_PLAYBOOK.md`) and its own honesty ledger (`docs/HONESTY.md`, `docs/API.md`). This Part folds that record into this document, at the request that this concept document's coverage should not stop at the specification/allocation half of what was actually built while leaving the capture half undocumented here.
+
+It is placed **after Part J, not interleaved after Part D** where it belongs pedagogically. This is a deliberate, non-cosmetic choice: Parts E through J are cross-referenced by letter — by this document itself (A2, A3, D1, E3, E7, F3, G3, G4, G6, H2, and others), and independently by the built system's own documentation (`ARCHITECTURE.md`, `docs/HONESTY.md`, `SCOUT_OPERATING_PLAYBOOK.md` all cite these letters directly). Inserting a lettered part in the middle would force renumbering every part after it and silently break every one of those external citations. Appending avoids that at the cost of reading slightly out of dependency order — a trade this document's own Annexure A convention (declare a convention explicitly, then follow it) supports making openly rather than silently.
+
+**Evidence tags for this Part.** Parts A–J tag claims `Established | Design Decision | Hypothesis | Open Question` — the register for a paper proposing something. This Part is a record of what was built, not a proposal, so it uses the register Part J4 already introduced for exactly this purpose: **Built** (a real, exercised code path proves it — cited to the router, service, or test that proves it), **Specified, not built** (named in a planning document; no implementation exists), **Design decision** (built, but the specific shape taken was a choice, not dictated by the original design), and **Superseded** (a planning document's own claim about status has since become false — stated in both directions, since some claims moved from "not built" to "built" and it matters which).
+
+Every citation below traces to a specific dated file or a specific tested code path — nothing here is reconstructed from general impression of what a system like this "would" do.
+
+### K1. Scout was specified as a seven-stage flow, and this Part records exactly how far the actual build reached
+
+`Scout-Reference.md` (26 August 2026) audited the original planning docs' seven-stage design — Founder interview → Function Leader interview → SME interview + consent → bulk ingest → the "Scout Engine" pipeline → playback and ratification → WEP handoff — against the code that existed that day, and found the first three stages entirely unbuilt. Two build efforts since then (the file-upload/classifier work of Slice 1, and Scout Elevated V2's interview capture, PR1 and PR2–4) changed that picture substantially, in ways that do not line up cleanly with the original seven stages — a real capability now exists for most of them, but rarely shaped exactly as specified.
+
+| Stage | Status, 26 Aug 2026 (`Scout-Reference.md`) | Status now |
+|---|---|---|
+| 1. Founder Why | Not built | **Built, differently framed.** A founder-track interview session (`ScoutInterviewSession.type = "founder"`) exists and feeds the same Work Capture Grid every track uses (K4) — not a dedicated narrative-capture flow distinct from the grid. |
+| 2. Function Leader Inferred v1 Playback | Not built — no question bank, no interview capture | **Partially built, differently shaped.** `DiscoveryPartner` is a real, static, hand-written question bank per track (founder/SME) — not the Function Pack SDK's dynamically-loaded, pack-specific bank the original design specified, and not AI-generated or adaptive (K11). No distinct "v1 Playback" stage exists as such. |
+| 3. SME Detailed v2 | Not built — no transcript capture, no consent-receipt creation flow | **Substantially built, not fully wired.** SME-track sessions capture real structured data, not a transcript (K4). Consent receipts are now real and revocable (K9) — but a session does not require one, and the genome-import pipeline does not yet read the one a session might cite. |
+| 4. Bulk Ingest | Not built. No file-upload endpoint exists anywhere | **Built — on the specification side, not through Scout.** `POST /files/upload` (server-computed SHA-256, CSV/XLSX, 10 MiB cap) exists, feeding a deterministic classifier and column mapper into the same import pipeline. This satisfies "bulk ingest exists"; it is a separate entry point from Scout's interview flow, not bulk ingest performed *through* Scout. |
+| 5. Scout Engine | Partially built: GQS + Pydantic + DB write proven; no classifier, no Two-Track mapping, no F1 split, no dedup | **The classifier now exists, on the specification side; F1 split and dedup still do not, anywhere.** No code inspects an incoming Work Unit for more than one business object or authority and splits it; no dedup key computation exists (K11). |
+| 6. Playback 1/2 + Ratification | Partially built: whole-version ratify only; no `GET /business-objects`, no BO-level partial approval | **Built as specified.** Business-object progressive disclosure (`GET /business-objects`, then `.../work-units`, then `.../work-units/{code}` for the full 18-attribute detail) plus business-object-scoped and work-unit-scoped partial ratification both ship. |
+| 7. WEP Handoff | Built for the JSON-body path; `X-Spec-Key` enforced for the genome router only | **Built, and materially wider.** Per-org `X-Spec-Key` now covers work-units, spec, census, files, org, consent, and scout — not the genome router alone — with an HTTP-proven cross-tenant isolation matrix, not just that one router's own tests. |
+
+> So what: reading this table left to right, Scout capture (stages 1, 3) and specification-side hardening (stages 4, 6, 7) both moved a great deal — but stage 2's actual gate, a dynamically loaded, pack-driven question bank, did not, and stage 5's F1 split/dedup did not. A reader should not infer "Scout Engine is basically done" from "a lot of adjacent things got built" — K10 and K11 make the remaining gap precise rather than leaving it implied by the table's overall positive tone.
+
+### K2. Scout performs Discovery's downward arm through structured interviews; it does not perform the upward arm
+
+Part D1 names two directions for discovery: upward, empirically, from execution traces (logs, tickets, ERP events); and downward, from declared intent (policy, SOPs, job descriptions). Scout is built entirely as an instrument for the second — a consent-scoped, structured interview that captures a subject-matter expert's or founder's own declared account of their work, one session at a time. No trace-mining, log-ingestion, or ERP-connector code exists anywhere in the system Scout is part of; D1's upward arm remains, for this build, unimplemented regardless of what Scout does. This is a scope statement, not a shortfall relative to what Scout itself was ever asked to do.
+
+### K3. Two interview tracks capture the same primitive from two vantage points, and their disagreement is itself a signal
+
+A session is typed `founder` or `sme` at creation. Both tracks write into the same Work Capture Grid and are held to the same completeness measure (K5) — the distinction is whose account is being captured, not a different data shape. This design decision is what makes K6's Contradiction Resolver possible at all: because the same underlying work can be described independently by a founder and by the person who actually does it, a disagreement between the two sessions on the same named unit's systems, frequency, or inputs is real, structured signal about where declared intent and lived practice diverge — the same conformance-gap idea Part D3 names, operating between two *declared* accounts rather than between declared and observed.
+
+### K4. The Work Capture Grid funnels toward the eighteen-attribute contract without filling all eighteen
+
+A captured unit carries nine fields: `name` (required) and eight optional ones — `inputs`, `outputs`, `systems`, `frequency`, `time_minutes`, `pain`, `handoffs`, `decision_rule`. This is a real, live-editable, inline-updatable record per unit — not a transcript to be parsed later. It is honestly a smaller set than Part E3's eighteen: several required contract attributes the grid never asks for at all — `trigger`, `actor_constraints`, `acceptance_criteria`, `evidence_required`, `failure_semantics` — receive one literal, honest placeholder string when a session is mapped forward into a genome (K7), rather than fabricated content inferred from what was captured. **Design decision**, stated in the mapping code's own documentation, and consistent with Part E7's provenance discipline: a placeholder that says plainly "not captured by this instrument" is not the same claim as a guessed value that happens to look plausible.
+
+### K5. Genome Strength measures what a session has captured, not what a genome needs to pass the gate
+
+Completeness ("Genome Strength" in the interview UI) is a distinct measure from both E3's machine-readability test and from GQS (K8) — it exists to tell an interviewer, live, how close *this session* is to a usable capture, not whether the resulting genome will clear the import gate. It has eight dimensions, not the eighteen contract attributes: one is "Work Units Captured," measured against a published constant (`EXPECTED_UNITS_PER_SESSION = 8`, in the same spirit as the automation-index's own bus-factor constants — a stated threshold, not one invented ad hoc for this document); six more are each grid field's per-unit fill rate; the eighth, "Knowledge Artifacts" (policies, job descriptions, or papers linked to the session), has no real backing field yet and is honestly reported `computed: false` rather than a fabricated `0%` — the overall percentage averages only the seven dimensions that are actually computed. **This is the original design doc's own formula, corrected.** The doc specified completeness as captured-over-expected, with "expected" derived from a job description or execution-log baseline; no such ingestion exists, so the published constant substitutes for it, documented as exactly that substitution rather than silently presented as the original formula.
+
+### K6. Five elevations turn one session into five analytical views, each honest about its own mechanism
+
+Each of the five "elevations" over a session's captured data has a real, specific mechanism — never a placeholder, and never inflated beyond what it actually does:
+
+| Elevation | Real mechanism | Explicitly not claimed |
+|---|---|---|
+| Time-Travel Replay | Deterministic 09:00–18:00 scheduling arithmetic: units sorted by daily minutes, packed into the window; `frequency` text converts to a daily-minutes figure by a stated rule (day as-is, week ÷5, month ÷22) | Not a prediction or a simulation — a packing calculation over what was already captured |
+| Contradiction Resolver | Plain text diff between a founder-session unit and an SME-session unit sharing a name, across three fields (systems, frequency, inputs); `confidence` is fixed at 1.0 by construction | Not a measured confidence statistic — the field name is honest about what it computes, not what it might imply |
+| Pain & Automation X-Ray | A fixed keyword-weight lookup over the free-text `pain` field, capped at five matches; automation-potential is each system's share of total captured daily minutes | Not sentiment analysis, and not a modeled estimate of automatability |
+| Story to Structure | With an LLM configured: real extraction, with every returned span checked against the source transcript and discarded if it is not a literal substring. Without one: a deterministic sentence-splitter, and the response states plainly which path ran (`used_llm`) | The model's structured-field readings are labelled as a reading, not a quote; a field the transcript does not cover returns empty, never guessed |
+| Future Preview | Pure derivation from the other four elevations' output; unlocks at `completeness_pct >= 100`; reuses the pain-heatmap total for its time-saved figure rather than a separate estimate | No new inference of its own — and, by deliberate choice stated in the UI copy itself, no confetti or other completion flourish the original design called for, to match the product's existing minimal-motion style |
+
+### K7. Generating Work Units from a session reuses the existing import pipeline and faces the same gate without exception
+
+"Generate V8 Work Units" (Future Preview's payoff) calls the same `import_genome` orchestration any other genome import uses — there is no second, Scout-specific writer. This is a **design decision** worth stating as plainly as the rest of this document states its own: Scout does not get a relaxed gate for being the product's own capture instrument. A thin, fully-complete-by-Genome-Strength session predictably scores low under GQS and is correctly blocked — verified live at an eight-unit, 100%-Genome-Strength session scoring GQS 30, with no gates passed — because K4's placeholder attributes and K8's honest provenance labeling both weigh against it structurally. The product's own demo narrative states this outcome as the intended one, not a shortcoming to route around: Scout gets a structured, honestly-labelled draft to the gate; the gate is what tells you whether it is document-backed enough to trust.
+
+### K8. Provenance is honestly declared, not observed — with a direct, structural consequence under this implementation's own quality gate
+
+Every Work Unit a Scout session produces carries `provenance.source_type: "declared"` under Part E7's own four-way taxonomy (observed / declared / inferred / designed) — an interview account is, honestly, a declared account, not an observed one, whatever its accuracy. This implementation's own quality gate (GQS — introduced in the planning docs that sit alongside this one, not itself part of the original V8 text; it operationalizes E3's machine-readability test and E7's provenance distinction into a single pre-write score) weights the `observed` share of a genome at 40% of the total score. The consequence is structural, not incidental: **any Scout-only genome is capped well under the gate threshold by construction**, regardless of how complete or well-captured the underlying session is. This is the single most important thing to understand about what Scout produces versus what a document-backed import produces, and it is presented in the product's own documentation as a finding to state plainly, not a defect to quietly work around.
+
+### K9. Consent is now a real, auditable, revocable object — and is not yet load-bearing
+
+A session may optionally cite a `consent_receipt_id` at creation. Consent receipts themselves are real: created, listed, revoked, and swept by an automated purge job that tombstones anything past its stated retention window, all tenant-isolated the same way a Work Unit is. What is not yet built is the connection between the two: `genome_import.py` still hardcodes `consent_receipt_id=None` on every Work Unit it writes, so a unit's origin cannot yet be traced back to the consent that authorized capturing it, and nothing currently *requires* a session to cite a receipt at all. **Both halves are independently real and independently tested; the join between them is the open piece**, named exactly this way in the product's own honesty ledger rather than left for a reader to discover by trying it.
+
+### K10. The fifteen No-Cracks Gates, revisited against what Scout capture actually added
+
+`Scout-Reference.md`'s 26 August audit scored fifteen gates from the planning docs against the code of that day: one fully live, roughly six partially live, roughly eight specified only. Six of those fifteen have since changed status because of the work this Part documents; the other nine have not, and are not re-litigated here — see that file for the full original table, and `docs/HONESTY.md` for the current status of every gate.
+
+| # | Gate | 26 Aug 2026 | Now |
+|---|---|---|---|
+| 1 | Founder why captured | Not built — no capture mechanism | **Built** — founder-track sessions exist (K1, K3) |
+| 3 | ≥2 SME transcripts with consent receipt | Not built — no transcript capture, `consent_receipts` unused | **Partially live** — SME-track capture and consent receipts are each real; they are not yet linked (K9) |
+| 4 | Bulk attachments, Observed provenance + sha256 | Not built — no file-upload path | **Built** — via the specification-side file-upload path (K1, stage 4), not through Scout's interview flow |
+| 12 | Ratification by manager, BO-level + partial WU | Partially live — whole-version only | **Live** — business-object-scoped and work-unit-scoped partial ratification both ship |
+| 14 | PII classification + consent receipt + encryption + redaction | Partially live — consent-receipt creation not built | **Live** for classification/encryption/redaction (unchanged) and now also for consent-receipt creation/revocation/purge — still not gate-*enforcing*, per gate 3 |
+| 15 | RLS tenant isolation, two orgs cannot read each other | Live and proven — automated regression test not yet written | **Live, proven, and now regression-tested** — a real two-tenant HTTP matrix, not a manual check |
+
+Gate 2 is worth restating precisely rather than left implied by the table above reading as broadly positive: a real question bank now exists (K1, stage 2), but it is the static, hand-written kind the original audit explicitly distinguished from the gate's actual requirement — a dynamically-loaded, pack-specific bank. Building *a* question bank did not build *that* gate. K11 names this, and everything else in the same category, precisely.
+
+### K11. What was specified and, precisely, still is not built
+
+Stated once, plainly, so nothing here has to be inferred from a table's overall tone:
+
+- **A Function Pack SDK** — a loadable ontology + question bank + regulatory stubs + parser hints + verdict anchors per business function, with a CLI. No `pack.json`, no loader, no `scout pack validate` command exists anywhere in the codebase.
+- **Adaptive, AI-generated interview follow-up questions.** `DiscoveryPartner`'s question bank is static and hand-written per track; nothing adjusts a question based on a prior answer.
+- **Live "words become structure" extraction as a general interview experience.** Real extraction exists only at the Story to Structure elevation specifically, and only when a model is configured (K6); it is not how the rest of the interview UI behaves.
+- **The F1 split rule and a dedup engine.** No code inspects an incoming Work Unit for more than one business object, authority, or verification method and splits it; no cross-file or cross-session dedup key computation exists.
+- **A dedicated pain-signals table.** The original design specified one as optional; it was not created — pain is derived on read from the captured units already stored, at no schema cost for skipping it.
+- **DFS cycle detection on the Work Graph.** Unrelated to Scout capture specifically, but worth naming here because a genome Scout produces is exactly the kind of data this would need to check — the underlying gate validates that a dependency reference *exists*, not that the graph it forms is acyclic.
+- **Consent as a required, gate-enforced precondition of capture** (K9) — the receipt exists and works; nothing yet requires one.
+
+> So what, for the whole of Part K: Scout is a real, tested, honestly-labelled instrument for one specific job — turning a structured interview into a draft genome that the same uncompromising gate every other genome faces will evaluate on its own terms. It is not the seven-stage, pack-driven, adaptively-questioning discovery engine the original vision described, and this Part's own tables say exactly where the two diverge rather than letting the space between "a lot got built" and "everything got built" go unstated.
+
 
 ---
 
@@ -866,6 +979,8 @@ Without it, adding intelligence produces more output and less assurance. With it
 
 
 The primitive is small: one accountable commitment to move one business object from one condition to another, with evidence. The discipline around it is what makes scale trustworthy.
+
+Scout (Part K) is what turns that primitive into a practical starting point rather than a purely aspirational one: a real, tested instrument for capturing declared work through structured interviews, honestly labelled as declared rather than observed, and held to the same uncompromising gate as any other genome. It is the concrete answer to Part D's downward arm, built after this document and recorded here against exactly what it was specified to do — not a claim that discovery's upward arm, or the pack-driven vision the original design described, are finished.
 
 
 ---
@@ -955,6 +1070,18 @@ The primitive is small: one accountable commitment to move one business object f
 - **Sustaining Work Unit:** Ongoing commitment requiring interval verification (e.g., customer retention)
 
 - **Rule Debt:** Accumulation of agent rules without governance redesign, grows superlinearly (Hydari & Muzaffar 2026)
+
+- **Scout:** The interview-based instrument that performs Discovery's downward, declared arm (Part K). Not a separate product from Work Engineering — its output feeds the same import pipeline and quality gate any other genome faces.
+
+- **Work Capture Grid:** The live, structured, inline-editable record a Scout session fills — nine fields per unit (K4), a smaller set than the eighteen-attribute contract.
+
+- **Genome Strength:** The Scout interview UI's live completeness measure (K5) — distinct from both the eighteen-attribute machine-readability test (E3) and GQS (below); tells an interviewer how close a session is to a usable capture, not whether the resulting genome will pass the gate.
+
+- **Elevation:** One of five analytical views Scout builds over a session's captured data — Time-Travel Replay, Contradiction Resolver, Pain & Automation X-Ray, Story to Structure, Future Preview (K6). Each has a real, specific, honestly-scoped mechanism.
+
+- **GQS (Genome Quality Score):** This implementation's own pre-write quality gate, introduced in the planning docs alongside this one rather than in the original V8 text — an operationalization of E3 (machine-readability) and E7 (provenance) into a single score a genome must clear before any of its Work Units are written (K8).
+
+- **Consent Receipt:** An auditable, revocable, time-bounded record of a data subject's consent that a Scout session may cite (K9) — real and independently tested, not yet a required or gate-enforced precondition of capture.
 
 
 ## ANNEXURE E — REFERENCES
