@@ -8,7 +8,7 @@ Concept: [Work-Engineering-V8.md](Work-Engineering-V8.md) (now including Part K,
 
 ## In one sentence
 
-Work Engineering is a specification layer (Work Units, VERDICT autonomy scoring, a GQS quality gate, five projections, a Spec API) fused with Scout, its capture layer (structured founder/SME interviews, a live Work Capture Grid, five analytical elevations, LLM-optional extraction with an enforced verbatim guarantee) — one multi-tenant, Row-Level-Security-isolated product, demoable end to end with one click and no terminal step.
+Work Engineering is a specification layer (Work Units, VERDICT autonomy scoring, a GQS quality gate, five projections, a Spec API) fused with Scout, its capture layer (a CHRO blast-radius grid that scopes a census across a 44-sub-function HR catalog, structured three-layer interviews — Function Head, Sub-function Lead, SME — a live Work Capture Grid, five analytical elevations, LLM-optional extraction with an enforced verbatim guarantee) — one multi-tenant, Row-Level-Security-isolated product, demoable end to end with one click and no terminal step.
 
 This repo remains the **specification layer** (V8 C4). It does not log an individual person in, connect to a real ERP, or execute work.
 
@@ -33,9 +33,10 @@ V8 alignment: **C3** (five projections of one record), **C4** (spec, not executi
 1. Open the app. Click **Set up the demo** on Overview — one click, no terminal, no copy-pasted keys.
 2. Overview: real numbers for Client A (work units, VERDICT L4+ drafts, attributed hours, FTE) — banner states plainly that VERDICT and hours are drafts until confirmed.
 3. Work Units → Discovery → Projections → VERDICT: the specified, verifiable inventory (V8's C-through-H core).
-4. Scout Interview: start a session, load the sample rows (or type your own), watch the Genome Strength meter climb, tour the five elevations, try Story to Structure against a live model if `LLM_PROVIDER=anthropic` is configured.
-5. Future Preview → Generate V8 Work Units: watch it score low and get blocked — a Scout-only genome is *structurally* capped under GQS's 90-point gate (declared, not observed, provenance), stated as the intended behaviour, not a bug.
-6. Switch to Sample Genome Co (one click from the sidebar). Open its genome: ratify, drill business objects → work units → full 18-attribute detail, read the Automation Index.
+4. Function Scope: the function-agnostic selector (HR active/detailed; Finance/Legal/Sales/Operations honestly marked "coming soon", no fabricated data behind them) and the CHRO blast-radius grid — 44 HR sub-functions across 6 clusters, check what's in scope, name an owner, set a priority, watch the live meter, then Start interview hands the sub-function and owner name off to a new Scout session.
+5. Scout Interview: start a session (Function Head, Sub-function Lead, or SME track), load the sample rows (or type your own), watch the Genome Strength meter climb, tour the five elevations, try Story to Structure against a live model if `LLM_PROVIDER=anthropic` is configured.
+6. Future Preview → Generate V8 Work Units: watch it score low and get blocked — a Scout-only genome is *structurally* capped under GQS's 90-point gate (declared, not observed, provenance), stated as the intended behaviour, not a bug.
+7. Switch to Sample Genome Co (one click from the sidebar). Open its genome: ratify, drill business objects → work units → full 18-attribute detail, read the Automation Index.
 
 Do not treat any inferred VERDICT score, attributed FTE, or GQS score as more certain than the app itself states it to be.
 
@@ -44,12 +45,13 @@ Do not treat any inferred VERDICT score, attributed FTE, or GQS score as more ce
 ## What is real right now (see `docs/HONESTY.md` for the full, continuously-updated ledger)
 
 - Multi-tenant RLS isolation, per-org key rotation, server-computed file-hash upload, a deterministic (no-LLM) classifier and column mapper, partial genome ratification, the Automation Index's graph-edge detectors, consent receipts with a 90-day purge sweep.
-- Scout: founder/SME interview sessions, a live Work Capture Grid, a completeness ("Genome Strength") meter, all five elevations with real (if simple) named mechanisms, LLM-optional extraction with an enforced verbatim-substring guarantee.
+- Scout: three-layer interview sessions (Function Head, Sub-function Lead, SME), a live Work Capture Grid, a completeness ("Genome Strength") meter, all five elevations with real (if simple) named mechanisms, LLM-optional extraction with an enforced verbatim-substring guarantee.
+- CHRO blast-radius grid: a published 44-sub-function/6-cluster HR catalog, tenant-scoped in-scope/owner/priority selections, a live blast-radius meter, and a function-agnostic selector — HR is active and detailed, Finance/Legal/Sales/Operations are honest "not built" placeholders with no catalog or data behind them.
 - Generating Work Units from a Scout session reuses the *same* import pipeline and faces the *same* GQS gate as any other genome — no relaxed path for the product's own capture instrument.
 
 ## What is not built, named precisely
 
-A Function Pack SDK; adaptive, AI-generated interview follow-up questions (the question bank is static and hand-written); trace/log/ERP-based upward discovery (Scout captures declared intent only); a dedup/split engine for malformed imports; cycle detection on the Work Graph's dependency edges; consent as a required, gate-enforced precondition of capture; per-user login; CI of any kind. See `docs/Work-Engineering-V8.md` Part K11 and `V8-PRODUCTION-ENGINEERING.md` §4 for the full, evidenced list.
+A Function Pack SDK; adaptive, AI-generated interview follow-up questions (the question bank is static and hand-written); trace/log/ERP-based upward discovery (Scout captures declared intent only); a dedup/split engine for malformed imports; cycle detection on the Work Graph's dependency edges; consent as a required, gate-enforced precondition of capture; per-user login; CI of any kind; a real sub-function catalog for Finance, Legal, Sales, or Operations (the selector shows them as placeholders, not fabricated lists); automatic cascade from a CHRO's blast-radius selection into created interview sessions (Start interview pre-fills the create form — it does not create sessions on its own). See `docs/Work-Engineering-V8.md` Part K11 and `V8-PRODUCTION-ENGINEERING.md` §4 for the full, evidenced list.
 
 ## What not to promise
 

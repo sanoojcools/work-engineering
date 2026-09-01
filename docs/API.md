@@ -130,7 +130,7 @@ Requires `X-Spec-Key` (per-org). `scout_interview_sessions` and `scout_captured_
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/scout/sessions` | Body: `{ type: "founder"\|"sme", interviewee_name, consent_receipt_id? }`. Returns the session with 8 completeness dimensions (all zero, no units yet). Audits `scout.session.create`. |
+| POST | `/scout/sessions` | Body: `{ type: "function_head"\|"sub_function_lead"\|"sme", interviewee_name, consent_receipt_id? }`. Returns the session with 8 completeness dimensions (all zero, no units yet). Audits `scout.session.create`. |
 | GET | `/scout/sessions` | List own org's sessions. |
 | GET | `/scout/sessions/{id}` | `404` if the session belongs to another org. |
 | POST | `/scout/sessions/{id}/units` | Body: `{ name, inputs?, outputs?, systems?, frequency?, time_minutes?, pain?, handoffs?, decision_rule? }`. Appends a Work Capture Grid row, recomputes and stores `completeness_pct`. Audits `scout.unit.create`. |
@@ -155,14 +155,14 @@ RLS on `scout_contradictions` same as the direct-`client_id` tables.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/scout/contradictions?session_id=` | Re-scans on every call (`services/scout_contradictions.py`): matches a founder-type session's unit against an sme-type session's unit by exact (case-insensitive) name, flags a contradiction when `systems`, `frequency`, or `inputs` differ and both sides answered. Plain text diff — no LLM, no measured confidence (the `confidence` field is fixed at 1.0, documented in the model as "not a measured statistic"). Optional `session_id` filters to contradictions touching that session. |
+| GET | `/scout/contradictions?session_id=` | Re-scans on every call (`services/scout_contradictions.py`): matches a function_head-type session's unit against an sme-type session's unit by exact (case-insensitive) name, flags a contradiction when `systems`, `frequency`, or `inputs` differ and both sides answered. Plain text diff — no LLM, no measured confidence (the `confidence` field is fixed at 1.0, documented in the model as "not a measured statistic"). `sub_function_lead` sessions are not compared against anything — a deliberately scoped 2-way comparison, not silently expanded. Optional `session_id` filters to contradictions touching that session. |
 | POST | `/scout/contradictions/{id}/resolve` | Body `{ resolution }`. Sets `status=resolved`; a resolved pair is never re-flagged by a later scan. Audits `scout.contradiction.resolve`. |
 
 ### Elevation 3 — Pain & Automation X-Ray
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/scout/sessions/{id}/pain-heatmap` | Scoped to one session's units, not org-wide as the design doc's `?org_id=` suggested (a founder session naming no systems would otherwise dilute a real SME pain signal). `pain_score` (`services/scout_pain.py`) is a fixed keyword-weight lookup over the free-text `pain` field (`PAIN_KEYWORDS`, capped at 5) — explicitly **not** sentiment analysis. `automation_potential_pct` is each system's share of total daily minutes captured, not a modeled estimate. |
+| GET | `/scout/sessions/{id}/pain-heatmap` | Scoped to one session's units, not org-wide as the design doc's `?org_id=` suggested (a function_head session naming no systems would otherwise dilute a real SME pain signal). `pain_score` (`services/scout_pain.py`) is a fixed keyword-weight lookup over the free-text `pain` field (`PAIN_KEYWORDS`, capped at 5) — explicitly **not** sentiment analysis. `automation_potential_pct` is each system's share of total daily minutes captured, not a modeled estimate. |
 
 ### Elevation 4 — Story to Structure
 
@@ -180,7 +180,7 @@ RLS on `scout_contradictions` same as the direct-`client_id` tables.
 
 ### Frontend — stitching Scout to V8 delivery
 
-`frontend/src/pages/Genome.tsx` (route `/genome/:versionId`) is a UI over the existing `genome.py` router below — no new backend endpoints. It renders the GQS header (score, gates passed, ratify-whole-version), a Business Objects tab (L1 card list → L2 work-unit table → L3 full 18-attribute detail, plus ratify-one-business-object), and an Automation Index tab (L1–L6 autonomy counts, hours current/saveable, cost-per-unit banner, bottleneck view, work-graph edge counts). `FuturePreview.tsx`'s post-generate result links to `/genome/{version_id}` regardless of whether the gate passed, so the "what did Scout actually produce" question is always one click away. See `HONESTY.md` for the browser-verified GQS structural-cap finding for Scout-sourced genomes (declared, not observed, provenance) and the resulting empty-state behavior for a gate-failed version's Business Objects / Automation Index.
+`frontend/src/pages/Genome.tsx` (route `/genome/:versionId`) is a UI over the existing `genome.py` router below — no new backend endpoints. It renders the GQS header (score, gates passed, ratify-whole-version), a Business Objects tab (business-object card list → work-unit table → full 18-attribute detail, plus ratify-one-business-object), and an Automation Index tab (L1–L6 autonomy counts, hours current/saveable, cost-per-unit banner, bottleneck view, work-graph edge counts). `FuturePreview.tsx`'s post-generate result links to `/genome/{version_id}` regardless of whether the gate passed, so the "what did Scout actually produce" question is always one click away. See `HONESTY.md` for the browser-verified GQS structural-cap finding for Scout-sourced genomes (declared, not observed, provenance) and the resulting empty-state behavior for a gate-failed version's Business Objects / Automation Index.
 
 ## Demo bootstrap
 

@@ -121,9 +121,9 @@ backend/app/
                     org, projections, regulatory, scout, spec, verdict,
                     verification, work_graph, work_units
   seed.py           Order-to-cash census (16 units)
-backend/alembic/   10 migrations, single head, `alembic check` clean
-backend/tests/     140 tests across 26 files. Pure logic runs on SQLite;
-                    73 of the 140 require a real Postgres (Row-Level
+backend/alembic/   13 migrations, single head, `alembic check` clean
+backend/tests/     146 tests across 29 files. Pure logic runs on SQLite;
+                    73 of the 146 require a real Postgres (Row-Level
                     Security is a database behaviour, not something SQLite
                     can stand in for) and self-skip without one — a green
                     run with Postgres unreachable is a materially weaker
@@ -142,7 +142,7 @@ frontend/src/
   layout/AppShell.tsx
   pages/            Overview, Ontology, WorkUnits, WorkGraph, Verdict,
                     Economics, Discovery, Verification, Spec, Projections,
-                    Genome, GenomeVersions, ScoutInterview, NotFound
+                    Genome, GenomeVersions, ScoutInterview, BlastRadius, NotFound
   components/scout/ DiscoveryPartner, WorkCaptureGrid, GenomeStrengthMeter,
                     TimeTravelReplay, ContradictionResolver, PainHeatmap,
                     StoryToStructure, FuturePreview
@@ -168,7 +168,8 @@ Postgres tables, Alembic-owned (`backend/alembic/versions/`, single head):
 | `genome_versions`, `review_queue`, `uploaded_files` | Import pipeline: GQS score/gates per version, queued-not-guessed rows, server-hashed file uploads |
 | `work_unit_provenance`, `work_unit_regulatory_links`, `pii_field_values`, `ratifications`, `audit_logs` | Provenance detail, regulatory linkage, encrypted PII, per-object/unit ratification, audit trail |
 | `consent_receipts` | DPDP consent: create/revoke/90-day purge — real and tested; not yet cited by `genome_import.py` (see Part K, K9, in `docs/Work-Engineering-V8.md`) |
-| `scout_interview_sessions`, `scout_captured_units`, `scout_contradictions` | Scout's own capture layer — see Part K |
+| `scout_interview_sessions`, `scout_captured_units`, `scout_contradictions` | Scout's own capture layer — see Part K. `scout_interview_sessions.type` is a three-way `InterviewType` (`function_head`/`sub_function_lead`/`sme`), not the original two-way founder/sme split |
+| `scout_blast_radius_selections` | CHRO blast-radius scoping: which of a published 44-sub-function/6-cluster HR catalog (`services/scout_blast_radius.py`, not a table — it's the same list for every tenant) a tenant has checked in scope, with an owner and P0/P1 priority. Sparse — one row per sub-function actually touched |
 
 Work Unit attribute 15 (dependencies) is **not** a scalar; it is the Work Graph. Completeness still requires the other contract fields (`services/contract.py`).
 
