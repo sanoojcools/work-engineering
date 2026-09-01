@@ -2,7 +2,7 @@
 
 *(This file previously described the state as of 25 August 2026 — before Scout, before multi-tenant per-org auth, before Alembic. That version is superseded; nothing below should be read as consistent with an older copy of this file elsewhere. See `V8-STATE-AND-REFERENCE.md` for a fuller standalone snapshot and `V8-PRODUCTION-ENGINEERING.md` for how the product got from there to here.)*
 
-Concept: [Work-Engineering-V8.md](Work-Engineering-V8.md) (now including Part K, Scout). Code mapping: [../ARCHITECTURE.md](../ARCHITECTURE.md). HTTP: [API.md](API.md). Honesty ledger: [HONESTY.md](HONESTY.md). How to run: [../README.md](../README.md).
+Concept: [Work-Engineering-V8.md](Work-Engineering-V8.md) (now including Part K, Scout). Code mapping: [../ARCHITECTURE.md](../ARCHITECTURE.md). HTTP: [API.md](API.md). Honesty ledger: [HONESTY.md](HONESTY.md). How to run: [../README.md](../README.md). What's next, pending review: [ROADMAP-DECISIONS.md](ROADMAP-DECISIONS.md).
 
 ---
 
