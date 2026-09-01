@@ -10,7 +10,14 @@ import { api } from "../api";
  * delivery side of the Scout handoff was reachable only by typing a URL. */
 const SECTIONS = [
   { label: null, links: [["/", "Overview"]] },
-  { label: "Capture", links: [["/scout/interview/new", "Scout Interview"], ["/discovery", "Discovery"]] },
+  {
+    label: "Capture",
+    links: [
+      ["/scout/blast-radius", "Function Scope"],
+      ["/scout/interview/new", "Scout Interview"],
+      ["/discovery", "Discovery"],
+    ],
+  },
   {
     label: "Specification",
     links: [["/genome", "Genome"], ["/ontology", "Ontology"], ["/work-units", "Work Units"], ["/work-graph", "Work Graph"]],

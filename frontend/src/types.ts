@@ -365,6 +365,41 @@ export type AutomationIndex = {
   };
 };
 
+// Scout Elevated upgrade thread, Point 2: function-agnostic selector +
+// CHRO Full Stack Blast Radius. HR is the only function with a real
+// catalog and real capture behind it -- the others are honest "not built
+// yet" placeholders, not fake data (see services/scout_blast_radius.py).
+export type BusinessFunctionKey = "hr" | "finance" | "legal" | "sales" | "operations";
+export const BUSINESS_FUNCTIONS: { key: BusinessFunctionKey; label: string; active: boolean }[] = [
+  { key: "hr", label: "HR", active: true },
+  { key: "finance", label: "Finance", active: false },
+  { key: "legal", label: "Legal", active: false },
+  { key: "sales", label: "Sales", active: false },
+  { key: "operations", label: "Operations", active: false },
+];
+
+export type BlastRadiusItem = {
+  key: string;
+  name: string;
+  cluster: string;
+  in_scope: boolean;
+  owner_name: string;
+  priority: string;
+};
+
+export type BlastRadiusSummary = {
+  total_sub_functions: number;
+  selected_count: number;
+  selected_pct: number;
+  total_clusters: number;
+  clusters_touched: number;
+};
+
+export type BlastRadiusOut = {
+  items: BlastRadiusItem[];
+  summary: BlastRadiusSummary;
+};
+
 export type ScoutSession = {
   id: number;
   type: (typeof INTERVIEW_TYPES)[number];

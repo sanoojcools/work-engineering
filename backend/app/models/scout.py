@@ -8,7 +8,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Index, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db import Base
@@ -144,5 +144,34 @@ class ScoutContradiction(Base):
     resolution: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[ContradictionStatus] = mapped_column(Enum(ContradictionStatus), default=ContradictionStatus.open)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    client: Mapped["Client"] = relationship()
+
+
+class ScoutBlastRadiusSelection(Base):
+    """Point 2 of the Scout Elevated upgrade thread: the function_head's
+    (CHRO's) blast-radius scoping pass over the fixed 44-sub-function HR
+    catalog (services/scout_blast_radius.py -- the catalog itself is not a
+    table, since it's a published list, not per-tenant data). One row per
+    sub-function a tenant has actually touched (checked in/out of scope,
+    named an owner, or set a priority) -- sub-functions nobody has touched
+    yet have no row at all, and read back from the catalog default
+    (in_scope=False, owner_name="", priority="") rather than a pre-seeded
+    row per tenant."""
+    __tablename__ = "scout_blast_radius_selections"
+    __table_args__ = (
+        UniqueConstraint("client_id", "sub_function_key", name="uq_blast_radius_client_subfn"),
+        Index("ix_blast_radius_client", "client_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    sub_function_key: Mapped[str] = mapped_column(String(80))
+    in_scope: Mapped[bool] = mapped_column(Boolean, default=False)
+    owner_name: Mapped[str] = mapped_column(String(160), default="")
+    # "P0" | "P1" | "" (unset) -- see schemas/scout.py's pattern validator.
+    priority: Mapped[str] = mapped_column(String(4), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     client: Mapped["Client"] = relationship()

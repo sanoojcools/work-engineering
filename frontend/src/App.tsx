@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { GuidedTour } from "./components/GuidedTour";
 import AppShell from "./layout/AppShell";
+import BlastRadius from "./pages/BlastRadius";
 import Discovery from "./pages/Discovery";
 import Economics from "./pages/Economics";
 import Genome from "./pages/Genome";
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/verdict" element={<Verdict />} />
           <Route path="/economics" element={<Economics />} />
           <Route path="/discovery" element={<Discovery />} />
+          <Route path="/scout/blast-radius" element={<BlastRadius />} />
           <Route path="/verification" element={<Verification />} />
           <Route path="/spec" element={<Spec />} />
           <Route path="/projections" element={<Projections />} />

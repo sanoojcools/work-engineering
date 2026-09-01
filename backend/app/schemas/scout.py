@@ -134,6 +134,36 @@ class FuturePreviewOut(BaseModel):
     unit_count: int
 
 
+class BlastRadiusItemOut(BaseModel):
+    key: str
+    name: str
+    cluster: str
+    in_scope: bool
+    owner_name: str
+    priority: str
+
+
+class BlastRadiusSummaryOut(BaseModel):
+    total_sub_functions: int
+    selected_count: int
+    selected_pct: float
+    total_clusters: int
+    clusters_touched: int
+
+
+class BlastRadiusOut(BaseModel):
+    items: list[BlastRadiusItemOut]
+    summary: BlastRadiusSummaryOut
+
+
+class BlastRadiusSelectionUpdate(BaseModel):
+    in_scope: bool | None = None
+    owner_name: str | None = Field(default=None, max_length=160)
+    # "" clears a previously set priority -- distinct from omitting the
+    # field (which leaves it unchanged, via exclude_unset in the router).
+    priority: str | None = Field(default=None, pattern="^(P0|P1|)$")
+
+
 class GenerateGenomeOut(BaseModel):
     # Passes through import_genome()'s real result dict as-is (accepted,
     # version_id, gqs, gate_threshold, breakdown, violations,

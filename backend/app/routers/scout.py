@@ -18,6 +18,7 @@ from ..models.scout import (
     ContradictionStatus,
     InterviewStatus,
     InterviewType,
+    ScoutBlastRadiusSelection,
     ScoutCapturedUnit,
     ScoutContradiction,
     ScoutInterviewSession,
@@ -25,6 +26,8 @@ from ..models.scout import (
 from ..models.security import AuditLog, OrgApiKey
 from ..schemas.common import Page
 from ..schemas.scout import (
+    BlastRadiusOut,
+    BlastRadiusSelectionUpdate,
     ContradictionOut,
     ContradictionResolve,
     FuturePreviewOut,
@@ -41,6 +44,7 @@ from ..schemas.scout import (
     UnitUpdate,
 )
 from ..services import scout as scout_svc
+from ..services import scout_blast_radius as blast_radius_svc
 from ..services import scout_contradictions as contradiction_svc
 from ..services import scout_future as future_svc
 from ..services import scout_genome as genome_svc
@@ -299,3 +303,41 @@ def generate_genome(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> Generat
     result = genome_svc.generate_genome(db, session, actor=key.label or f"org_api_key:{key.id}")
     _rebind_tenant(db, key)
     return GenerateGenomeOut(**result)
+
+
+@router.get("/blast-radius", response_model=BlastRadiusOut)
+def get_blast_radius(db: TenantDbDep, key: OrgKeyDep) -> BlastRadiusOut:
+    """The 44-sub-function HR catalog (services/scout_blast_radius.py) is a
+    published constant, not tenant data -- what's tenant-scoped is which
+    rows a CHRO has actually touched, RLS-isolated same as every other
+    scout_* table."""
+    rows = db.query(ScoutBlastRadiusSelection).all()
+    return blast_radius_svc.build_blast_radius(rows)
+
+
+@router.patch("/blast-radius/{sub_function_key}", response_model=BlastRadiusOut)
+def update_blast_radius_selection(
+    sub_function_key: str, payload: BlastRadiusSelectionUpdate, db: TenantDbDep, key: OrgKeyDep
+) -> BlastRadiusOut:
+    if sub_function_key not in blast_radius_svc.CATALOG_KEYS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown sub-function {sub_function_key!r}")
+    row = (
+        db.query(ScoutBlastRadiusSelection)
+        .filter(ScoutBlastRadiusSelection.sub_function_key == sub_function_key)
+        .one_or_none()
+    )
+    if row is None:
+        row = ScoutBlastRadiusSelection(client_id=key.client_id, sub_function_key=sub_function_key)
+        db.add(row)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(row, field, value)
+    db.flush()
+    db.add(AuditLog(
+        client_id=key.client_id, actor=key.label or f"org_api_key:{key.id}",
+        action="scout.blast_radius.update", resource="scout_blast_radius_selection",
+        resource_id=sub_function_key,
+    ))
+    db.commit()
+    _rebind_tenant(db, key)
+    rows = db.query(ScoutBlastRadiusSelection).all()
+    return blast_radius_svc.build_blast_radius(rows)

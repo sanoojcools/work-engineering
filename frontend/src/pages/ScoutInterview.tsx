@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
 import { ContradictionResolver } from "../components/scout/ContradictionResolver";
 import { DiscoveryPartner } from "../components/scout/DiscoveryPartner";
@@ -62,10 +62,17 @@ function NewSessionForm({
 export default function ScoutInterview() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [session, setSession] = useState<ScoutSession | null>(null);
   const [needsKey, setNeedsKey] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(sessionId !== "new");
+
+  // The Function Scope grid's "Start interview" button navigates here with
+  // this state to hand off a sub-function's assigned owner into the create
+  // form -- a pre-fill, not an automatic cascade (nothing is created until
+  // the interviewer presses Start below).
+  const prefill = location.state as { prefillType?: string; prefillName?: string } | null;
 
   // Lifted out of NewSessionForm so a key-banner retry can re-submit the
   // same track/name the interviewer already typed, instead of clearing the
@@ -73,8 +80,10 @@ export default function ScoutInterview() {
   // Defaults to function_head: the natural first session in the top-down
   // flow (CHRO/function head -> sub-function lead -> SME) this three-layer
   // model exists to support.
-  const [type, setType] = useState<(typeof INTERVIEW_TYPES)[number]>("function_head");
-  const [name, setName] = useState("");
+  const [type, setType] = useState<(typeof INTERVIEW_TYPES)[number]>(
+    (prefill?.prefillType as (typeof INTERVIEW_TYPES)[number] | undefined) ?? "function_head"
+  );
+  const [name, setName] = useState(prefill?.prefillName ?? "");
   const [creating, setCreating] = useState(false);
 
   async function load(id: string) {
