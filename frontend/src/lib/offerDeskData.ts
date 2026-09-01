@@ -253,3 +253,113 @@ export const OFFER_DESK_AUTOMATION_SUMMARY: OfferDeskAutomationCategory[] = [
 ];
 
 export const OFFER_DESK_TOTAL_SAVINGS = "~95 hrs/mo (~80% of Offer Desk time)";
+
+// ---------------------------------------------------------------------
+// Track 1 of the enterprise-readiness roadmap ("Prove it"): seed these
+// 11 real steps as an actual Scout session instead of only showing them
+// on a read-only page, so completeness/GQS/VERDICT/Automation Index come
+// from the platform running on this data, not from re-displaying the
+// source document's own numbers. Shares the SampleRow shape
+// lib/scoutSamples.ts already uses for the generic HR sample, so it goes
+// through the exact same POST /scout/sessions/{id}/units call.
+
+const OUTPUT_PREFIXES = ["WRITE", "TRIGGER", "RESPONSE", "SEND"];
+
+/** Same split the page's step cards use: the source's own tagged lines,
+ * not a re-interpretation of them. Exported so the page and the sample
+ * rows below build from one definition, not two that could drift. */
+export function splitOfferDeskDataFields(raw: string): { input: string[]; output: string[] } {
+  const input: string[] = [];
+  const output: string[] = [];
+  for (const line of raw.split("\n").map((l) => l.trim()).filter(Boolean)) {
+    const prefix = line.split(":")[0];
+    if (OUTPUT_PREFIXES.includes(prefix)) output.push(line);
+    else input.push(line);
+  }
+  return { input, output };
+}
+
+// Short titles, handoffs, and pain notes aren't their own columns in the
+// source spreadsheet -- each is condensed from that step's own "What
+// happens" / handoff-map / agent-notes text, not invented. Steps with no
+// real quote to ground a pain note keep it empty rather than guess one.
+const STEP_TITLES: Record<number, string> = {
+  1: "Recruiter sends offer request",
+  2: "Verify candidate documents",
+  3: "Verify salary approval & calculate deviation",
+  4: "Update Master Joining Sheet (+ PR sheet)",
+  5: "Trigger offer letter (Zwayam -> Zoho)",
+  6: "Send onboarding acknowledgement",
+  7: "Send welcome onboard mail",
+  8: "Request email ID creation",
+  9: "Place documents & notify onboarding team",
+  10: "Compile monthly payroll reports",
+  11: "Handle candidate drop-out",
+};
+
+const STEP_HANDOFFS: Record<number, string> = {
+  1: "Recruiter -> Rashmi (Offer Desk)",
+  2: "Rashmi -> Recruiter (if docs missing)",
+  3: "Rashmi -> Zwayam (auto 2-level approval if deviation)",
+  4: "Rashmi -> Procurement (PR sheet, contractors only)",
+  5: "Rashmi -> Zwayam -> Zoho -> TA Head -> Candidate",
+  6: "Rashmi -> Zoho -> location SPOC -> Candidate",
+  7: "Rashmi -> Candidate (cc Onboarding SPOC + recruiter)",
+  8: "Rashmi -> IT Team -> reporting manager + Onboarding SPOC",
+  9: "Rashmi -> OneDrive + Onboarding team (Teams group chat)",
+  10: "Rashmi -> Umesh (Payroll) + Rajesh (referral approval)",
+  11: "Rashmi -> Recruiter (dropout confirmation)",
+};
+
+const STEP_PAIN: Record<number, string> = {
+  2: "Employment verification is the heaviest, most manual part of the role -- ~40% of Rashmi's total time.",
+  5: "Deferred bonus vest date must be entered manually (DOJ + 1 year) -- error-prone, flagged by the interviewee.",
+  7: "Sent individually per candidate, no mail merge.",
+  8: "Email ID must stay <=18 characters -- frequent manual abbreviation.",
+  10: "30-45 minutes manually compiling three separate reports every month.",
+};
+
+// Range-to-midpoint is only applied where the source itself states a
+// numeric range for that step; step 1 has none (it's the recruiter's
+// action, not Rashmi's timed work), so it's left unset rather than
+// guessed.
+const STEP_TIME_MINUTES: Record<number, number | null> = {
+  1: null,
+  2: 35, // "Permanent: 30-40 min ... employment verification is heaviest" -- the flagged, representative case
+  3: 7.5, // "5-10 min"
+  4: 7.5, // "5-10 min per candidate"
+  5: 7.5, // "5-10 min (mostly automated now)"
+  6: 2.5, // "2-3 min (will be automated)"
+  7: 2.5, // "2-3 min per candidate"
+  8: 5, // "5 min total (batched for all candidates in evening)"
+  9: 4, // "3-5 min per candidate"
+  10: 37.5, // "30-45 min total (3 reports compiled)"
+  11: 5, // "5 min"
+};
+
+export type OfferDeskSampleRow = {
+  name: string;
+  inputs: string;
+  outputs: string;
+  systems: string;
+  frequency: string;
+  pain: string;
+  handoffs: string;
+  decision_rule: string;
+  time_minutes: number | null;
+};
+
+export const OFFER_DESK_SAMPLE_ROWS: OfferDeskSampleRow[] = OFFER_DESK_STEPS.map((s) => {
+  const { input, output } = splitOfferDeskDataFields(s.dataFieldsRaw);
+  return {
+    name: `${s.step}. ${STEP_TITLES[s.step]}`,
+    inputs: input.join("; "),
+    outputs: output.join("; "),
+    systems: s.system,
+    frequency: s.frequency,
+    pain: STEP_PAIN[s.step] ?? "",
+    handoffs: STEP_HANDOFFS[s.step],
+    decision_rule: s.decisionBranches.join("; "),
+    time_minutes: STEP_TIME_MINUTES[s.step],
+  };
+});

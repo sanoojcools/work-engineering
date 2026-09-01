@@ -1,33 +1,19 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ApiKeyBanner } from "../components/ApiKeyBanner";
+import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
 import {
   OFFER_DESK_AUTOMATION_SUMMARY,
   OFFER_DESK_EXCEPTIONS,
   OFFER_DESK_HANDOFFS,
   OFFER_DESK_META,
+  OFFER_DESK_SAMPLE_ROWS,
   OFFER_DESK_STEPS,
   OFFER_DESK_TOTAL_SAVINGS,
+  splitOfferDeskDataFields as splitDataFields,
   type OfferDeskStep,
 } from "../lib/offerDeskData";
-
-const INPUT_PREFIXES = ["READ", "LINK", "VERIFY", "CALCULATE"];
-const OUTPUT_PREFIXES = ["WRITE", "TRIGGER", "RESPONSE", "SEND"];
-
-/** dataFieldsRaw is the source spreadsheet's own "Data fields
- * (read/written)" cell, one tagged line per fact — READ/LINK/VERIFY/
- * CALCULATE are things this step consumes or checks, WRITE/TRIGGER/
- * RESPONSE/SEND are things it produces. Splitting on that existing tag
- * is exactly what makes every step's input and output explicit rather
- * than a paragraph you have to parse yourself. */
-function splitDataFields(raw: string): { input: string[]; output: string[] } {
-  const input: string[] = [];
-  const output: string[] = [];
-  for (const line of raw.split("\n").map((l) => l.trim()).filter(Boolean)) {
-    const prefix = line.split(":")[0];
-    if (OUTPUT_PREFIXES.includes(prefix)) output.push(line);
-    else if (INPUT_PREFIXES.includes(prefix)) input.push(line);
-    else input.push(line);
-  }
-  return { input, output };
-}
+import type { ScoutSession } from "../types";
 
 const AUTOMATION_COLOR: Record<string, string> = {
   "Fully automatable": "var(--good)",
@@ -128,6 +114,62 @@ function StepCard({ s }: { s: OfferDeskStep }) {
   );
 }
 
+function RunOnPlatform() {
+  const navigate = useNavigate();
+  const [needsKey, setNeedsKey] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function run() {
+    setBusy(true);
+    setError(null);
+    try {
+      const session = await apiFetch.post<ScoutSession>("/scout/sessions", {
+        type: "sme",
+        interviewee_name: "Rashmi KN (Offer Desk)",
+      });
+      setNeedsKey(false);
+      // Sequential, not Promise.all: each POST recomputes completeness
+      // from the units already on the session, so unit N+1 has to land
+      // after unit N is committed, not race it.
+      for (const row of OFFER_DESK_SAMPLE_ROWS) {
+        await apiFetch.post<ScoutSession>(`/scout/sessions/${session.id}/units`, row);
+      }
+      navigate(`/scout/interview/${session.id}`);
+    } catch (err) {
+      if (err instanceof NeedsApiKeyError) setNeedsKey(true);
+      else setError(err instanceof Error ? err.message : "Failed to create session");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent-edge)" }}>
+      <h3>Run this on the platform</h3>
+      <p style={{ fontSize: 13, marginBottom: 10 }}>
+        Everything above is a read-only page. This button creates a real Scout session and captures all 11 steps as
+        real Work Capture Grid rows through the same <code style={{ fontSize: 12 }}>POST /scout/sessions/units</code>{" "}
+        call any interviewer uses — so the completeness meter and every dimension breakdown you land on next are the
+        platform's own numbers, computed from this data, not this page's.
+      </p>
+      <p className="hint" style={{ marginBottom: 12 }}>
+        It will not reach 100% completeness, on purpose: the transcript states a pain point for only 5 of the 11
+        steps and step 1 has no output field at all, so those gaps show up honestly as real dimension gaps rather
+        than filled in to look tidier. "Generate V8 Work Units" stays locked below 100%, same rule every Scout
+        session faces — the accurate result of this run is the completeness breakdown itself, showing exactly which
+        real gaps a follow-up interview would need to close, not a genome. See{" "}
+        <code style={{ fontSize: 11.5 }}>docs/HONESTY.md</code> for the same discipline elsewhere in the product.
+      </p>
+      {needsKey && <ApiKeyBanner onSaved={run} />}
+      {error && <div className="banner error" style={{ marginBottom: 12 }}>{error}</div>}
+      <button type="button" className="primary" disabled={busy} onClick={() => void run()}>
+        {busy ? `Capturing ${OFFER_DESK_SAMPLE_ROWS.length} steps…` : "Generate a real Scout session from this →"}
+      </button>
+    </div>
+  );
+}
+
 export default function OfferDesk() {
   const meta = OFFER_DESK_META;
   return (
@@ -140,6 +182,8 @@ export default function OfferDesk() {
         Every step below shows exactly what data goes in, what happens to it, and what data comes out — pulled directly
         from a real interview transcript, not summarized or guessed. Nothing is hidden in between.
       </p>
+
+      <RunOnPlatform />
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="split" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>

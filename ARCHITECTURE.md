@@ -142,7 +142,7 @@ frontend/src/
   layout/AppShell.tsx
   pages/            Overview, Ontology, WorkUnits, WorkGraph, Verdict,
                     Economics, Discovery, Verification, Spec, Projections,
-                    Genome, GenomeVersions, ScoutInterview, BlastRadius, NotFound
+                    Genome, GenomeVersions, ScoutInterview, BlastRadius, OfferDesk, NotFound
   components/scout/ DiscoveryPartner, WorkCaptureGrid, GenomeStrengthMeter,
                     TimeTravelReplay, ContradictionResolver, PainHeatmap,
                     StoryToStructure, FuturePreview
