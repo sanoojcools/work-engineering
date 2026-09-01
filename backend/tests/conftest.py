@@ -1,3 +1,13 @@
+import os
+
+# Must run before `from app.config import settings` below: PII_ENCRYPTION_KEY
+# has no default in config.py (Track 2 of the enterprise-readiness roadmap --
+# a hardcoded, documented default was a real risk in any real deployment).
+# Tests never decrypt anything for real, so a fixed, clearly-labeled
+# non-secret value is fine here -- Settings() just needs something to not
+# raise a validation error at import time.
+os.environ.setdefault("PII_ENCRYPTION_KEY", "test-only-pii-key-not-for-real-data")
+
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from sqlalchemy import create_engine

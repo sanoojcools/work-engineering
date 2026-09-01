@@ -1,8 +1,20 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Absolute, not ".env": a relative path is resolved against the process's
+# CWD at Settings() construction time, and `uvicorn --reload`'s watcher
+# subprocess does not reliably inherit the same CWD the parent was started
+# from -- with pii_encryption_key now required (no default), that mismatch
+# turned into a hard startup crash under --reload specifically, a real bug
+# a relative default only used to mask. Anchoring to this file's own
+# location makes env-file loading independent of how the process was
+# launched.
+_ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_ENV_FILE, extra="ignore")
 
     app_name: str = "Work Engineering"
     app_version: str = "0.8.0"
@@ -25,8 +37,14 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://api.openai.com/v1"
 
     # P0: pgcrypto symmetric key for field-level PII encryption (pii.py).
-    # Dev default only — override in any non-local environment.
-    pii_encryption_key: str = "dev-pii-key-change-me"
+    # No default, deliberately (Track 2 of the enterprise-readiness roadmap):
+    # a hardcoded default here is a real risk regardless of what string it
+    # is, once the source that documents it is ever public -- the fix isn't
+    # a harder-to-guess default, it's no default. Every environment (local
+    # dev included) must set PII_ENCRYPTION_KEY explicitly, e.g.
+    # `openssl rand -hex 32` — see .env.example. The app refuses to start
+    # without one rather than silently encrypting PII with a known key.
+    pii_encryption_key: str
 
     # Gates POST /api/demo/bootstrap, which mints and returns an org API key
     # in plaintext over an UNAUTHENTICATED request so a local demo needs no

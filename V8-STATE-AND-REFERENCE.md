@@ -2,7 +2,7 @@
 
 **Written:** 2026-09-01, by Claude Code, from a full re-scan of the repository at commit `95fc4f0` (33 commits, 2026-08-20 → 2026-09-01) — every router, service, model, migration, frontend page, and test file read directly, not recalled from memory. Companion document: `V8-PRODUCTION-ENGINEERING.md` (how this got built, and how to build the next one better). This document stands alone; it does not require the other repository docs open to make sense, though it points to them by exact path throughout so every claim here can be checked against its source.
 
-**Superseded in one respect, same day.** §1 below describes Scout as two interview tracks (founder/SME). Later commits the same day renamed `founder` to `function_head` and added a third track, `sub_function_lead`, plus a CHRO blast-radius grid and a function-agnostic selector — see `docs/Work-Engineering-V8.md` Part K12 for the current, evidenced account. Nothing else in this document is affected.
+**Superseded in two respects, both after this was written.** §1 below describes Scout as two interview tracks (founder/SME). Later commits the same day renamed `founder` to `function_head` and added a third track, `sub_function_lead`, plus a CHRO blast-radius grid and a function-agnostic selector — see `docs/Work-Engineering-V8.md` Part K12 for the current, evidenced account. Separately, §5.7 and the CI line at the end of §5 (no CI existed at all) are also now out of date: `.github/workflows/ci.yml` exists, and `pii_encryption_key` has no hardcoded default any more — see `docs/HONESTY.md`'s "Track 2" entry. Nothing else in this document is affected.
 
 ---
 
