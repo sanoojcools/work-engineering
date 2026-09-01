@@ -19,7 +19,16 @@ from ..models.client import Client
 from ..models.graph import EdgeType, WorkEdge
 from ..models.ontology import EntityKind, EntityType, Provenance
 from ..models.regulatory import RegulatoryEntry
-from ..models.security import AuditLog, GenomeVersion, GenomeVersionType, UploadedFile, WorkUnitProvenanceDetail, WorkUnitRegulatoryLink
+from ..models.security import (
+    AuditLog,
+    ConsentReceipt,
+    ConsentStatus,
+    GenomeVersion,
+    GenomeVersionType,
+    UploadedFile,
+    WorkUnitProvenanceDetail,
+    WorkUnitRegulatoryLink,
+)
 from ..models.workunit import ActorType, UnitStatus, VerificationMethod, WorkUnit
 from ..schemas.genome_import import GenomeImportRequest
 from . import work_units as wu_svc
@@ -231,6 +240,78 @@ def _detect_dependency_cycles(parsed: GenomeImportRequest) -> list[dict]:
     return violations
 
 
+def _validate_consent(db: Session, client_id: int, parsed: GenomeImportRequest) -> list[dict]:
+    """Track 3 of the enterprise-readiness roadmap ("make the spec
+    trustworthy"), second piece -- closes the gap Part K9 named as still
+    open: "a session does not require one, and the genome-import pipeline
+    does not yet read the one a session might cite." Scout-Reference.md's
+    own rule: observed *from an interview* requires a consent receipt.
+
+    Deliberately NOT wired into every import — only into import_genome's
+    enforce_consent=True path, which today means exactly one caller:
+    services/scout_genome.py's live Scout session -> genome handoff. The
+    generic JSON-body import (POST /api/genome/import, enforce_consent
+    stays False) also accepts a provenance.interview_id/consent_receipt_id
+    pair, but that's free-text a caller can set to anything — including
+    the shipped sample genome, whose fixture predates the real
+    consent-receipt feature and carries decorative UUID-shaped values
+    that were never meant to resolve against a real ConsentReceipt row.
+    Blocking that fixture over data that was never real consent-tracking
+    to begin with would be enforcing a rule against something the rule
+    was never protecting. What this *is* protecting -- a live interview's
+    output being written without anyone having actually consented to it
+    -- is real only for the one path that can genuinely make that claim.
+
+    Same pre-pass shape as the checks above: pure read (one query per
+    distinct cited receipt id, not per unit), no write yet, blocks the
+    whole batch rather than writing some units with consent and some
+    without."""
+    violations: list[dict] = []
+    receipt_cache: dict[int, ConsentReceipt | None] = {}
+
+    for wu_in in parsed.work_units:
+        if not wu_in.provenance.interview_id:
+            continue
+        raw_id = wu_in.provenance.consent_receipt_id
+        if not raw_id:
+            violations.append({
+                "code": "missing_consent",
+                "detail": (
+                    f"{wu_in.id}: provenance.interview_id is set (this unit came from an interview) "
+                    f"but no provenance.consent_receipt_id was supplied. An interview requires a "
+                    f"consent receipt before its output can be written -- see POST /api/consent/receipts."
+                ),
+            })
+            continue
+        try:
+            receipt_id = int(raw_id)
+        except (TypeError, ValueError):
+            violations.append({
+                "code": "invalid_consent",
+                "detail": f"{wu_in.id}: provenance.consent_receipt_id {raw_id!r} is not a valid receipt id",
+            })
+            continue
+        if receipt_id not in receipt_cache:
+            receipt_cache[receipt_id] = (
+                db.query(ConsentReceipt)
+                .filter(ConsentReceipt.id == receipt_id, ConsentReceipt.client_id == client_id)
+                .one_or_none()
+            )
+        receipt = receipt_cache[receipt_id]
+        if receipt is None:
+            violations.append({
+                "code": "invalid_consent",
+                "detail": f"{wu_in.id}: consent receipt {receipt_id} does not exist for this tenant",
+            })
+        elif receipt.status != ConsentStatus.active:
+            violations.append({
+                "code": "invalid_consent",
+                "detail": f"{wu_in.id}: consent receipt {receipt_id} is {receipt.status.value}, not active",
+            })
+
+    return violations
+
+
 def _log_audit(db: Session, client_id: int, actor: str, action: str, resource: str, resource_id: str, detail: str = "") -> None:
     db.add(AuditLog(client_id=client_id, actor=actor, action=action, resource=resource, resource_id=resource_id, detail=detail))
 
@@ -276,7 +357,9 @@ def _record_failed_attempt(
     return _failure_result(gqs_result, version, violations)
 
 
-def import_genome(db: Session, client_id: int, raw_genome: dict, *, actor: str = "") -> dict:
+def import_genome(
+    db: Session, client_id: int, raw_genome: dict, *, actor: str = "", enforce_consent: bool = False
+) -> dict:
     gqs_result = compute_gqs(raw_genome, kappa=raw_genome.get("dual_scoring_kappa"))
 
     sequence = db.query(GenomeVersion).filter(GenomeVersion.client_id == client_id).count() + 1
@@ -325,6 +408,12 @@ def import_genome(db: Session, client_id: int, raw_genome: dict, *, actor: str =
         version.gates_failed = json.dumps(cycle_violations)
         db.commit()
         return _failure_result(gqs_result, version, cycle_violations)
+
+    consent_violations = _validate_consent(db, client_id, parsed) if enforce_consent else []
+    if consent_violations:
+        version.gates_failed = json.dumps(consent_violations)
+        db.commit()
+        return _failure_result(gqs_result, version, consent_violations)
 
     # Everything from here writes rows. Anything unexpected that escapes must
     # roll the whole batch back: before this guard existed, a mid-loop failure
@@ -398,6 +487,24 @@ def _write_genome(
         # file_id resolution: _validate_file_provenance already proved this
         # int()s cleanly and exists for this tenant, if it was supplied at all.
         resolved_file_pk = int(wu_in.provenance.file_id) if wu_in.provenance.file_id else None
+        # consent_receipt_id: when enforce_consent was on, _validate_consent
+        # already proved this resolves to a real, active receipt. When it
+        # was off (the generic JSON-body import), the value is free text a
+        # caller can set to anything -- the shipped sample genome carries
+        # decorative UUID-shaped values that predate the real consent
+        # feature and were never meant to resolve to a real row -- so
+        # resolve defensively here too rather than let a bad value crash
+        # the insert (consent_receipt_id is a real foreign key).
+        resolved_consent_pk = None
+        if wu_in.provenance.consent_receipt_id:
+            try:
+                candidate_id = int(wu_in.provenance.consent_receipt_id)
+            except (TypeError, ValueError):
+                candidate_id = None
+            if candidate_id is not None and db.query(ConsentReceipt.id).filter(
+                ConsentReceipt.id == candidate_id, ConsentReceipt.client_id == client_id
+            ).first():
+                resolved_consent_pk = candidate_id
         db.add(WorkUnitProvenanceDetail(
             work_unit_id=wu.id,
             source_type=provenance,
@@ -407,7 +514,7 @@ def _write_genome(
             hash_sha256=wu_in.provenance.hash_sha256 or "",
             source_timestamp=None,
             interview_ref=wu_in.provenance.interview_id or "",
-            consent_receipt_id=None,
+            consent_receipt_id=resolved_consent_pk,
         ))
         if resolved_file_pk is None and wu_in.provenance.hash_sha256:
             # Caller supplied a hash without a real file_id — it was never
