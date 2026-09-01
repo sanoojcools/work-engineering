@@ -349,7 +349,9 @@ def fixed_imported():
     with TestClient(app) as client:
         r = client.post("/api/genome/import", headers={"X-Spec-Key": key_a}, json=genome)
         assert r.status_code == 201, r.text
-        assert r.json()["gqs"] == 94.29
+        # 92.86, not 94.29 — see the comment on the sequence_edges assertion
+        # below for why.
+        assert r.json()["gqs"] == 92.86
         version_id = r.json()["version_id"]
 
     yield {"key_a": key_a, "version_id": version_id}
@@ -364,7 +366,18 @@ def test_fixed_sample_hours_honestly_zero_and_sequence_count_unchanged(real_clie
     """The real FIXED sample's sla_timing only has `raw` free text, never
     structured time_per_case_min/volume_per_month — so hours_current must be
     honestly 0.0, not imputed from anywhere. Sequence edge count (from
-    dependencies[], Slice 1 behavior) must be unaffected by this PR."""
+    dependencies[], Slice 1 behavior) must be unaffected by THIS test's own
+    concern (hours honesty) — it is not asserting the count never changes
+    for any reason. It did change once, separately: the fixture used to
+    declare four mutually-cyclic dependency pairs (e.g. WU-OFF-02B depends
+    on WU-OFF-03 *and* WU-OFF-03 depends on WU-OFF-02B — "B cannot start
+    until A completes" cannot honestly hold both ways for the same pair).
+    Each pair produced two WorkEdge rows where a real process has exactly
+    one order; the Work Graph page rendered the mutual pairs as a tangled,
+    unreadable knot. Fixed by removing the backwards half of each pair,
+    grounded in each unit's own current_condition/desired_condition/trigger
+    (not invented) — see samples/Private-Genome-MVP-HR-Ops-FIXED.json's
+    git history and docs/HONESTY.md. 13 -> 9."""
     vid = fixed_imported["version_id"]
     r = real_client.get(f"/api/genome/{vid}/automation-index", headers={"X-Spec-Key": fixed_imported["key_a"]})
     assert r.status_code == 200, r.text
@@ -372,5 +385,5 @@ def test_fixed_sample_hours_honestly_zero_and_sequence_count_unchanged(real_clie
     assert body["total_hours_current"] == 0.0
     assert body["total_hours_saveable"] == 0.0
     assert body["highest_value_targets"] == []
-    assert body["work_graph_summary"]["sequence_edges"] == 13
+    assert body["work_graph_summary"]["sequence_edges"] == 9
     assert body["verdict_missing_count"] == 0  # every WU in this fixture carries a verdict block

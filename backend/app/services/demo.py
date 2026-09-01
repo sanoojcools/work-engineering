@@ -196,7 +196,7 @@ SAMPLES_DIR = Path(__file__).resolve().parents[3] / "samples"
 SAMPLE_GENOME_FILE = SAMPLES_DIR / "Private-Genome-MVP-HR-Ops-FIXED.json"
 
 # The shipped sample carries no dual_scoring_kappa, and GQS gives kappa a flat
-# 10 points — so the file on its own scores 84.29 and is blocked by the gate,
+# 10 points — so the file on its own scores 82.86 and is blocked by the gate,
 # despite being the sample that is meant to demonstrate a passing genome.
 # Supplied here explicitly rather than written into the sample file, because
 # kappa is caller-supplied by design: nothing in this system produces two
@@ -277,7 +277,7 @@ def import_sample_genome(db: Session, tenant: Client) -> dict:
         "note": (
             f"dual_scoring_kappa={SAMPLE_GENOME_KAPPA} was supplied by this bootstrap, not measured — "
             "nothing in this system produces two independent scorings to compute it from. Without it "
-            "the shipped sample scores 84.29 and the gate blocks it."
+            "the shipped sample scores 82.86 and the gate blocks it."
         ),
     }
 

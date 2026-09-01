@@ -192,4 +192,6 @@ def test_import_citing_known_file_id_matching_hash_not_rejected_for_that_reason(
     genome = _fixed_genome_with_provenance(file_id, sha)
     r = real_client.post("/api/genome/import", headers={"X-Spec-Key": two_tenants["key_a"]}, json=genome)
     assert r.status_code == 201, r.text
-    assert r.json()["gqs"] == pytest.approx(94.29, abs=0.01)
+    # 92.86 since the FIXED fixture's cyclic-dependency cleanup — see the
+    # comment in test_org_key_migration.py's equivalent assertion.
+    assert r.json()["gqs"] == pytest.approx(92.86, abs=0.01)

@@ -267,9 +267,7 @@
       "sla_timing": {
         "raw": "30-40 min per permanent, 15-20 min per contractor, SLA 2 hrs from recruiter request to offer release, Volume 200-250/mo total"
       },
-      "dependencies": [
-        "WU-OFF-03"
-      ],
+      "dependencies": [],
       "failure_semantics": "If missed dual employment: compliance risk, offer to candidate with active employment elsewhere. If gap not checked: BGV later fails amber, revocation. If not flagged: 2-hr SLA breach triggers escalation.",
       "regulatory_register_link": [
         "RR-HR-041",
@@ -349,8 +347,7 @@
         "raw": "5-10 min per candidate, Per candidate 200-250/mo, Deviation approval typically same day"
       },
       "dependencies": [
-        "WU-OFF-02B",
-        "WU-OFF-04"
+        "WU-OFF-02B"
       ],
       "failure_semantics": "If wrong grid applied: payroll error, offer with incorrect CTC, financial impact. If variable pay rule missed: policy violation, finance rejection. If designation-grade mismatch: HRMS error downstream.",
       "regulatory_register_link": [
@@ -439,8 +436,7 @@
         "raw": "5-10 min per candidate batched end of day, Volume 200-250/mo"
       },
       "dependencies": [
-        "WU-OFF-03",
-        "WU-OFF-10"
+        "WU-OFF-03"
       ],
       "failure_semantics": "If bonus split wrong: payroll over/under payment, employee escalation. If TR number missing: downstream onboarding fails. If batched late: offer letter trigger delayed.",
       "regulatory_register_link": [
@@ -596,8 +592,7 @@
         "raw": "5 mins post-integration (Page 1 auto), Pre-integration manual download/upload 10 mins, Per joiner 28-30/mo, Two slots Slot1 10AM Slot2 4PM"
       },
       "dependencies": [
-        "WU-OFF-04",
-        "WU-ONB-14"
+        "WU-OFF-04"
       ],
       "failure_semantics": "If service line mapping wrong (Concierto vs Avrio): payroll cost center error, finance reconciliation failure. If shift wrong: attendance policy violation. If not initiated: onboarding kit not prepared, IT email not created.",
       "regulatory_register_link": [

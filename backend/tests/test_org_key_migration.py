@@ -284,7 +284,15 @@ def test_rotate_then_old_key_401_after_grace_new_key_200_gqs_untouched(real_clie
     version_id = imported.json()["version_id"]
     gqs = real_client.get(f"/api/genome/{version_id}/gqs", headers={"X-Spec-Key": new_key})
     assert gqs.status_code == 200, gqs.text
-    assert gqs.json()["gqs"] == pytest.approx(94.29, abs=0.01)
+    # 92.86, not the old 94.29: the FIXED fixture used to declare four
+    # mutually-cyclic dependency pairs ("B before A" and "A before B" for
+    # the same pair), one of which was WU-OFF-02B <-> WU-OFF-03. Removing
+    # the backwards half left WU-OFF-02B with dependencies=[], and
+    # gqs._wu_is_complete treats an empty dependencies[] as a missing
+    # attribute even for a genuine chain root with no in-genome
+    # predecessor — see samples/Private-Genome-MVP-HR-Ops-FIXED.json and
+    # docs/HONESTY.md. Still clears the 90 gate.
+    assert gqs.json()["gqs"] == pytest.approx(92.86, abs=0.01)
 
     assert deps.ROTATION_GRACE_MINUTES > 0
 
