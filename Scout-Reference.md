@@ -1,6 +1,8 @@
 # Scout Reference Architecture (corrected)
 Date: 2026-08-26 | Branch: feat/genome-import-foundation | Tests: 28/28 | Source-of-Truth Hierarchy: V8 > verdict.py > Master Plan + patches > 5 Excels sample only
 
+**Superseded in several respects, well after this was written — this file is a dated snapshot, not rewritten in place.** Stages 1–3's "no capture mechanism built" claim, and most of the 15 No-Cracks Gates table below, describe 26 August 2026. Since then: Scout's interview capture (stages 1–3) is real; the file-upload path (stage 4) is built; and, most recently (enterprise-readiness roadmap Track 3), gate 8 (DFS cycle detection) and gate 3/14's consent join are both closed for the live Scout path. Current count: 5 of 15 gates live, 2 more substantially built, 8 still not built — see `docs/Work-Engineering-V8.md` Part K10 for the full re-audited table and `docs/HONESTY.md` for the evidence behind each row.
+
 **Correction note (this revision):** the prior version described several validations (regex patterns on `id`/`hash_sha256`/`trigger`, an FK-must-exist check on regulatory links, a specific `orgs` table schema) as implemented. They are not. Corrected below, and each 18-attr entry now says explicitly whether its rule is enforced in code today or only specified for Parser v2 to build.
 
 ## Source-of-Truth Hierarchy
