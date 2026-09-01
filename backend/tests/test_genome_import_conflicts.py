@@ -23,7 +23,7 @@ from app.services.genome_import import import_genome
 import hashlib
 
 
-def _work_unit(code: str, depends_on: str) -> dict:
+def _work_unit(code: str, depends_on: str | None) -> dict:
     return {
         "id": code,
         "name": f"Do the thing {code}",
@@ -39,11 +39,17 @@ def _work_unit(code: str, depends_on: str) -> dict:
         "evidence_required": ["a record id"],
         "verification_method": "database_constraint",
         "sla_timing": {"time_per_case_min": 30},
-        # Non-empty and resolvable within this batch: gqs._wu_is_complete
-        # treats [] as a missing attribute, and an unresolvable id is an
-        # orphan_dependency violation — either one blocks the batch at the
-        # GQS gate, short of the write phase these tests are about.
-        "dependencies": [depends_on],
+        # Non-empty (gqs._wu_is_complete treats [] as a missing attribute)
+        # and, if it names a WU-prefixed code, resolvable within this batch
+        # (an unresolvable one is an orphan_dependency violation) — either
+        # one blocks the batch at the GQS gate, short of the write phase
+        # these tests are about. The anchor gets a non-WU placeholder
+        # instead of naming itself: a self-reference is a genuine 1-node
+        # cycle, now a real, separate violation (_detect_dependency_cycles)
+        # these fixtures aren't testing, and gqs.py only flags a WU-*-shaped
+        # token as orphan, so a plain placeholder satisfies completeness
+        # without tripping that check either.
+        "dependencies": [depends_on] if depends_on else ["external-input"],
         "failure_semantics": "hold and notify",
         "regulatory_register_link": ["RR-001"],
         "provenance": {"source_type": "observed", "hash_sha256": "a" * 64},
@@ -53,7 +59,7 @@ def _work_unit(code: str, depends_on: str) -> dict:
 def _genome(codes: list[str]) -> dict:
     anchor = codes[0]
     return {
-        "work_units": [_work_unit(c, anchor) for c in codes],
+        "work_units": [_work_unit(c, None if c == anchor else anchor) for c in codes],
         "dual_scoring_kappa": 0.85,
     }
 

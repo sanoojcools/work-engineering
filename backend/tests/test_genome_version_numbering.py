@@ -50,7 +50,17 @@ def _work_unit(code: str, depends_on: str) -> dict:
 
 
 def _genome(codes: list[str]) -> dict:
-    return {"work_units": [_work_unit(c, codes[0]) for c in codes], "dual_scoring_kappa": 0.85}
+    # The first code's own dependency can't name itself -- a self-reference
+    # is a genuine 1-node cycle (services/genome_import.py's
+    # _detect_dependency_cycles). "external-input" is non-empty (satisfies
+    # gqs._wu_is_complete) and, since it isn't WU-prefixed, isn't checked
+    # for resolving within this batch (gqs.py's orphan_dependency check
+    # only inspects WU-*-shaped tokens) or treated as a graph edge here.
+    anchor = codes[0]
+    return {
+        "work_units": [_work_unit(c, anchor if c != anchor else "external-input") for c in codes],
+        "dual_scoring_kappa": 0.85,
+    }
 
 
 def _tenant(db, slug: str) -> Client:

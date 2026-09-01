@@ -165,6 +165,72 @@ def _validate_work_unit_codes(db: Session, client_id: int, parsed: GenomeImportR
     return violations
 
 
+def _detect_dependency_cycles(parsed: GenomeImportRequest) -> list[dict]:
+    """Track 3 of the enterprise-readiness roadmap ("make the spec
+    trustworthy") — see docs/Work-Engineering-V8.md Part K11: GQS's own
+    completeness check validates that a dependency reference *exists*, not
+    that the graph those references form is acyclic. A real cycle reached
+    this exact codebase once (samples/Private-Genome-MVP-HR-Ops-FIXED.json
+    used to declare WU-OFF-02B and WU-OFF-03 as each other's dependency —
+    fixed by hand in that file, but nothing stopped the next genome from
+    doing the same thing and passing).
+
+    Same pre-pass shape as _validate_file_provenance / _validate_work_unit_codes:
+    pure, in-memory, no DB write yet, runs over the same edges _write_genome
+    will create below (dep_code -> wu_in.id, and only within this payload —
+    a dependency naming a code outside this payload is silently skipped for
+    edge-creation there too, so it's excluded here on the same terms rather
+    than treated as part of the graph being checked).
+
+    Standard three-color DFS: WHITE (unvisited), GRAY (on the current
+    recursion stack), BLACK (fully explored). A GRAY node reached again is
+    a back-edge — a cycle — and the recursion stack at that point *is* the
+    cycle path, reported so a human can see exactly which units to fix
+    rather than just "a cycle exists somewhere."
+    """
+    ids = {wu_in.id for wu_in in parsed.work_units}
+    adjacency: dict[str, list[str]] = {wu_id: [] for wu_id in ids}
+    for wu_in in parsed.work_units:
+        for dep_code in wu_in.dependencies:
+            if dep_code in ids:
+                adjacency[dep_code].append(wu_in.id)
+
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color: dict[str, int] = {wu_id: WHITE for wu_id in ids}
+    violations: list[dict] = []
+    seen_cycles: set[frozenset[str]] = set()
+
+    def visit(node: str, stack: list[str]) -> None:
+        color[node] = GRAY
+        stack.append(node)
+        for neighbor in adjacency[node]:
+            if color[neighbor] == GRAY:
+                cycle_start = stack.index(neighbor)
+                cycle = stack[cycle_start:] + [neighbor]
+                key = frozenset(cycle)
+                if key not in seen_cycles:
+                    seen_cycles.add(key)
+                    violations.append({
+                        "code": "circular_dependency",
+                        "detail": (
+                            f"{' -> '.join(cycle)}: these work units depend on each other in a "
+                            f"cycle. A dependency chain must have a real starting point; break the "
+                            f"cycle by removing the direction that doesn't match each unit's own "
+                            f"current_condition/desired_condition/trigger."
+                        ),
+                    })
+            elif color[neighbor] == WHITE:
+                visit(neighbor, stack)
+        stack.pop()
+        color[node] = BLACK
+
+    for wu_id in ids:
+        if color[wu_id] == WHITE:
+            visit(wu_id, [])
+
+    return violations
+
+
 def _log_audit(db: Session, client_id: int, actor: str, action: str, resource: str, resource_id: str, detail: str = "") -> None:
     db.add(AuditLog(client_id=client_id, actor=actor, action=action, resource=resource, resource_id=resource_id, detail=detail))
 
@@ -253,6 +319,12 @@ def import_genome(db: Session, client_id: int, raw_genome: dict, *, actor: str =
         version.gates_failed = json.dumps(code_violations)
         db.commit()
         return _failure_result(gqs_result, version, code_violations)
+
+    cycle_violations = _detect_dependency_cycles(parsed)
+    if cycle_violations:
+        version.gates_failed = json.dumps(cycle_violations)
+        db.commit()
+        return _failure_result(gqs_result, version, cycle_violations)
 
     # Everything from here writes rows. Anything unexpected that escapes must
     # roll the whole batch back: before this guard existed, a mid-loop failure

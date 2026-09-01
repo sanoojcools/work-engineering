@@ -96,9 +96,17 @@ def _build_genome():
       never as saveable.
 
     Every WU carries a non-empty `dependencies` entry (each group forms a
-    4-edge ring; C1/D1 depend on each other) purely so GQS completeness
-    clears the >=90 import gate — Sequence edges from these rings are not
-    otherwise meaningful and are asserted on for their count only (10).
+    3-edge chain rooted at its first WU; C1 depends on D1 one-way) purely
+    so GQS completeness clears the >=90 import gate — Sequence edges from
+    these chains are not otherwise meaningful and are asserted on for
+    their count only (7). Each group used to be a 4-edge ring (and C1/D1
+    a 2-edge mutual pair) -- a genuine cycle, now a real, separate
+    violation (_detect_dependency_cycles in genome_import.py) this
+    fixture isn't testing; broken the same way the real FIXED sample
+    genome's own mutual pairs were (see test_fixed_sample_hours_
+    honestly_zero_and_sequence_count_unchanged below): keep one
+    direction, let the other end become a root with a placeholder
+    dependency instead of naming a WU that would close the loop.
     """
     genome = {
         "function_pack": "test_pack",
@@ -108,7 +116,7 @@ def _build_genome():
                 sla_timing={"time_per_case_min": 180, "volume_per_month": 100},
                 verdict={"V": 4, "E": 4, "R": 4, "D": 4, "I": 4, "C": 4, "T": 4},
                 verification_method="Deterministic Rule Check",
-                dependencies=["WU-A4"]),
+                dependencies=["external-input"]),
             _wu("WU-A2", business_object=BO_ALPHA, authority=AUTHORITY_BUS_FACTOR_FIRES,
                 sla_timing={"time_per_case_min": 180, "volume_per_month": 100},
                 verdict={"V": 4, "E": 4, "R": 4, "D": 4, "I": 4, "C": 4, "T": 4},
@@ -128,7 +136,7 @@ def _build_genome():
                 sla_timing={"time_per_case_min": 10, "volume_per_month": 5},
                 verdict={"V": 2, "E": 2, "R": 2, "D": 2, "I": 2, "C": 2, "T": 2},
                 verification_method="Deterministic Rule Check",
-                dependencies=["WU-B4"]),
+                dependencies=["external-input"]),
             _wu("WU-B2", business_object=BO_BETA, authority=AUTHORITY_BUS_FACTOR_QUIET,
                 sla_timing={"time_per_case_min": 10, "volume_per_month": 5},
                 verdict={"V": 2, "E": 2, "R": 2, "D": 2, "I": 2, "C": 2, "T": 2},
@@ -153,7 +161,7 @@ def _build_genome():
                 sla_timing={"time_per_case_min": 30, "volume_per_month": 20},
                 verdict=None,
                 verification_method="Deterministic Rule Check",
-                dependencies=["WU-C1"]),
+                dependencies=["external-input"]),
         ],
     }
     return genome
@@ -317,8 +325,8 @@ def test_shared_object_and_shared_resource_edges_created_and_idempotent(real_cli
     assert summary1["shared_object_edges"] == 12
     # Only the bus-factor-1 group (Group A, 4 WUs) gets shared_resource edges: C(4,2)=6.
     assert summary1["shared_resource_edges"] == 6
-    # Two 4-edge dependency rings (Group A, Group B) plus the C1<->D1 mutual pair.
-    assert summary1["sequence_edges"] == 10
+    # Two 3-edge dependency chains (Group A, Group B) plus the one-way C1->D1 edge.
+    assert summary1["sequence_edges"] == 7
     assert summary1["reciprocal_edges"] == 0
     assert summary1["reciprocal_computed"] is False
 
