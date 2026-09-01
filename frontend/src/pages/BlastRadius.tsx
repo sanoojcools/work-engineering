@@ -114,6 +114,15 @@ function SubFunctionCard({
             Start interview →
           </button>
         )}
+        {(item.name === "Offer Management" || item.name === "Onboarding") && (
+          <button
+            type="button"
+            style={{ fontSize: 12, padding: "4px 6px" }}
+            onClick={() => nav("/scout/offer-desk")}
+          >
+            View Offer Desk example →
+          </button>
+        )}
       </div>
     </div>
   );

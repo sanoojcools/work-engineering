@@ -14,6 +14,7 @@ const SECTIONS = [
     label: "Capture",
     links: [
       ["/scout/blast-radius", "Function Scope"],
+      ["/scout/offer-desk", "Offer Desk (worked example)"],
       ["/scout/interview/new", "Scout Interview"],
       ["/discovery", "Discovery"],
     ],

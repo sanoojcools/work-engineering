@@ -7,6 +7,7 @@ import Economics from "./pages/Economics";
 import Genome from "./pages/Genome";
 import GenomeVersions from "./pages/GenomeVersions";
 import NotFound from "./pages/NotFound";
+import OfferDesk from "./pages/OfferDesk";
 import Ontology from "./pages/Ontology";
 import Overview from "./pages/Overview";
 import Projections from "./pages/Projections";
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/economics" element={<Economics />} />
           <Route path="/discovery" element={<Discovery />} />
           <Route path="/scout/blast-radius" element={<BlastRadius />} />
+          <Route path="/scout/offer-desk" element={<OfferDesk />} />
           <Route path="/verification" element={<Verification />} />
           <Route path="/spec" element={<Spec />} />
           <Route path="/projections" element={<Projections />} />
