@@ -154,7 +154,7 @@ python -m app.seed
 
 Tests. Most run on in-memory SQLite, but the RLS and tenant-isolation suites need the real
 Postgres from `docker compose up db` — without it they skip rather than fail, so a green run
-with ~67 skips means those never executed:
+with ~73 skips means those never executed:
 
 ```bash
 pytest
