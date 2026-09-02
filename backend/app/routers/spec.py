@@ -3,6 +3,7 @@ the legacy global spec_api_key onto per-org X-Spec-Key (OrgKeyDep/TenantDbDep),
 the same credential genome import and files already use — see
 dependencies.require_org_api_key."""
 from fastapi import APIRouter, status
+from sqlalchemy import text
 
 from ..dependencies import OrgKeyDep, TenantDbDep
 from ..models.execution import SpecCheck, Trajectory
@@ -54,6 +55,7 @@ def create_trajectory(payload: TrajectoryIn, db: TenantDbDep, _key: OrgKeyDep) -
     row = Trajectory(work_unit_id=wu.id, **data)
     db.add(row)
     db.commit()
+    db.execute(text("SET app.current_client_id = :cid"), {"cid": str(_key.client_id)})
     db.refresh(row)
     return row
 
