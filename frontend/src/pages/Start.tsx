@@ -7,7 +7,7 @@ export default function Start() {
     <>
       <h2>How do you want to start?</h2>
       <p className="lede">
-        Colleague walk: Set up the demo, then Offer Desk seats → Playback → How we cut it → Gap → Document check → Hours → Spec deny.
+        Colleague walk (12 min): Set up the demo, then Offer Desk SME → Playback → Spreadsheet → Save talk-only → How we cut it → Gap → Document check → Hours → Spec deny → Sitting record.
       </p>
       <DemoSetup />
       <div className="split" style={{ gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
@@ -16,24 +16,24 @@ export default function Start() {
           <p style={{ fontSize: 14, margin: 0 }}>
             A company with HR, Finance, Legal, Operations. We start in HR operations at the Offer Desk.
           </p>
-          <p className="hint">Open this first.</p>
+          <p className="hint">Open this first after Set up the demo.</p>
         </Link>
-        <div className="card" style={{ opacity: 0.75 }}>
-          <h3>SME track</h3>
+        <Link to="/scout/offer-desk/rashmi" className="card" style={{ textDecoration: "none", color: "inherit" }}>
+          <h3>Jump to Offer Desk SME</h3>
           <p style={{ fontSize: 14, margin: 0 }}>
-            A single specialist sitting, without the company map. Not built yet. Rashmi’s interview will later live here too.
+            Rashmi stays on the sitting page. The tab is Offer Desk SME. Use this if setup is already done.
           </p>
-          <p className="hint">Listed only.</p>
-        </div>
+          <p className="hint">Needs the demo key.</p>
+        </Link>
       </div>
       <IoPanes
         given="You opened the product."
-        understood="We need to know whether this is a company walk or a lone specialist."
-        processed="No work is cut yet. We only choose a door."
-        output="Enterprise is live. SME is a label."
+        understood="We need a key, then a door into HR operations at Offer Desk."
+        processed="No work is cut yet. Setup mints the key. The walk is twelve screens."
+        output="Enterprise is live. The sitting record is the close. SME-as-a-product-track is still a label."
       />
       <p className="hint" style={{ marginTop: 24 }}>
-        V8 Overview, Genome, and VERDICT are still in the nav under Specification / Analysis.
+        V8 Overview, Genome, and VERDICT stay in the nav under Specification / Analysis.
       </p>
     </>
   );

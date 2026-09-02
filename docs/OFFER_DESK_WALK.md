@@ -7,12 +7,13 @@ Branch: `idea/v9`. One click setup. No terminal after the stack is up.
 1. App on http://localhost:5173, API on :8000.
 2. Home or Overview → **Set up the demo**. Wait until the key is stored.
 3. Stay on Client A.
+4. Confirm the frontend build includes How we cut / Gap / Document check / Hours / Spec deny / Sitting record. Those files live on this branch as of Slice F.
 
 ## Say this, click this
 
 | Minute | Screen | What they should see | What you say |
 |---|---|---|---|
-| 0 | Home | Two doors. Demo setup. | We start in HR operations at Offer Desk. |
+| 0 | Home | Two doors. Demo setup. Jump to Offer Desk SME. | We start in HR operations at Offer Desk. |
 | 1 | 1. Function leader | CHRO stand-in, labelled | Upstairs cares about the stop and the SLA. Not a recorded sitting. |
 | 2 | 2. Sub-function lead | HR Ops stand-in | The desk sits in a chain of desks. |
 | 3 | 3. Offer Desk SME | Rashmi KN on the page, not on the tab | Real sitting, 12 May 2026. Eleven steps. Document check is 40%. |
@@ -23,7 +24,8 @@ Branch: `idea/v9`. One click setup. No terminal after the stack is up.
 | 8 | Gap | Declared vs sitting | The finding is the disagreement. |
 | 9 | Document check | Helper list; Release offer disabled | Dual employment is a stop. Appetite does not lift it. |
 | 10 | Hours | 95 declared / 61.8 defended | Both stay visible. 95 is labelled declared. |
-| 11 | Spec deny | Ask Spec without a pass → denied | Empty proof. Runtime refuses. That is the product. |
+| 11 | Spec deny | Ask Spec without a pass → 200 denied | Empty proof. Runtime refuses. That is the product. |
+| 12 | Sitting record | One card | Screenshot this. Zero Work Units. No agent. |
 
 ## Do not claim
 
@@ -31,6 +33,7 @@ Branch: `idea/v9`. One click setup. No terminal after the stack is up.
 - That talk-only saved Work Units.
 - That Zwayam events exist in the demo.
 - That the helper can release an offer.
+- That Spec is checking an Offer Desk Work Unit minted by this sitting. It checks a contracted census unit because talk-only wrote nothing.
 
 ## If Spec 500s
 

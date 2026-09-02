@@ -66,7 +66,7 @@ export default function OfferDeskSaveTalkOnly() {
         />
       </h2>
       <p className="lede">
-        Completeness of Rashmi's sitting is not permission to save. This button calls the existing generate / GQS path.
+        Completeness of Rashmi&apos;s sitting is not permission to save. This button calls the existing generate / GQS path.
       </p>
       <SeatStepper />
       <SeatSessionBar
@@ -133,8 +133,10 @@ export default function OfferDeskSaveTalkOnly() {
         output="Zero items written. Reasons you can read aloud."
       />
 
-      <p className="hint" style={{ marginTop: 20, marginBottom: 0 }}>
-        Slice C stops here. How we cut the sheet, hours 95 / 61.8, and spec deny are Slice D.{" "}
+      <p style={{ marginTop: 20 }}>
+        Next is the cut, not another save.{" "}
+        <Link to="/scout/offer-desk/how-we-cut">How we cut it →</Link>
+        {" · "}
         <Link to="/scout/offer-desk/playback">Back to Playback</Link>
       </p>
     </>

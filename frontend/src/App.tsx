@@ -20,6 +20,7 @@ import OfferDeskHours from "./pages/OfferDeskHours";
 import OfferDeskHowWeCut from "./pages/OfferDeskHowWeCut";
 import OfferDeskSaveTalkOnly from "./pages/OfferDeskSaveTalkOnly";
 import OfferDeskSheet from "./pages/OfferDeskSheet";
+import OfferDeskSittingRecord from "./pages/OfferDeskSittingRecord";
 import OfferDeskSpecDeny from "./pages/OfferDeskSpecDeny";
 import OfferDeskSubFunctionLead from "./pages/OfferDeskSubFunctionLead";
 import Ontology from "./pages/Ontology";
@@ -63,6 +64,7 @@ export default function App() {
           <Route path="/scout/offer-desk/document-check" element={<OfferDeskDocumentCheck />} />
           <Route path="/scout/offer-desk/hours" element={<OfferDeskHours />} />
           <Route path="/scout/offer-desk/spec-deny" element={<OfferDeskSpecDeny />} />
+          <Route path="/scout/offer-desk/sitting-record" element={<OfferDeskSittingRecord />} />
           <Route path="/verification" element={<Verification />} />
           <Route path="/spec" element={<Spec />} />
           <Route path="/projections" element={<Projections />} />

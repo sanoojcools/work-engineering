@@ -19,6 +19,12 @@ const SECTIONS = [
       ["/scout/offer-desk/playback", "Playback"],
       ["/scout/offer-desk/sheet", "Spreadsheet"],
       ["/scout/offer-desk/save-talk-only", "Save talk-only"],
+      ["/scout/offer-desk/how-we-cut", "How we cut it"],
+      ["/scout/offer-desk/gap", "Gap"],
+      ["/scout/offer-desk/document-check", "Document check"],
+      ["/scout/offer-desk/hours", "Hours"],
+      ["/scout/offer-desk/spec-deny", "Spec deny"],
+      ["/scout/offer-desk/sitting-record", "Sitting record"],
     ],
   },
   {
