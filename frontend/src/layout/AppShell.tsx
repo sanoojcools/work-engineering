@@ -15,7 +15,7 @@ const SECTIONS = [
       ["/scout/offer-desk", "Offer Desk"],
       ["/scout/offer-desk/function-leader", "1. Function leader"],
       ["/scout/offer-desk/sub-function-lead", "2. Sub-function lead"],
-      ["/scout/offer-desk/rashmi", "3. Rashmi"],
+      ["/scout/offer-desk/rashmi", "3. Offer Desk SME"],
       ["/scout/offer-desk/playback", "Playback"],
       ["/scout/offer-desk/sheet", "Spreadsheet"],
       ["/scout/offer-desk/save-talk-only", "Save talk-only"],
