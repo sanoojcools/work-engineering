@@ -7,7 +7,7 @@ export default function Start() {
     <>
       <h2>How do you want to start?</h2>
       <p className="lede">
-        Two doors. The live path is Enterprise → HR → HR operations → Offer Desk.
+        Colleague walk: Set up the demo, then Offer Desk seats → Playback → How we cut it → Gap → Document check → Hours → Spec deny.
       </p>
       <DemoSetup />
       <div className="split" style={{ gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>

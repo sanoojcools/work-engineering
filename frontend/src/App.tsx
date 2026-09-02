@@ -14,8 +14,13 @@ import OfferDesk from "./pages/OfferDesk";
 import OfferDeskFunctionLeader from "./pages/OfferDeskFunctionLeader";
 import OfferDeskPlayback from "./pages/OfferDeskPlayback";
 import OfferDeskRashmi from "./pages/OfferDeskRashmi";
+import OfferDeskDocumentCheck from "./pages/OfferDeskDocumentCheck";
+import OfferDeskGap from "./pages/OfferDeskGap";
+import OfferDeskHours from "./pages/OfferDeskHours";
+import OfferDeskHowWeCut from "./pages/OfferDeskHowWeCut";
 import OfferDeskSaveTalkOnly from "./pages/OfferDeskSaveTalkOnly";
 import OfferDeskSheet from "./pages/OfferDeskSheet";
+import OfferDeskSpecDeny from "./pages/OfferDeskSpecDeny";
 import OfferDeskSubFunctionLead from "./pages/OfferDeskSubFunctionLead";
 import Ontology from "./pages/Ontology";
 import Overview from "./pages/Overview";
@@ -53,6 +58,11 @@ export default function App() {
           <Route path="/scout/offer-desk/playback" element={<OfferDeskPlayback />} />
           <Route path="/scout/offer-desk/sheet" element={<OfferDeskSheet />} />
           <Route path="/scout/offer-desk/save-talk-only" element={<OfferDeskSaveTalkOnly />} />
+          <Route path="/scout/offer-desk/how-we-cut" element={<OfferDeskHowWeCut />} />
+          <Route path="/scout/offer-desk/gap" element={<OfferDeskGap />} />
+          <Route path="/scout/offer-desk/document-check" element={<OfferDeskDocumentCheck />} />
+          <Route path="/scout/offer-desk/hours" element={<OfferDeskHours />} />
+          <Route path="/scout/offer-desk/spec-deny" element={<OfferDeskSpecDeny />} />
           <Route path="/verification" element={<Verification />} />
           <Route path="/spec" element={<Spec />} />
           <Route path="/projections" element={<Projections />} />
