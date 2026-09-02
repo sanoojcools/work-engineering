@@ -66,7 +66,7 @@ export default function OfferDeskSaveTalkOnly() {
         />
       </h2>
       <p className="lede">
-        Completeness of Rashmi&apos;s sitting is not permission to save. This button calls the existing generate / GQS path.
+        Completeness of Rashmi's sitting is not permission to save. This button calls the existing generate / GQS path.
       </p>
       <SeatStepper />
       <SeatSessionBar
@@ -97,7 +97,7 @@ export default function OfferDeskSaveTalkOnly() {
           {busy ? "Calling the existing persist gate…" : "Save talk-only"}
         </button>
         {seat.session && seat.session.units.length === 0 && (
-          <p className="hint">Rashmi&apos;s sitting has no rows yet. Open 3. Rashmi first so the sheet language is captured.</p>
+          <p className="hint">The Offer Desk SME sitting has no rows yet. Open 3. Offer Desk SME first so the sheet language is captured.</p>
         )}
       </div>
 
