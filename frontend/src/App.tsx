@@ -14,6 +14,8 @@ import OfferDesk from "./pages/OfferDesk";
 import OfferDeskFunctionLeader from "./pages/OfferDeskFunctionLeader";
 import OfferDeskPlayback from "./pages/OfferDeskPlayback";
 import OfferDeskRashmi from "./pages/OfferDeskRashmi";
+import OfferDeskSaveTalkOnly from "./pages/OfferDeskSaveTalkOnly";
+import OfferDeskSheet from "./pages/OfferDeskSheet";
 import OfferDeskSubFunctionLead from "./pages/OfferDeskSubFunctionLead";
 import Ontology from "./pages/Ontology";
 import Overview from "./pages/Overview";
@@ -49,6 +51,8 @@ export default function App() {
           <Route path="/scout/offer-desk/sub-function-lead" element={<OfferDeskSubFunctionLead />} />
           <Route path="/scout/offer-desk/rashmi" element={<OfferDeskRashmi />} />
           <Route path="/scout/offer-desk/playback" element={<OfferDeskPlayback />} />
+          <Route path="/scout/offer-desk/sheet" element={<OfferDeskSheet />} />
+          <Route path="/scout/offer-desk/save-talk-only" element={<OfferDeskSaveTalkOnly />} />
           <Route path="/verification" element={<Verification />} />
           <Route path="/spec" element={<Spec />} />
           <Route path="/projections" element={<Projections />} />

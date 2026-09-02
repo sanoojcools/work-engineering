@@ -8,6 +8,8 @@ export const OFFER_DESK_SEAT_PATHS = [
   { to: "/scout/offer-desk/sub-function-lead", label: "2. Sub-function lead", seat: "sub_function_lead" },
   { to: "/scout/offer-desk/rashmi", label: "3. Rashmi", seat: "sme" },
   { to: "/scout/offer-desk/playback", label: "Playback", seat: null },
+  { to: "/scout/offer-desk/sheet", label: "Spreadsheet", seat: null },
+  { to: "/scout/offer-desk/save-talk-only", label: "Save talk-only", seat: null },
 ] as const;
 
 export type OfferDeskSeatKey = (typeof INTERVIEW_TYPES)[number];

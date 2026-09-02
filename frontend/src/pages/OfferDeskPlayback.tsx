@@ -114,12 +114,11 @@ export default function OfferDeskPlayback() {
         given="Three declared sittings. Rashmi's is real. The two above her are labelled stand-ins until recorded."
         understood="Disagreement is expected: upstairs talks outcomes, the desk talks trackers."
         processed="We line them up. We do not merge. We do not waive persist. Completeness is not clearance."
-        output="Talk-only picture. Spreadsheet and save-talk-only are the next slices, not this one."
+        output="Talk-only picture. Next we look at the spreadsheet as a document."
       />
 
-      <p className="hint" style={{ marginTop: 20, marginBottom: 0 }}>
-        Slice B stops here. Spreadsheet attach and talk-only save are Slice C.{" "}
-        <Link to="/scout/offer-desk">Back to Offer Desk</Link>
+      <p style={{ marginTop: 20 }}>
+        <Link to="/scout/offer-desk/sheet">Open what the spreadsheet gave us →</Link>
       </p>
     </>
   );
