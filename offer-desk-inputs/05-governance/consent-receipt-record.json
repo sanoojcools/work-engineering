@@ -1,0 +1,8 @@
+{
+  "_disclaimer": "FABRICATED FOR TESTING. Payload shape matches POST /api/consent/receipts.",
+  "interview_ref": "Rashmi KN, Offer Desk SME sitting, 12 May 2026",
+  "purpose": "Scout interview capture for the Offer Desk worked example -- HR & People Ops function census",
+  "consent_timestamp": "2026-05-12T15:05:00+05:30",
+  "retention_days": 90,
+  "status": "active"
+}

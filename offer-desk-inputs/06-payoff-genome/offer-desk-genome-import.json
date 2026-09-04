@@ -1,0 +1,640 @@
+{
+  "function_pack": "hr_operations",
+  "work_units": [
+    {
+      "id": "WU-OD-01",
+      "name": "Recruiter sends offer request",
+      "business_object": "Offer Request",
+      "current_condition": "Recruiter request received, unstructured",
+      "desired_condition": "Offer request logged with Application ID",
+      "context": {
+        "decision_branches": "If any required field missing from the recruiter's email: reply requesting the missing field before logging the request.",
+        "variants": []
+      },
+      "trigger": "Recruiter sends offer request email with Application ID, candidate name, hiring manager, DOJ, salary approval attachment",
+      "input": [
+        "Recruiter email",
+        "Salary approval mail attachment",
+        "Zwayam candidate profile link"
+      ],
+      "authority": "Rashmi KN (Offer Desk SME)",
+      "actor_constraints": "Offer Desk SME only",
+      "acceptance_criteria": [
+        "Application ID present",
+        "DOJ present",
+        "Salary approval attachment present"
+      ],
+      "evidence_required": [
+        "Zwayam candidate_profile_created event"
+      ],
+      "verification_method": "human_spot_check",
+      "sla_timing": {
+        "time_per_case_min": null,
+        "frequency": "Per candidate",
+        "volume_per_month": 38,
+        "sla_deadline": null,
+        "raw": null
+      },
+      "dependencies": [
+        "external-input"
+      ],
+      "failure_semantics": "If any required field missing from the recruiter's email: reply requesting the missing field before logging the request.",
+      "regulatory_register_link": [
+        "RR-HR-POLICY-OFFER-DESK"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "41",
+        "hash_sha256": "fe18ce99466f8a4feadb1b7fce05bc5029efe942da4d20c5a77582afe8d92b20",
+        "timestamp": "2026-06-15T00:00:00+05:30",
+        "notes": "candidate_profile_created event backs the logged request"
+      },
+      "verdict": {
+        "V": 4,
+        "E": 3,
+        "R": 5,
+        "D": 4,
+        "I": 2,
+        "C": 2,
+        "T": 2
+      }
+    },
+    {
+      "id": "WU-OD-02",
+      "name": "Verify candidate documents",
+      "business_object": "Candidate Document Pack",
+      "current_condition": "Documents unchecked",
+      "desired_condition": "Documents verified complete, or offer blocked with a named reason",
+      "context": {
+        "decision_branches": "If documents missing: email recruiter, hold offer. If dual employment detected in UAN: do NOT release offer -- escalate Rashmi -> Recruiter -> Manager -> Rajesh/Narang for deviation approval. Appetite",
+        "variants": []
+      },
+      "trigger": "Documents uploaded in Zwayam against the hire-type checklist",
+      "input": [
+        "Zwayam uploaded documents",
+        "UAN service history",
+        "Hire-type checklist"
+      ],
+      "authority": "Rashmi KN (Offer Desk SME)",
+      "actor_constraints": "Offer Desk SME only",
+      "acceptance_criteria": [
+        "All hire-type-required documents present",
+        "UAN service history shows no overlapping employment",
+        "Employment and education dates cross-verified against resume"
+      ],
+      "evidence_required": [
+        "Zwayam document_verification_completed event",
+        "UAN service history record"
+      ],
+      "verification_method": "cross_system_reconciliation",
+      "sla_timing": {
+        "time_per_case_min": 35,
+        "frequency": "Per candidate",
+        "volume_per_month": 38,
+        "sla_deadline": null,
+        "raw": null
+      },
+      "dependencies": [
+        "WU-OD-01"
+      ],
+      "failure_semantics": "If documents missing: email recruiter, hold offer. If dual employment detected in UAN: do NOT release offer -- escalate Rashmi -> Recruiter -> Manager -> Rajesh/Narang for deviation approval. Appetite does not lift this stop.",
+      "regulatory_register_link": [
+        "RR-UAN-DUAL-EMPLOYMENT-001"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "41",
+        "hash_sha256": "fe18ce99466f8a4feadb1b7fce05bc5029efe942da4d20c5a77582afe8d92b20",
+        "timestamp": "2026-06-15T00:00:00+05:30",
+        "notes": "document_uploaded + document_verification_completed events; cross-checked against uan-service-history-sample.csv"
+      },
+      "verdict": {
+        "V": 3,
+        "E": 4,
+        "R": 3,
+        "D": 2,
+        "I": 4,
+        "C": 5,
+        "T": 3
+      }
+    },
+    {
+      "id": "WU-OD-03",
+      "name": "Verify salary approval & calculate deviation",
+      "business_object": "Salary Approval",
+      "current_condition": "Salary approval unverified against grid",
+      "desired_condition": "Salary approval verified within grid, or deviation approved by Vasu + Nagaraj",
+      "context": {
+        "decision_branches": "If deviation detected and unapproved: hold offer pending 2-level approval. If Platforms candidate's mail lists variable pay: flag to recruiter as a data error, do not silently correct.",
+        "variants": []
+      },
+      "trigger": "Documents verified complete",
+      "input": [
+        "Salary approval mail",
+        "Salary grid reference",
+        "Bonus/ESOP policy"
+      ],
+      "authority": "Rashmi KN (Offer Desk SME)",
+      "actor_constraints": "Offer Desk SME only; salary deviation requires Vasu + Nagaraj co-approval",
+      "acceptance_criteria": [
+        "CTC and variable pay match grid for function/grade",
+        "Platforms candidates carry zero variable pay",
+        "Deviation, if any, carries Vasu + Nagaraj approval"
+      ],
+      "evidence_required": [
+        "Zwayam salary_deviation_approval_triggered event where applicable",
+        "Salary grid reference file"
+      ],
+      "verification_method": "deterministic_rule",
+      "sla_timing": {
+        "time_per_case_min": 7.5,
+        "frequency": "Per candidate",
+        "volume_per_month": 38,
+        "sla_deadline": null,
+        "raw": null
+      },
+      "dependencies": [
+        "WU-OD-02"
+      ],
+      "failure_semantics": "If deviation detected and unapproved: hold offer pending 2-level approval. If Platforms candidate's mail lists variable pay: flag to recruiter as a data error, do not silently correct.",
+      "regulatory_register_link": [
+        "RR-HR-POLICY-SALARY-GRID"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "41",
+        "hash_sha256": "fe18ce99466f8a4feadb1b7fce05bc5029efe942da4d20c5a77582afe8d92b20",
+        "timestamp": "2026-06-15T00:00:00+05:30",
+        "notes": "salary_deviation_approval_triggered events, cross-checked against 02-policy/salary-grid-and-deviation-policy.xlsx"
+      },
+      "verdict": {
+        "V": 4,
+        "E": 4,
+        "R": 3,
+        "D": 4,
+        "I": 3,
+        "C": 3,
+        "T": 2
+      }
+    },
+    {
+      "id": "WU-OD-04",
+      "name": "Update Master Joining Sheet (+ PR sheet)",
+      "business_object": "Master Joining Sheet Record",
+      "current_condition": "Row absent",
+      "desired_condition": "Row populated across all required fields (contractor rows also get a PR sheet en",
+      "context": {
+        "decision_branches": "If a required MJS field cannot be populated from upstream data: flag row incomplete, do not submit to payroll until resolved.",
+        "variants": []
+      },
+      "trigger": "Salary approval verified",
+      "input": [
+        "Zwayam profile",
+        "Salary approval mail",
+        "Recruiter request email"
+      ],
+      "authority": "Rashmi KN (Offer Desk SME)",
+      "actor_constraints": "Offer Desk SME only",
+      "acceptance_criteria": [
+        "All ~30 MJS columns populated",
+        "Contractor candidates also have a PR sheet row"
+      ],
+      "evidence_required": [
+        "Master Joining Sheet export",
+        "PR sheet export"
+      ],
+      "verification_method": "database_constraint",
+      "sla_timing": {
+        "time_per_case_min": 7.5,
+        "frequency": "Per candidate",
+        "volume_per_month": 38,
+        "sla_deadline": null,
+        "raw": null
+      },
+      "dependencies": [
+        "WU-OD-03"
+      ],
+      "failure_semantics": "If a required MJS field cannot be populated from upstream data: flag row incomplete, do not submit to payroll until resolved.",
+      "regulatory_register_link": [
+        "RR-HR-POLICY-OFFER-DESK"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "45",
+        "hash_sha256": "0dbbaadb250d8af4437467b43b49ec321b0ae8d64463ceb3afa3e975a2610844",
+        "timestamp": "2026-06-15T00:00:00+05:30",
+        "notes": "This candidate's row in the real tracker export"
+      },
+      "verdict": {
+        "V": 5,
+        "E": 4,
+        "R": 5,
+        "D": 5,
+        "I": 2,
+        "C": 1,
+        "T": 1
+      }
+    },
+    {
+      "id": "WU-OD-05",
+      "name": "Trigger offer letter (Zwayam -> Zoho)",
+      "business_object": "Offer Letter",
+      "current_condition": "Not generated",
+      "desired_condition": "Generated with all applicable clauses and routed to Zoho for signing",
+      "context": {
+        "decision_branches": "If a clause is missing for an eligible candidate (e.g. ESOP for Grade 7+): hold generation, correct template, regenerate.",
+        "variants": []
+      },
+      "trigger": "Master Joining Sheet row complete",
+      "input": [
+        "Salary details",
+        "Bonus/ESOP clauses",
+        "Hire-type template"
+      ],
+      "authority": "Rashmi KN (Offer Desk SME)",
+      "actor_constraints": "Offer Desk SME only",
+      "acceptance_criteria": [
+        "Correct template for hire type",
+        "All applicable clauses present (ESOP, deferred bonus, campus annexures)",
+        "Zoho signing workflow triggered, TA Head first"
+      ],
+      "evidence_required": [
+        "Zwayam offer_letter_trigger event",
+        "Zoho signing log entry"
+      ],
+      "verification_method": "cross_system_reconciliation",
+      "sla_timing": {
+        "time_per_case_min": 7.5,
+        "frequency": "Per candidate",
+        "volume_per_month": 38,
+        "sla_deadline": null,
+        "raw": null
+      },
+      "dependencies": [
+        "WU-OD-04"
+      ],
+      "failure_semantics": "If a clause is missing for an eligible candidate (e.g. ESOP for Grade 7+): hold generation, correct template, regenerate.",
+      "regulatory_register_link": [
+        "RR-HR-POLICY-OFFER-DESK"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "42",
+        "hash_sha256": "ac54afca6c74a0bb1ccd838e42d23b386034f4796b5d802b70a31371b967a0e8",
+        "timestamp": "2026-06-15T00:00:00+05:30",
+        "notes": "offer_letter row: sent/signed timestamps, TA Head then candidate"
+      },
+      "verdict": {
+        "V": 4,
+        "E": 4,
+        "R": 2,
+        "D": 4,
+        "I": 3,
+        "C": 2,
+        "T": 1
+      }
+    },
+    {
+      "id": "WU-OD-06",
+      "name": "Send onboarding acknowledgement",
+      "business_object": "Onboarding Acknowledgement",
+      "current_condition": "Not sent",
+      "desired_condition": "Signed by candidate and location-specific SPOC",
+      "context": {
+        "decision_branches": "If candidate does not sign within the offer acceptance window (4 days future-dated, DOJ for immediate joiners): recruiter follows up.",
+        "variants": []
+      },
+      "trigger": "Offer letter fully signed",
+      "input": [
+        "Signed offer letter",
+        "Location SPOC assignment"
+      ],
+      "authority": "Rashmi KN (Offer Desk SME)",
+      "actor_constraints": "Offer Desk SME only",
+      "acceptance_criteria": [
+        "Candidate signature present",
+        "Location SPOC counter-signature present"
+      ],
+      "evidence_required": [
+        "Zoho signing log entry, onboarding_acknowledgement row"
+      ],
+      "verification_method": "cross_system_reconciliation",
+      "sla_timing": {
+        "time_per_case_min": 2.5,
+        "frequency": "Per candidate",
+        "volume_per_month": 38,
+        "sla_deadline": null,
+        "raw": null
+      },
+      "dependencies": [
+        "WU-OD-05"
+      ],
+      "failure_semantics": "If candidate does not sign within the offer acceptance window (4 days future-dated, DOJ for immediate joiners): recruiter follows up.",
+      "regulatory_register_link": [
+        "RR-HR-POLICY-OFFER-DESK"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "42",
+        "hash_sha256": "ac54afca6c74a0bb1ccd838e42d23b386034f4796b5d802b70a31371b967a0e8",
+        "timestamp": "2026-06-15T00:00:00+05:30",
+        "notes": "onboarding_acknowledgement row: candidate then location SPOC signature"
+      },
+      "verdict": {
+        "V": 4,
+        "E": 3,
+        "R": 4,
+        "D": 4,
+        "I": 2,
+        "C": 1,
+        "T": 1
+      }
+    },
+    {
+      "id": "WU-OD-07",
+      "name": "Send welcome onboard mail",
+      "business_object": "Welcome Communication",
+      "current_condition": "Not sent",
+      "desired_condition": "Sent with reporting date, slot, address/link",
+      "context": {
+        "decision_branches": "If sent to the wrong email or with the wrong slot: resend before DOJ, notify SPOC of the correction.",
+        "variants": []
+      },
+      "trigger": "Onboarding acknowledgement signed",
+      "input": [
+        "DOJ",
+        "Slot assignment",
+        "Office address or virtual link"
+      ],
+      "authority": "Rashmi KN (Offer Desk SME)",
+      "actor_constraints": "Offer Desk SME only",
+      "acceptance_criteria": [
+        "Sent to candidate's personal email",
+        "CC to location SPOC and recruiter",
+        "Correct slot and address"
+      ],
+      "evidence_required": [
+        "Sent-mail confirmation -- no system-of-record log exists for this step in this batch"
+      ],
+      "verification_method": "human_spot_check",
+      "sla_timing": {
+        "time_per_case_min": 2.5,
+        "frequency": "Per candidate",
+        "volume_per_month": 38,
+        "sla_deadline": null,
+        "raw": null
+      },
+      "dependencies": [
+        "WU-OD-06"
+      ],
+      "failure_semantics": "If sent to the wrong email or with the wrong slot: resend before DOJ, notify SPOC of the correction.",
+      "regulatory_register_link": [
+        "RR-HR-POLICY-OFFER-DESK"
+      ],
+      "provenance": {
+        "source_type": "declared",
+        "notes": "No Zwayam/Zoho/email log backs this step in this synthetic batch -- honestly left declared, not padded."
+      },
+      "verdict": {
+        "V": 2,
+        "E": 1,
+        "R": 5,
+        "D": 3,
+        "I": 1,
+        "C": 1,
+        "T": 4
+      }
+    },
+    {
+      "id": "WU-OD-08",
+      "name": "Request email ID creation",
+      "business_object": "Email ID Request",
+      "current_condition": "Not requested",
+      "desired_condition": "Email ID created and confirmed by IT",
+      "context": {
+        "decision_branches": "If IT has not responded by DOJ morning: escalate directly, do not wait for the evening batch.",
+        "variants": []
+      },
+      "trigger": "Welcome mail sent",
+      "input": [
+        "Candidate name",
+        "Org/platform",
+        "DOJ",
+        "Grade",
+        "Reporting manager"
+      ],
+      "authority": "Rashmi KN (Offer Desk SME)",
+      "actor_constraints": "Offer Desk SME only",
+      "acceptance_criteria": [
+        "Proposed email <=18 characters",
+        "IT confirms creation before DOJ morning"
+      ],
+      "evidence_required": [
+        "Email ID creation tracker export"
+      ],
+      "verification_method": "database_constraint",
+      "sla_timing": {
+        "time_per_case_min": 5,
+        "frequency": "Per candidate",
+        "volume_per_month": 38,
+        "sla_deadline": null,
+        "raw": null
+      },
+      "dependencies": [
+        "WU-OD-07"
+      ],
+      "failure_semantics": "If IT has not responded by DOJ morning: escalate directly, do not wait for the evening batch.",
+      "regulatory_register_link": [
+        "RR-HR-POLICY-OFFER-DESK"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "46",
+        "hash_sha256": "a13e308183280120b6dc25c313c853e76dab9adc63b94fc5968d2cc4d8c7a18a",
+        "timestamp": "2026-06-15T00:00:00+05:30",
+        "notes": "This candidate's row in the real tracker export"
+      },
+      "verdict": {
+        "V": 5,
+        "E": 4,
+        "R": 5,
+        "D": 5,
+        "I": 1,
+        "C": 1,
+        "T": 1
+      }
+    },
+    {
+      "id": "WU-OD-09",
+      "name": "Place documents & notify onboarding team",
+      "business_object": "Document Repository Entry",
+      "current_condition": "Documents not filed",
+      "desired_condition": "Documents filed by year/month/date folder, onboarding team notified",
+      "context": {
+        "decision_branches": "If a document is missing from the folder at notify time: hold the notification until complete.",
+        "variants": []
+      },
+      "trigger": "Email ID confirmed",
+      "input": [
+        "Verified documents",
+        "Offer letter PDF",
+        "DOJ"
+      ],
+      "authority": "Rashmi KN (Offer Desk SME)",
+      "actor_constraints": "Offer Desk SME only",
+      "acceptance_criteria": [
+        "Folder created under the correct year/month/date",
+        "Offer letter renamed with candidate name",
+        "Onboarding team notified via group chat"
+      ],
+      "evidence_required": [
+        "OneDrive placement log entry"
+      ],
+      "verification_method": "human_spot_check",
+      "sla_timing": {
+        "time_per_case_min": 4,
+        "frequency": "Per candidate",
+        "volume_per_month": 38,
+        "sla_deadline": null,
+        "raw": null
+      },
+      "dependencies": [
+        "WU-OD-08"
+      ],
+      "failure_semantics": "If a document is missing from the folder at notify time: hold the notification until complete.",
+      "regulatory_register_link": [
+        "RR-HR-POLICY-OFFER-DESK"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "44",
+        "hash_sha256": "cf138eaaebd1f217fb74c43776d96186f22701c57cf304987f09237e08f9dd1e",
+        "timestamp": "2026-06-15T00:00:00+05:30",
+        "notes": "Folder-placement rows for this candidate"
+      },
+      "verdict": {
+        "V": 4,
+        "E": 4,
+        "R": 4,
+        "D": 4,
+        "I": 1,
+        "C": 1,
+        "T": 2
+      }
+    },
+    {
+      "id": "WU-OD-10",
+      "name": "Compile monthly payroll reports",
+      "business_object": "Payroll Report",
+      "current_condition": "Not compiled",
+      "desired_condition": "Three reports (joining bonus, deferred bonus, referral bonus) compiled and sent ",
+      "context": {
+        "decision_branches": "If a referrer is found on the candidate's own interview panel: exclude the referral bonus, flag for review.",
+        "variants": []
+      },
+      "trigger": "17th of the month arrives",
+      "input": [
+        "Master Joining Sheet",
+        "Deferred bonus vest dates",
+        "Referral records"
+      ],
+      "authority": "Rashmi KN (Offer Desk SME)",
+      "actor_constraints": "Offer Desk SME only",
+      "acceptance_criteria": [
+        "All three reports compiled",
+        "Referrer-not-on-interview-panel cross-check done",
+        "Rajesh approves before sending"
+      ],
+      "evidence_required": [
+        "Payroll report export"
+      ],
+      "verification_method": "database_constraint",
+      "sla_timing": {
+        "time_per_case_min": 37.5,
+        "frequency": "Monthly (17th)",
+        "volume_per_month": 38,
+        "sla_deadline": null,
+        "raw": null
+      },
+      "dependencies": [
+        "WU-OD-09"
+      ],
+      "failure_semantics": "If a referrer is found on the candidate's own interview panel: exclude the referral bonus, flag for review.",
+      "regulatory_register_link": [
+        "RR-HR-POLICY-OFFER-DESK"
+      ],
+      "provenance": {
+        "source_type": "observed",
+        "file_id": "47",
+        "hash_sha256": "4e4ef675f155fc4b0c77f1d8b1ed46bdb859790586c6d3213bcf8f47a19f9ca2",
+        "timestamp": "2026-06-15T00:00:00+05:30",
+        "notes": "This month's compiled report export"
+      },
+      "verdict": {
+        "V": 4,
+        "E": 4,
+        "R": 3,
+        "D": 4,
+        "I": 3,
+        "C": 3,
+        "T": 2
+      }
+    },
+    {
+      "id": "WU-OD-11",
+      "name": "Handle candidate drop-out",
+      "business_object": "Candidate Drop-out Case",
+      "current_condition": "Status unconfirmed",
+      "desired_condition": "Master Joining Sheet updated with confirmed status and reason",
+      "context": {
+        "decision_branches": "If status cannot be confirmed by DOJ-1: escalate to recruiter directly rather than leaving the MJS row stale.",
+        "variants": []
+      },
+      "trigger": "Rashmi checks with recruiter 2 days before DOJ for future-dated joiners",
+      "input": [
+        "Recruiter confirmation",
+        "Drop-out reason"
+      ],
+      "authority": "Rashmi KN (Offer Desk SME)",
+      "actor_constraints": "Offer Desk SME only",
+      "acceptance_criteria": [
+        "MJS updated with reason",
+        "Recruiter has handled candidate communication"
+      ],
+      "evidence_required": [
+        "No system-of-record log exists for this step in this batch"
+      ],
+      "verification_method": "human_spot_check",
+      "sla_timing": {
+        "time_per_case_min": 5,
+        "frequency": "Per candidate",
+        "volume_per_month": 38,
+        "sla_deadline": null,
+        "raw": null
+      },
+      "dependencies": [
+        "WU-OD-10"
+      ],
+      "failure_semantics": "If status cannot be confirmed by DOJ-1: escalate to recruiter directly rather than leaving the MJS row stale.",
+      "regulatory_register_link": [
+        "RR-HR-POLICY-OFFER-DESK"
+      ],
+      "provenance": {
+        "source_type": "declared",
+        "notes": "No candidates in this 9-candidate batch dropped out -- no event exists to observe. Left declared, not fabricated."
+      },
+      "verdict": {
+        "V": 2,
+        "E": 1,
+        "R": 4,
+        "D": 2,
+        "I": 2,
+        "C": 1,
+        "T": 4
+      }
+    }
+  ],
+  "work_graph_edges": [],
+  "dual_scoring_kappa": 0.87,
+  "_disclaimer": "FABRICATED FOR TESTING. Candidate roster, interviews and system logs in this folder are synthetic. Not real Rashmi production data. See README.md."
+}

@@ -1,0 +1,955 @@
+{
+  "_disclaimer": "FABRICATED FOR TESTING. Not a real Zwayam export.",
+  "export_generated": "2026-07-02T08:00:00+05:30",
+  "source_system": "Zwayam (synthetic)",
+  "event_count": 132,
+  "events": [
+    {
+      "event": "candidate_profile_created",
+      "candidate_id": "C-2026-0142",
+      "application_id": "APP-88231",
+      "name": "Ananya Rao",
+      "hire_type": "permanent",
+      "function": "GTS",
+      "grade": "Grade 5",
+      "timestamp": "2026-05-04T09:14:00+05:30"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "EF",
+      "timestamp": "2026-05-04T10:00:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "MJS",
+      "timestamp": "2026-05-05T11:07:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "10th_certificate",
+      "timestamp": "2026-05-06T12:14:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "graduation_certificate",
+      "timestamp": "2026-05-07T13:21:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "service_letters",
+      "timestamp": "2026-05-08T14:28:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "UAN_service_history",
+      "timestamp": "2026-05-09T15:35:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "EPFO_history",
+      "timestamp": "2026-05-10T10:42:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "offer_letter_prev",
+      "timestamp": "2026-05-11T11:49:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "payslip_1",
+      "timestamp": "2026-05-12T12:56:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "payslip_2",
+      "timestamp": "2026-05-13T13:03:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "payslip_3",
+      "timestamp": "2026-05-14T14:10:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "aadhaar",
+      "timestamp": "2026-05-15T15:17:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "pan",
+      "timestamp": "2026-05-16T10:24:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "passport_photo",
+      "timestamp": "2026-05-17T11:31:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "IEF_screenshot",
+      "timestamp": "2026-05-18T12:38:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0142",
+      "doc_type": "resume",
+      "timestamp": "2026-05-19T13:45:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_verification_completed",
+      "candidate_id": "C-2026-0142",
+      "timestamp": "2026-05-22T16:40:00+05:30",
+      "result": "complete",
+      "verified_by": "Rashmi KN"
+    },
+    {
+      "event": "offer_letter_trigger",
+      "candidate_id": "C-2026-0142",
+      "timestamp": "2026-05-24T09:30:00+05:30",
+      "pushed_to": "Zoho"
+    },
+    {
+      "event": "candidate_profile_created",
+      "candidate_id": "C-2026-0143",
+      "application_id": "APP-88245",
+      "name": "Karthik Subramaniam",
+      "hire_type": "permanent",
+      "function": "Platforms",
+      "grade": "Grade 6",
+      "timestamp": "2026-05-11T09:14:00+05:30"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "EF",
+      "timestamp": "2026-05-11T10:00:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "MJS",
+      "timestamp": "2026-05-12T11:07:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "10th_certificate",
+      "timestamp": "2026-05-13T12:14:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "graduation_certificate",
+      "timestamp": "2026-05-14T13:21:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "service_letters",
+      "timestamp": "2026-05-15T14:28:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "UAN_service_history",
+      "timestamp": "2026-05-16T15:35:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "EPFO_history",
+      "timestamp": "2026-05-17T10:42:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "offer_letter_prev",
+      "timestamp": "2026-05-18T11:49:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "payslip_1",
+      "timestamp": "2026-05-19T12:56:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "payslip_2",
+      "timestamp": "2026-05-20T13:03:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "payslip_3",
+      "timestamp": "2026-05-21T14:10:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "aadhaar",
+      "timestamp": "2026-05-22T15:17:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "pan",
+      "timestamp": "2026-05-23T10:24:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "passport_photo",
+      "timestamp": "2026-05-24T11:31:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "IEF_screenshot",
+      "timestamp": "2026-05-25T12:38:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0143",
+      "doc_type": "resume",
+      "timestamp": "2026-05-26T13:45:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_verification_completed",
+      "candidate_id": "C-2026-0143",
+      "timestamp": "2026-05-29T16:40:00+05:30",
+      "result": "complete",
+      "verified_by": "Rashmi KN"
+    },
+    {
+      "event": "salary_deviation_approval_triggered",
+      "candidate_id": "C-2026-0143",
+      "deviation_pct": 6,
+      "approvers": [
+        "Vasu",
+        "Nagaraj"
+      ],
+      "timestamp": "2026-05-30T11:00:00+05:30",
+      "status": "approved"
+    },
+    {
+      "event": "offer_letter_trigger",
+      "candidate_id": "C-2026-0143",
+      "timestamp": "2026-05-31T09:30:00+05:30",
+      "pushed_to": "Zoho"
+    },
+    {
+      "event": "candidate_profile_created",
+      "candidate_id": "C-2026-0144",
+      "application_id": "APP-88250",
+      "name": "Meera Iyer",
+      "hire_type": "contractor",
+      "function": "GTS",
+      "grade": "Grade C",
+      "timestamp": "2026-05-06T09:14:00+05:30"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0144",
+      "doc_type": "EF",
+      "timestamp": "2026-05-06T10:00:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0144",
+      "doc_type": "MJS_contractor",
+      "timestamp": "2026-05-07T11:07:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0144",
+      "doc_type": "deputation_letter",
+      "timestamp": "2026-05-08T12:14:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0144",
+      "doc_type": "aadhaar",
+      "timestamp": "2026-05-09T13:21:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0144",
+      "doc_type": "pan",
+      "timestamp": "2026-05-10T14:28:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0144",
+      "doc_type": "passport_photo",
+      "timestamp": "2026-05-11T15:35:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0144",
+      "doc_type": "IEF_screenshot",
+      "timestamp": "2026-05-12T10:42:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_verification_completed",
+      "candidate_id": "C-2026-0144",
+      "timestamp": "2026-05-15T16:40:00+05:30",
+      "result": "complete",
+      "verified_by": "Rashmi KN"
+    },
+    {
+      "event": "offer_letter_trigger",
+      "candidate_id": "C-2026-0144",
+      "timestamp": "2026-05-17T09:30:00+05:30",
+      "pushed_to": "Zoho"
+    },
+    {
+      "event": "candidate_profile_created",
+      "candidate_id": "C-2026-0145",
+      "application_id": "APP-88260",
+      "name": "Rohit Sharma",
+      "hire_type": "campus",
+      "function": "GTS",
+      "grade": "Grade A",
+      "timestamp": "2026-06-03T09:14:00+05:30"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0145",
+      "doc_type": "EF",
+      "timestamp": "2026-06-03T10:00:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0145",
+      "doc_type": "MJS",
+      "timestamp": "2026-06-04T11:07:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0145",
+      "doc_type": "10th_certificate",
+      "timestamp": "2026-06-05T12:14:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0145",
+      "doc_type": "graduation_certificate",
+      "timestamp": "2026-06-06T13:21:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0145",
+      "doc_type": "aadhaar",
+      "timestamp": "2026-06-07T14:28:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0145",
+      "doc_type": "pan",
+      "timestamp": "2026-06-08T15:35:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0145",
+      "doc_type": "passport_photo",
+      "timestamp": "2026-06-09T10:42:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0145",
+      "doc_type": "resume",
+      "timestamp": "2026-06-10T11:49:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_verification_completed",
+      "candidate_id": "C-2026-0145",
+      "timestamp": "2026-06-13T16:40:00+05:30",
+      "result": "complete",
+      "verified_by": "Rashmi KN"
+    },
+    {
+      "event": "offer_letter_trigger",
+      "candidate_id": "C-2026-0145",
+      "timestamp": "2026-06-15T09:30:00+05:30",
+      "pushed_to": "Zoho"
+    },
+    {
+      "event": "candidate_profile_created",
+      "candidate_id": "C-2026-0146",
+      "application_id": "APP-88266",
+      "name": "Divya Menon",
+      "hire_type": "permanent",
+      "function": "Core",
+      "grade": "Grade 4",
+      "timestamp": "2026-05-18T09:14:00+05:30"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "EF",
+      "timestamp": "2026-05-18T10:00:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "MJS",
+      "timestamp": "2026-05-19T11:07:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "10th_certificate",
+      "timestamp": "2026-05-20T12:14:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "graduation_certificate",
+      "timestamp": "2026-05-21T13:21:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "service_letters",
+      "timestamp": "2026-05-22T14:28:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "UAN_service_history",
+      "timestamp": "2026-05-23T15:35:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "EPFO_history",
+      "timestamp": "2026-05-24T10:42:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "offer_letter_prev",
+      "timestamp": "2026-05-25T11:49:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "payslip_1",
+      "timestamp": "2026-05-26T12:56:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "payslip_2",
+      "timestamp": "2026-05-27T13:03:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "aadhaar",
+      "timestamp": "2026-05-29T15:17:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "pan",
+      "timestamp": "2026-05-30T10:24:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "passport_photo",
+      "timestamp": "2026-05-31T11:31:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "IEF_screenshot",
+      "timestamp": "2026-06-01T12:38:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0146",
+      "doc_type": "resume",
+      "timestamp": "2026-06-02T13:45:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_verification_completed",
+      "candidate_id": "C-2026-0146",
+      "timestamp": "2026-06-05T16:40:00+05:30",
+      "result": "dual_employment_stop",
+      "verified_by": "Rashmi KN"
+    },
+    {
+      "event": "candidate_profile_created",
+      "candidate_id": "C-2026-0147",
+      "application_id": "APP-88270",
+      "name": "Arjun Nair",
+      "hire_type": "intern",
+      "function": "GTS",
+      "grade": "Grade C",
+      "timestamp": "2026-05-13T09:14:00+05:30"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0147",
+      "doc_type": "EF",
+      "timestamp": "2026-05-13T10:00:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0147",
+      "doc_type": "aadhaar",
+      "timestamp": "2026-05-14T11:07:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0147",
+      "doc_type": "pan",
+      "timestamp": "2026-05-15T12:14:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0147",
+      "doc_type": "passport_photo",
+      "timestamp": "2026-05-16T13:21:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_verification_completed",
+      "candidate_id": "C-2026-0147",
+      "timestamp": "2026-05-19T16:40:00+05:30",
+      "result": "complete",
+      "verified_by": "Rashmi KN"
+    },
+    {
+      "event": "offer_letter_trigger",
+      "candidate_id": "C-2026-0147",
+      "timestamp": "2026-05-21T09:30:00+05:30",
+      "pushed_to": "Zoho"
+    },
+    {
+      "event": "candidate_profile_created",
+      "candidate_id": "C-2026-0148",
+      "application_id": "APP-88281",
+      "name": "Priya Desai",
+      "hire_type": "permanent",
+      "function": "Platforms",
+      "grade": "Grade 7",
+      "timestamp": "2026-05-23T09:14:00+05:30"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "EF",
+      "timestamp": "2026-05-23T10:00:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "MJS",
+      "timestamp": "2026-05-24T11:07:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "10th_certificate",
+      "timestamp": "2026-05-25T12:14:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "graduation_certificate",
+      "timestamp": "2026-05-26T13:21:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "service_letters",
+      "timestamp": "2026-05-27T14:28:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "UAN_service_history",
+      "timestamp": "2026-05-28T15:35:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "EPFO_history",
+      "timestamp": "2026-05-29T10:42:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "offer_letter_prev",
+      "timestamp": "2026-05-30T11:49:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "payslip_1",
+      "timestamp": "2026-05-31T12:56:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "payslip_2",
+      "timestamp": "2026-06-01T13:03:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "payslip_3",
+      "timestamp": "2026-06-02T14:10:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "aadhaar",
+      "timestamp": "2026-06-03T15:17:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "pan",
+      "timestamp": "2026-06-04T10:24:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "passport_photo",
+      "timestamp": "2026-06-05T11:31:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "IEF_screenshot",
+      "timestamp": "2026-06-06T12:38:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0148",
+      "doc_type": "resume",
+      "timestamp": "2026-06-07T13:45:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_verification_completed",
+      "candidate_id": "C-2026-0148",
+      "timestamp": "2026-06-10T16:40:00+05:30",
+      "result": "complete",
+      "verified_by": "Rashmi KN"
+    },
+    {
+      "event": "offer_letter_trigger",
+      "candidate_id": "C-2026-0148",
+      "timestamp": "2026-06-12T09:30:00+05:30",
+      "pushed_to": "Zoho"
+    },
+    {
+      "event": "candidate_profile_created",
+      "candidate_id": "C-2026-0149",
+      "application_id": "APP-88290",
+      "name": "Vikram Singh",
+      "hire_type": "contractor",
+      "function": "Core",
+      "grade": "Grade C",
+      "timestamp": "2026-05-08T09:14:00+05:30"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0149",
+      "doc_type": "EF",
+      "timestamp": "2026-05-08T10:00:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0149",
+      "doc_type": "MJS_contractor",
+      "timestamp": "2026-05-09T11:07:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0149",
+      "doc_type": "deputation_letter",
+      "timestamp": "2026-05-10T12:14:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0149",
+      "doc_type": "aadhaar",
+      "timestamp": "2026-05-11T13:21:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0149",
+      "doc_type": "pan",
+      "timestamp": "2026-05-12T14:28:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0149",
+      "doc_type": "passport_photo",
+      "timestamp": "2026-05-13T15:35:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0149",
+      "doc_type": "IEF_screenshot",
+      "timestamp": "2026-05-14T10:42:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_verification_completed",
+      "candidate_id": "C-2026-0149",
+      "timestamp": "2026-05-17T16:40:00+05:30",
+      "result": "complete",
+      "verified_by": "Rashmi KN"
+    },
+    {
+      "event": "offer_letter_trigger",
+      "candidate_id": "C-2026-0149",
+      "timestamp": "2026-05-19T09:30:00+05:30",
+      "pushed_to": "Zoho"
+    },
+    {
+      "event": "candidate_profile_created",
+      "candidate_id": "C-2026-0150",
+      "application_id": "APP-88301",
+      "name": "Sneha Reddy",
+      "hire_type": "permanent",
+      "function": "GTS",
+      "grade": "Grade 5",
+      "timestamp": "2026-05-28T09:14:00+05:30"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "EF",
+      "timestamp": "2026-05-28T10:00:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "MJS",
+      "timestamp": "2026-05-29T11:07:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "10th_certificate",
+      "timestamp": "2026-05-30T12:14:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "graduation_certificate",
+      "timestamp": "2026-05-31T13:21:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "service_letters",
+      "timestamp": "2026-06-01T14:28:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "UAN_service_history",
+      "timestamp": "2026-06-02T15:35:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "EPFO_history",
+      "timestamp": "2026-06-03T10:42:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "offer_letter_prev",
+      "timestamp": "2026-06-04T11:49:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "payslip_1",
+      "timestamp": "2026-06-05T12:56:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "payslip_2",
+      "timestamp": "2026-06-06T13:03:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "payslip_3",
+      "timestamp": "2026-06-07T14:10:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "aadhaar",
+      "timestamp": "2026-06-08T15:17:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "pan",
+      "timestamp": "2026-06-09T10:24:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "passport_photo",
+      "timestamp": "2026-06-10T11:31:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "IEF_screenshot",
+      "timestamp": "2026-06-11T12:38:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_uploaded",
+      "candidate_id": "C-2026-0150",
+      "doc_type": "resume",
+      "timestamp": "2026-06-12T13:45:00+05:30",
+      "verification_status": "pending"
+    },
+    {
+      "event": "document_verification_completed",
+      "candidate_id": "C-2026-0150",
+      "timestamp": "2026-06-15T16:40:00+05:30",
+      "result": "complete",
+      "verified_by": "Rashmi KN"
+    },
+    {
+      "event": "offer_letter_trigger",
+      "candidate_id": "C-2026-0150",
+      "timestamp": "2026-06-17T09:30:00+05:30",
+      "pushed_to": "Zoho"
+    }
+  ]
+}

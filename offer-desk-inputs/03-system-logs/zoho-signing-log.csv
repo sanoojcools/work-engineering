@@ -1,0 +1,17 @@
+candidate_id,name,document_type,sent_date,signer_1,signer_1_signed_date,signer_2,signer_2_signed_date,status
+C-2026-0142,Ananya Rao,offer_letter,2026-05-14,Nagaraj T (TA Head),2026-05-15,candidate,2026-05-17,signed
+C-2026-0142,Ananya Rao,onboarding_acknowledgement,2026-05-29,candidate,2026-05-30,Bengaluru location SPOC,2026-05-30,signed
+C-2026-0143,Karthik Subramaniam,offer_letter,2026-05-21,Nagaraj T (TA Head),2026-05-22,candidate,2026-05-24,signed
+C-2026-0143,Karthik Subramaniam,onboarding_acknowledgement,2026-06-05,candidate,2026-06-06,Chennai location SPOC,2026-06-06,signed
+C-2026-0144,Meera Iyer,offer_letter,2026-05-16,Nagaraj T (TA Head),2026-05-17,candidate,2026-05-19,signed
+C-2026-0144,Meera Iyer,onboarding_acknowledgement,2026-05-31,candidate,2026-06-01,Hyderabad location SPOC,2026-06-01,signed
+C-2026-0145,Rohit Sharma,offer_letter,2026-06-13,Nagaraj T (TA Head),2026-06-14,candidate,2026-06-18,signed
+C-2026-0145,Rohit Sharma,onboarding_acknowledgement,2026-06-28,candidate,2026-06-29,Bengaluru location SPOC,2026-06-29,signed
+C-2026-0147,Arjun Nair,offer_letter,2026-05-23,Nagaraj T (TA Head),2026-05-24,candidate,2026-05-26,signed
+C-2026-0147,Arjun Nair,onboarding_acknowledgement,2026-06-07,candidate,2026-06-08,Bengaluru location SPOC,2026-06-08,signed
+C-2026-0148,Priya Desai,offer_letter,2026-06-02,Nagaraj T (TA Head),2026-06-03,candidate,2026-06-05,signed
+C-2026-0148,Priya Desai,onboarding_acknowledgement,2026-06-17,candidate,2026-06-18,Hyderabad location SPOC,2026-06-18,signed
+C-2026-0149,Vikram Singh,offer_letter,2026-05-18,Nagaraj T (TA Head),2026-05-19,candidate,2026-05-21,signed
+C-2026-0149,Vikram Singh,onboarding_acknowledgement,2026-06-02,candidate,2026-06-03,Chennai location SPOC,2026-06-03,signed
+C-2026-0150,Sneha Reddy,offer_letter,2026-06-07,Nagaraj T (TA Head),2026-06-08,candidate,2026-06-10,signed
+C-2026-0150,Sneha Reddy,onboarding_acknowledgement,2026-06-22,candidate,2026-06-23,Bengaluru location SPOC,2026-06-23,signed
