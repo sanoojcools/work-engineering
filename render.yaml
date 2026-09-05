@@ -1,0 +1,40 @@
+databases:
+  - name: work-engineering-db
+    databaseName: wep
+    user: wep
+    plan: free
+
+services:
+  - type: web
+    name: work-engineering-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/health
+    preDeployCommand: alembic upgrade head
+    dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: work-engineering-db
+          property: connectionString
+      - key: SYSTEM_DATABASE_URL
+        fromDatabase:
+          name: work-engineering-db
+          property: connectionString
+      - key: PII_ENCRYPTION_KEY
+        generateValue: true
+
+  - type: web
+    name: work-engineering
+    runtime: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: ./frontend/dist
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://work-engineering-api.onrender.com/api/*
+      - type: rewrite
+        source: /*
+        destination: /index.html
