@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { OrgKeyControl } from "../components/OrgKeyControl";
 import { ProgressTracker } from "../components/ProgressTracker";
@@ -56,6 +57,33 @@ const SECTIONS = [
   },
   { label: "Integration", links: [["/spec", "Spec API"]] },
 ] as const;
+
+/** Render's free tier drops an idle service after ~15 minutes; the next
+ * request pays a 30-60s cold start. `firstLoadPending` covers that whole
+ * window from mount, but most loads resolve in well under a second, so this
+ * only shows the banner once pending has actually run long enough to be a
+ * cold start rather than normal network latency. */
+function WakingBanner() {
+  const { firstLoadPending } = useCompany();
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (!firstLoadPending) {
+      setShow(false);
+      return;
+    }
+    const t = setTimeout(() => setShow(true), 2000);
+    return () => clearTimeout(t);
+  }, [firstLoadPending]);
+
+  if (!show || !firstLoadPending) return null;
+  return (
+    <div className="banner info waking-banner">
+      Waking the demo instance — the free-tier backend naps after a few idle minutes.
+      This can take up to a minute on the first request; it is not stuck.
+    </div>
+  );
+}
 
 export default function AppShell() {
   const { clients, client, keyClientId, setClientId, reload } = useCompany();
@@ -124,6 +152,7 @@ export default function AppShell() {
         ))}
       </nav>
       <div className="workspace">
+        <WakingBanner />
         <ProgressTracker />
         <main className="main">
           <Outlet />

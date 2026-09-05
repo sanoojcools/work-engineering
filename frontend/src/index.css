@@ -273,6 +273,7 @@ input:hover:not(:focus), select:hover:not(:focus), textarea:hover:not(:focus) { 
 .banner.ok { border-color: var(--good); background: var(--good-wash); color: #24523d; }
 .banner.warn { border-color: var(--warn); background: var(--warn-wash); color: #6b5420; }
 .banner.info { border-color: var(--accent-edge); background: var(--accent-wash); color: var(--accent-ink); }
+.waking-banner { margin: 0 0 16px; font-size: 13px; }
 
 .key-banner { display: grid; gap: 10px; }
 .key-banner-head { display: grid; gap: 3px; }

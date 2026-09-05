@@ -23,6 +23,12 @@ type Ctx = {
    * invalid. Every tenant-scoped read is filtered to this client by RLS
    * regardless of which company is selected here. */
   keyClientId: number | null;
+  /** True from mount until the very first load() settles (success or
+   * failure). On Render's free tier a service that's been idle 15+ minutes
+   * takes 30-60s to answer its first request -- this is what lets the shell
+   * show a real "waking the demo" state instead of an empty company list
+   * that looks broken rather than cold-starting. */
+  firstLoadPending: boolean;
   setClientId: (id: number) => void;
   reload: () => void;
 };
@@ -31,12 +37,14 @@ const CompanyContext = createContext<Ctx>({
   clients: [],
   client: null,
   keyClientId: null,
+  firstLoadPending: true,
   setClientId: () => undefined,
   reload: () => undefined,
 });
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
   const [clients, setClients] = useState<Company[]>([]);
+  const [firstLoadPending, setFirstLoadPending] = useState(true);
   const [clientId, setClientIdState] = useState<number | null>(() => {
     try {
       const raw = localStorage.getItem(STORAGE);
@@ -74,8 +82,9 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           const firstClient = page.items.find((c) => c.kind === "client");
           return firstClient?.id ?? page.items[0]?.id ?? null;
         });
+        setFirstLoadPending(false);
       })
-      .catch(() => undefined);
+      .catch(() => setFirstLoadPending(false));
   }
 
   useEffect(() => {
@@ -103,6 +112,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         clients,
         client,
         keyClientId,
+        firstLoadPending,
         setClientId: (id) => setClientIdState(id),
         reload: load,
       }}
