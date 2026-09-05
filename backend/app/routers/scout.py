@@ -32,6 +32,8 @@ from ..schemas.scout import (
     ContradictionResolve,
     FuturePreviewOut,
     GenerateGenomeOut,
+    PersistTalkOnlyIn,
+    PersistTalkOnlyOut,
     PainHeatmapOut,
     SessionCreate,
     SessionOut,
@@ -43,6 +45,7 @@ from ..schemas.scout import (
     UnitOut,
     UnitUpdate,
 )
+from ..services import offer_desk_persist as persist_svc
 from ..services import scout as scout_svc
 from ..services import scout_blast_radius as blast_radius_svc
 from ..services import scout_contradictions as contradiction_svc
@@ -303,6 +306,27 @@ def generate_genome(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> Generat
     result = genome_svc.generate_genome(db, session, actor=key.label or f"org_api_key:{key.id}")
     _rebind_tenant(db, key)
     return GenerateGenomeOut(**result)
+
+
+@router.post("/sessions/{session_id}/persist-talk-only", response_model=PersistTalkOnlyOut)
+def persist_talk_only(
+    session_id: int,
+    payload: PersistTalkOnlyIn,
+    db: TenantDbDep,
+    key: OrgKeyDep,
+) -> PersistTalkOnlyOut:
+    """V9 Slice C. Wraps generate_genome / GQS. Completeness is not clearance."""
+    session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
+    if not session.units:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No captured units to persist")
+    result = persist_svc.persist_talk_only(
+        db,
+        session,
+        actor=key.label or f"org_api_key:{key.id}",
+        sheet_attached=payload.sheet_attached,
+    )
+    _rebind_tenant(db, key)
+    return PersistTalkOnlyOut(**result)
 
 
 @router.get("/blast-radius", response_model=BlastRadiusOut)

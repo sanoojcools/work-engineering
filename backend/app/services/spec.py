@@ -1,6 +1,7 @@
 """G6: governance by construction. Execution systems must be refused without tokens."""
 from __future__ import annotations
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from ..models.execution import CheckType, SpecCheck, SpecCheckResult
@@ -66,5 +67,9 @@ def enforce(
     )
     db.add(row)
     db.commit()
+    # commit() can hand the next statement a pooled connection that no longer
+    # has app.current_client_id. RLS then hides the row and refresh() 500s
+    # after a correct deny. Same wrap as scout/org: re-SET, then refresh.
+    db.execute(text("SET app.current_client_id = :cid"), {"cid": str(wu.client_id)})
     db.refresh(row)
     return row

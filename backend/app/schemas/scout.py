@@ -164,6 +164,29 @@ class BlastRadiusSelectionUpdate(BaseModel):
     priority: str | None = Field(default=None, pattern="^(P0|P1|)$")
 
 
+class PersistTalkOnlyIn(BaseModel):
+    """sheet_attached = the workbook is a declared interview note, not traces."""
+    sheet_attached: bool = False
+
+
+class PersistTalkOnlyOut(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    accepted: bool
+    saved_count: int
+    work_unit_count: int
+    gqs: float
+    reasons: list[str]
+    talk_only: bool
+    sheet_attached: bool
+    provenance: str
+    ratification_accepted: bool
+    zwayam_events_claimed: int
+    version_id: int
+    sequence: int
+    violations: list[dict] = Field(default_factory=list)
+
+
 class GenerateGenomeOut(BaseModel):
     # Passes through import_genome()'s real result dict as-is (accepted,
     # version_id, gqs, gate_threshold, breakdown, violations,

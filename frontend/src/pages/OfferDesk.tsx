@@ -1,19 +1,16 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ApiKeyBanner } from "../components/ApiKeyBanner";
-import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
+import { Link } from "react-router-dom";
+import { IoPanes } from "../components/IoPanes";
+import { SeatStepper } from "../components/offerDesk/SeatStepper";
 import {
   OFFER_DESK_AUTOMATION_SUMMARY,
   OFFER_DESK_EXCEPTIONS,
   OFFER_DESK_HANDOFFS,
   OFFER_DESK_META,
-  OFFER_DESK_SAMPLE_ROWS,
   OFFER_DESK_STEPS,
   OFFER_DESK_TOTAL_SAVINGS,
   splitOfferDeskDataFields as splitDataFields,
   type OfferDeskStep,
 } from "../lib/offerDeskData";
-import type { ScoutSession } from "../types";
 
 const AUTOMATION_COLOR: Record<string, string> = {
   "Fully automatable": "var(--good)",
@@ -114,76 +111,32 @@ function StepCard({ s }: { s: OfferDeskStep }) {
   );
 }
 
-function RunOnPlatform() {
-  const navigate = useNavigate();
-  const [needsKey, setNeedsKey] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function run() {
-    setBusy(true);
-    setError(null);
-    try {
-      const session = await apiFetch.post<ScoutSession>("/scout/sessions", {
-        type: "sme",
-        interviewee_name: "Rashmi KN (Offer Desk)",
-      });
-      setNeedsKey(false);
-      // Sequential, not Promise.all: each POST recomputes completeness
-      // from the units already on the session, so unit N+1 has to land
-      // after unit N is committed, not race it.
-      for (const row of OFFER_DESK_SAMPLE_ROWS) {
-        await apiFetch.post<ScoutSession>(`/scout/sessions/${session.id}/units`, row);
-      }
-      navigate(`/scout/interview/${session.id}`);
-    } catch (err) {
-      if (err instanceof NeedsApiKeyError) setNeedsKey(true);
-      else setError(err instanceof Error ? err.message : "Failed to create session");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent-edge)" }}>
-      <h3>Run this on the platform</h3>
-      <p style={{ fontSize: 13, marginBottom: 10 }}>
-        Everything above is a read-only page. This button creates a real Scout session and captures all 11 steps as
-        real Work Capture Grid rows through the same <code style={{ fontSize: 12 }}>POST /scout/sessions/units</code>{" "}
-        call any interviewer uses — so the completeness meter and every dimension breakdown you land on next are the
-        platform's own numbers, computed from this data, not this page's.
-      </p>
-      <p className="hint" style={{ marginBottom: 12 }}>
-        It will not reach 100% completeness, on purpose: the transcript states a pain point for only 5 of the 11
-        steps and step 1 has no output field at all, so those gaps show up honestly as real dimension gaps rather
-        than filled in to look tidier. "Generate V8 Work Units" stays locked below 100%, same rule every Scout
-        session faces — the accurate result of this run is the completeness breakdown itself, showing exactly which
-        real gaps a follow-up interview would need to close, not a genome. See{" "}
-        <code style={{ fontSize: 11.5 }}>docs/HONESTY.md</code> for the same discipline elsewhere in the product.
-      </p>
-      {needsKey && <ApiKeyBanner onSaved={run} />}
-      {error && <div className="banner error" style={{ marginBottom: 12 }}>{error}</div>}
-      <button type="button" className="primary" disabled={busy} onClick={() => void run()}>
-        {busy ? `Capturing ${OFFER_DESK_SAMPLE_ROWS.length} steps…` : "Generate a real Scout session from this →"}
-      </button>
-    </div>
-  );
-}
-
 export default function OfferDesk() {
   const meta = OFFER_DESK_META;
   return (
     <div>
       <p className="hint" style={{ marginBottom: 4 }}>
-        HR → Talent Acquisition → Offer Management (worked example) · handoff also touches People Operations → Onboarding
+        HR operations · Offer Desk · three seats, then playback
       </p>
       <h2>{meta.workflowName}</h2>
       <p className="lede">
-        Every step below shows exactly what data goes in, what happens to it, and what data comes out — pulled directly
-        from a real interview transcript, not summarized or guessed. Nothing is hidden in between.
+        Pre-onboarding: offer release, document check, payroll inputs. Every step below is the sheet language —
+        pulled from a real sitting, not summarized or guessed.
       </p>
 
-      <RunOnPlatform />
+      <SeatStepper />
+
+      <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent-edge)" }}>
+        <h3>Start the three conversations</h3>
+        <p style={{ fontSize: 13, marginBottom: 10 }}>
+          Function leader (CHRO) and Head of HR operations are labelled stand-ins until a real sitting exists.
+          Rashmi is the real Offer Desk SME — her rows come from this page&apos;s sheet, captured as a Scout SME session.
+          Playback lines the three up. It does not merge them.
+        </p>
+        <Link to="/scout/offer-desk/function-leader" className="primary" style={{ display: "inline-block", textDecoration: "none", padding: "7px 14px", background: "var(--accent)", color: "#fff", border: "1px solid var(--accent)", fontWeight: 550 }}>
+          1. Function leader →
+        </Link>
+      </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="split" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
@@ -284,6 +237,13 @@ export default function OfferDesk() {
           ))}
         </div>
       </div>
+
+      <IoPanes
+        given="Workbook title, outcome, trigger, SLA, SPOC."
+        understood="This is one desk, one owner, three cities, four hire types (permanent, contractor, intern, conversion)."
+        processed="We freeze that as the intent of this walk: finish pre-onboarding without skipping the checklist, inside two hours. We do not invent Zwayam events."
+        output="A named desk ready for three seats: CHRO, Head of HR Ops, Rashmi."
+      />
     </div>
   );
 }
