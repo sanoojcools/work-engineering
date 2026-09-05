@@ -17,6 +17,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from ..models.scout import ScoutCapturedUnit, ScoutInterviewSession
+from ..models.security import GenomeVersionType
 from .genome_import import import_genome
 
 NOT_CAPTURED = "Not captured in Scout interview -- needs a follow-up question."
@@ -83,4 +84,12 @@ def generate_genome(db: Session, session: ScoutInterviewSession, *, actor: str) 
     # own consent_receipt_id can be checked against -- see
     # genome_import.py::_validate_consent's docstring for why the generic
     # JSON-body import stays permissive instead.
-    return import_genome(db, session.client_id, payload, actor=actor, enforce_consent=True)
+    # version_type=inferred: a label, not a gate (see genome_import.import_genome's
+    # docstring and HONESTY.md) -- Scout's own capture is interview-shaped and
+    # incomplete-by-contract (NOT_CAPTURED placeholders, declared-only
+    # provenance), which is what GenomeVersionType.inferred describes,
+    # regardless of what GQS score it happens to earn.
+    return import_genome(
+        db, session.client_id, payload, actor=actor, enforce_consent=True,
+        version_type=GenomeVersionType.inferred,
+    )

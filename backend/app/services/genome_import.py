@@ -330,7 +330,8 @@ def _failure_result(gqs_result: dict, version: GenomeVersion, violations: list[d
 
 
 def _record_failed_attempt(
-    db: Session, client_id: int, actor: str, gqs_result: dict, violations: list[dict]
+    db: Session, client_id: int, actor: str, gqs_result: dict, violations: list[dict],
+    version_type: GenomeVersionType = GenomeVersionType.detailed,
 ) -> dict:
     """Re-record an import attempt after a rollback discarded its original
     GenomeVersion row. Used by the write-phase guard in import_genome: the
@@ -340,7 +341,7 @@ def _record_failed_attempt(
     sequence = db.query(GenomeVersion).filter(GenomeVersion.client_id == client_id).count() + 1
     version = GenomeVersion(
         client_id=client_id,
-        version_type=GenomeVersionType.detailed,
+        version_type=version_type,
         sequence=sequence,
         gqs_score=gqs_result["gqs"],
         work_unit_count=gqs_result["work_unit_count"],
@@ -358,14 +359,21 @@ def _record_failed_attempt(
 
 
 def import_genome(
-    db: Session, client_id: int, raw_genome: dict, *, actor: str = "", enforce_consent: bool = False
+    db: Session, client_id: int, raw_genome: dict, *, actor: str = "", enforce_consent: bool = False,
+    version_type: GenomeVersionType = GenomeVersionType.detailed,
 ) -> dict:
+    """version_type is a label, not a gate: GenomeVersionType.inferred /
+    .detailed / .ratified describe how a version was produced (interview-only,
+    SME+docs, manager-approved), but no predecessor is required or checked —
+    see HONESTY.md. `ratified` as a state is tracked by GenomeVersion.ratified
+    (a bool flipped in routers/genome.py), not by version_type=ratified, which
+    nothing ever sets."""
     gqs_result = compute_gqs(raw_genome, kappa=raw_genome.get("dual_scoring_kappa"))
 
     sequence = db.query(GenomeVersion).filter(GenomeVersion.client_id == client_id).count() + 1
     version = GenomeVersion(
         client_id=client_id,
-        version_type=GenomeVersionType.detailed,
+        version_type=version_type,
         sequence=sequence,
         gqs_score=gqs_result["gqs"],
         work_unit_count=gqs_result["work_unit_count"],
@@ -431,7 +439,7 @@ def import_genome(
                 f"The genome passed validation but could not be written; nothing was saved. "
                 f"{type(exc).__name__}: {exc}"
             ),
-        }])
+        }], version_type=version_type)
 
 
 def _write_genome(
