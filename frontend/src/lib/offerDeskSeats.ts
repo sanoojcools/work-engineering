@@ -10,6 +10,7 @@ export const OFFER_DESK_SEAT_PATHS = [
   { to: "/scout/offer-desk/playback", label: "Playback", seat: null },
   { to: "/scout/offer-desk/sheet", label: "Spreadsheet", seat: null },
   { to: "/scout/offer-desk/save-talk-only", label: "Save talk-only", seat: null },
+  { to: "/scout/offer-desk/evidence-pack", label: "With evidence (sample)", seat: null },
   { to: "/scout/offer-desk/how-we-cut", label: "How we cut it", seat: null },
   { to: "/scout/offer-desk/gap", label: "Gap", seat: null },
   { to: "/scout/offer-desk/document-check", label: "Document check", seat: null },

@@ -15,6 +15,7 @@ import OfferDeskFunctionLeader from "./pages/OfferDeskFunctionLeader";
 import OfferDeskPlayback from "./pages/OfferDeskPlayback";
 import OfferDeskRashmi from "./pages/OfferDeskRashmi";
 import OfferDeskDocumentCheck from "./pages/OfferDeskDocumentCheck";
+import OfferDeskEvidencePack from "./pages/OfferDeskEvidencePack";
 import OfferDeskGap from "./pages/OfferDeskGap";
 import OfferDeskHours from "./pages/OfferDeskHours";
 import OfferDeskHowWeCut from "./pages/OfferDeskHowWeCut";
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/scout/offer-desk/playback" element={<OfferDeskPlayback />} />
           <Route path="/scout/offer-desk/sheet" element={<OfferDeskSheet />} />
           <Route path="/scout/offer-desk/save-talk-only" element={<OfferDeskSaveTalkOnly />} />
+          <Route path="/scout/offer-desk/evidence-pack" element={<OfferDeskEvidencePack />} />
           <Route path="/scout/offer-desk/how-we-cut" element={<OfferDeskHowWeCut />} />
           <Route path="/scout/offer-desk/gap" element={<OfferDeskGap />} />
           <Route path="/scout/offer-desk/document-check" element={<OfferDeskDocumentCheck />} />

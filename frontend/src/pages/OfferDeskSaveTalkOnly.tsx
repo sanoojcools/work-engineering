@@ -135,8 +135,10 @@ export default function OfferDeskSaveTalkOnly() {
           evidence pack and importing a genome that cites it per-unit — one button here can't manufacture nine files
           Rashmi's interview never produced. <code>offer-desk-inputs/</code> is exactly that pack, fabricated for
           testing and proven to clear this same gate (GQS 92.73/90) — not wired into this screen, on purpose, so it's
-          never mistaken for Rashmi's real production data. Next build: a clearly separate "with sample evidence" view
-          reusing that pack, not a mutation of this real result.
+          never mistaken for Rashmi's real production data.
+        </p>
+        <p style={{ fontSize: 13, marginBottom: 0 }}>
+          <Link to="/scout/offer-desk/evidence-pack">See it live, on a clearly separate genome →</Link>
         </p>
       </div>
 
