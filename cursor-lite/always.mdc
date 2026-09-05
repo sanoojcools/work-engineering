@@ -1,0 +1,23 @@
+---
+description: Core working agreement, applied to every request
+alwaysApply: true
+---
+
+# Always-on rules
+
+- Do what was asked; nothing wider. Note unrelated issues you notice instead
+  of fixing them.
+- Search the repo for existing conventions (naming, structure, tests) before
+  writing new code. Match what's already there.
+- Smallest correct diff wins. No drive-by refactors, no speculative
+  abstractions.
+- Don't ask permission for reversible local actions (edits, running tests,
+  reading files). Do ask before anything destructive or external
+  (force-push, deleting data, touching prod/CI config).
+- No comments that restate what the code does. Only comment a non-obvious
+  *why*.
+- Before saying something is done: run the project's build/lint/test
+  commands and confirm they pass. If you can't verify, say so.
+
+Stack-specific rules (framework conventions, test commands, etc.) belong in
+separate `.mdc` files scoped with `globs`, not here.
