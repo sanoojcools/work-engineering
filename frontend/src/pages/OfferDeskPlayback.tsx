@@ -4,6 +4,8 @@ import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
 import { SeatSessionBar, useOfferDeskSeat } from "../components/offerDesk/SeatSessionBar";
 import { SeatStepper } from "../components/offerDesk/SeatStepper";
+import { useIsGuest } from "../lib/guestMode";
+import { OFFER_DESK_SAMPLE_ROWS } from "../lib/offerDeskData";
 import { OFFER_DESK_SEATS, PLAYBACK_ROWS } from "../lib/offerDeskSeats";
 import { INTERVIEW_TYPE_LABELS } from "../types";
 
@@ -11,6 +13,7 @@ export default function OfferDeskPlayback() {
   const chro = useOfferDeskSeat("function_head");
   const ops = useOfferDeskSeat("sub_function_lead");
   const rashmi = useOfferDeskSeat("sme");
+  const isGuest = useIsGuest();
 
   const columns = [
     { seat: "function_head" as const, hook: chro, heading: "CHRO stand-in" },
@@ -33,7 +36,7 @@ export default function OfferDeskPlayback() {
       <p className="lede">We do not vote the rows into one story.</p>
       <SeatStepper />
 
-      {(chro.needsKey || ops.needsKey || rashmi.needsKey) && (
+      {(chro.needsKey || ops.needsKey || rashmi.needsKey) && !isGuest && (
         <ApiKeyBanner onSaved={() => { void chro.retry(); void ops.retry(); void rashmi.retry(); }} />
       )}
 
@@ -93,6 +96,22 @@ export default function OfferDeskPlayback() {
                 <p style={{ fontSize: 13, margin: 0 }}>
                   Empty on purpose. A labelled stand-in is not a captured grid. We do not fill it to look complete.
                 </p>
+              )}
+              {!spec.standIn && units.length === 0 && (
+                <>
+                  <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13 }}>
+                    {OFFER_DESK_SAMPLE_ROWS.map((r) => (
+                      <li key={r.name} style={{ marginBottom: 6 }}>
+                        <strong>{r.name}</strong>
+                        {r.time_minutes != null && <> · {r.time_minutes} min (sheet)</>}
+                        {r.pain ? <div className="hint" style={{ margin: "2px 0 0" }}>{r.pain}</div> : null}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="hint" style={{ marginTop: 8, marginBottom: 0 }}>
+                    From the sheet, not the live capture grid — sign in to open a real sitting.
+                  </p>
+                </>
               )}
               {units.length > 0 && (
                 <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13 }}>

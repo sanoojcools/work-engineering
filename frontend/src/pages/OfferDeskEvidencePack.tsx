@@ -5,6 +5,7 @@ import { InfoTooltip } from "../components/InfoTooltip";
 import { SeatStepper } from "../components/offerDesk/SeatStepper";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
 import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
+import { useIsGuest } from "../lib/guestMode";
 import { ApiError } from "../api";
 import {
   EVIDENCE_FILE_NAMES,
@@ -26,6 +27,7 @@ type GenomeImportResult = {
 };
 
 export default function OfferDeskEvidencePack() {
+  const isGuest = useIsGuest();
   const [stage, setStage] = useState<"idle" | "uploading" | "importing" | "done">("idle");
   const [progress, setProgress] = useState<{ fileName: string; done: number; total: number } | null>(null);
   const [uploaded, setUploaded] = useState<UploadedEvidenceFile[]>([]);
@@ -103,7 +105,7 @@ export default function OfferDeskEvidencePack() {
         <p style={{ fontSize: 13, marginTop: 6, marginBottom: 0 }}>{packDisclaimer()}</p>
       </div>
 
-      {needsKey && <ApiKeyBanner onSaved={() => setNeedsKey(false)} />}
+      {needsKey && !isGuest && <ApiKeyBanner onSaved={() => setNeedsKey(false)} />}
       {error && <div className="banner error">{error}</div>}
 
       <div className="card" style={{ marginBottom: 16 }}>
@@ -114,15 +116,21 @@ export default function OfferDeskEvidencePack() {
           The other 2 (welcome mail, candidate drop-out) have no log to back them in this batch and stay{" "}
           <code>declared</code>, not padded.
         </p>
-        <button type="button" className="primary" disabled={stage === "uploading" || stage === "importing"} onClick={() => void run()}>
-          {stage === "uploading"
-            ? `Uploading ${progress?.fileName ?? ""} (${progress?.done ?? 0}/${progress?.total ?? EVIDENCE_FILE_NAMES.length})…`
-            : stage === "importing"
-              ? "Importing genome…"
-              : stage === "done" && result
-                ? "Run again"
-                : "Load the evidence pack & import"}
-        </button>
+        {isGuest ? (
+          <p className="hint" style={{ marginBottom: 0 }}>
+            Sign in (Home → Set up the demo) to actually upload and import this — it needs a real tenant.
+          </p>
+        ) : (
+          <button type="button" className="primary" disabled={stage === "uploading" || stage === "importing"} onClick={() => void run()}>
+            {stage === "uploading"
+              ? `Uploading ${progress?.fileName ?? ""} (${progress?.done ?? 0}/${progress?.total ?? EVIDENCE_FILE_NAMES.length})…`
+              : stage === "importing"
+                ? "Importing genome…"
+                : stage === "done" && result
+                  ? "Run again"
+                  : "Load the evidence pack & import"}
+          </button>
+        )}
       </div>
 
       {uploaded.length > 0 && (

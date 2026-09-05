@@ -5,6 +5,7 @@ import { InfoTooltip } from "../components/InfoTooltip";
 import { SeatSessionBar, useOfferDeskSeat } from "../components/offerDesk/SeatSessionBar";
 import { SeatStepper } from "../components/offerDesk/SeatStepper";
 import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
+import { useIsGuest } from "../lib/guestMode";
 import { ensureSeatSession } from "../lib/offerDeskSeats";
 
 type PersistResult = {
@@ -24,6 +25,7 @@ type PersistResult = {
 
 export default function OfferDeskSaveTalkOnly() {
   const seat = useOfferDeskSeat("sme");
+  const isGuest = useIsGuest();
   const [result, setResult] = useState<PersistResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,8 +98,16 @@ export default function OfferDeskSaveTalkOnly() {
         >
           {busy ? "Calling the existing persist gate…" : "Save talk-only"}
         </button>
-        {seat.session && seat.session.units.length === 0 && (
-          <p className="hint">The Offer Desk SME sitting has no rows yet. Open 3. Offer Desk SME first so the sheet language is captured.</p>
+        {isGuest ? (
+          <p className="hint">
+            Sign in (Home → Set up the demo) to actually call this and see a real GQS score — it will still come back
+            denied, saved_count 0, same as it does for a signed-in colleague. This button won't write anything without
+            a key regardless.
+          </p>
+        ) : (
+          seat.session && seat.session.units.length === 0 && (
+            <p className="hint">The Offer Desk SME sitting has no rows yet. Open 3. Offer Desk SME first so the sheet language is captured.</p>
+          )
         )}
       </div>
 

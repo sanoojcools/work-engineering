@@ -5,6 +5,7 @@ import { InfoTooltip } from "../components/InfoTooltip";
 import { SeatStepper } from "../components/offerDesk/SeatStepper";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
 import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
+import { useIsGuest } from "../lib/guestMode";
 import { DOCUMENT_CHECK_RECORD } from "../lib/offerDeskWorkRecord";
 import type { Page, SpecCheck, WorkUnit } from "../types";
 
@@ -12,6 +13,8 @@ type UploadedEvidence = { file_id: string; sha256: string; file_name: string; si
 
 export default function OfferDeskSpecDeny() {
   const rec = DOCUMENT_CHECK_RECORD;
+  const isGuest = useIsGuest();
+  const [previewed, setPreviewed] = useState(false);
   const [units, setUnits] = useState<WorkUnit[] | null>(null);
   const [check, setCheck] = useState<SpecCheck | null>(null);
   const [httpStatus, setHttpStatus] = useState<number | null>(null);
@@ -135,25 +138,55 @@ export default function OfferDeskSpecDeny() {
         </ul>
       </div>
 
-      {needsKey && <ApiKeyBanner onSaved={() => setNeedsKey(false)} />}
+      {needsKey && !isGuest && <ApiKeyBanner onSaved={() => setNeedsKey(false)} />}
       {error && <div className="banner error">{error}</div>}
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <p style={{ fontSize: 13 }}>
-          Button below calls <code>POST /spec/check</code> with <code>check_type: evidence</code> and an empty <code>evidence_ref</code>
-          {target ? <> on <strong>{target.code}</strong> ({target.name})</> : ". Set up the demo so a contracted unit exists."}
-        </p>
-        <button type="button" className="primary" disabled={busy} onClick={() => void askWithoutPass()}>
-          {busy ? "Asking Spec…" : "Ask Spec without a pass"}
-        </button>
-        {target && (
-          <p className="hint" style={{ marginBottom: 0 }}>
-            Using a contracted census unit, not the Offer Desk sitting. Talk-only already refused to mint one.
-          </p>
+        {isGuest ? (
+          <>
+            <p style={{ fontSize: 13 }}>
+              This calls <code>POST /spec/check</code> with <code>check_type: evidence</code> and an empty{" "}
+              <code>evidence_ref</code> on the contracted document-check unit — it needs a real tenant, so a guest
+              can preview the outcome without the live call rather than hit a 401.
+            </p>
+            <button type="button" className="primary" onClick={() => setPreviewed(true)}>
+              Preview: ask Spec without a pass
+            </button>
+            <p className="hint" style={{ marginBottom: 0 }}>
+              Sign in (Home → Set up the demo) to run this for real and upload evidence.
+            </p>
+          </>
+        ) : (
+          <>
+            <p style={{ fontSize: 13 }}>
+              Button below calls <code>POST /spec/check</code> with <code>check_type: evidence</code> and an empty <code>evidence_ref</code>
+              {target ? <> on <strong>{target.code}</strong> ({target.name})</> : ". Set up the demo so a contracted unit exists."}
+            </p>
+            <button type="button" className="primary" disabled={busy} onClick={() => void askWithoutPass()}>
+              {busy ? "Asking Spec…" : "Ask Spec without a pass"}
+            </button>
+            {target && (
+              <p className="hint" style={{ marginBottom: 0 }}>
+                Using a contracted census unit, not the Offer Desk sitting. Talk-only already refused to mint one.
+              </p>
+            )}
+          </>
         )}
       </div>
 
-      {check && (
+      {isGuest && previewed && (
+        <div className="banner warn" style={{ marginBottom: 16 }}>
+          <strong>Preview · denied — evidence_ref required by contract</strong>
+          <div style={{ marginTop: 8, fontSize: 13 }}>
+            This is what a signed-in run returns, not a live call: the document-check unit's contract requires{" "}
+            {rec.evidenceRequired}, and an empty <code>evidence_ref</code> always denies —{" "}
+            <code>services/spec.py::enforce</code> only checks whether it's a non-empty string. Sign in to run this
+            for real and see the live result.
+          </div>
+        </div>
+      )}
+
+      {!isGuest && check && (
         <div className={`banner ${denied && httpStatus === 200 ? "warn" : "error"}`} style={{ marginBottom: 16 }}>
           <strong>
             HTTP {httpStatus ?? "?"} · {check.result}

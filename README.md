@@ -100,6 +100,12 @@ The test suite always runs with the model off (`tests/conftest.py`), so `pytest`
 
 ### Walking it through
 
+**Guest, no key (front door):** Home → **Start the walk** → Enterprise → HR → HR operations → Offer Desk → three seats (Function leader, Sub-function lead, Offer Desk SME) → Playback → Spreadsheet → Save talk-only → How we cut it → Gap → Document check → Hours → Spec deny → Sitting record. Every screen renders with no key; every write shows a preview of the real outcome or asks you to sign in instead of writing anything. See `docs/PITCH.md` for the full walkthrough and what it does not promise.
+
+**Signed in (Set up the demo, on Home):** the same walk, but Save talk-only shows a real GQS score, Spec deny's "attach evidence" button really uploads a file and flips the check to allowed, and the evidence-pack import runs for real.
+
+The older Overview → Discovery → Projections → VERDICT walk still exists in the nav under Specification / Analysis:
+
 1. **Overview** — Prepare Client A HR demo, then Work Units → Discovery → Projections → VERDICT. This is a specified, verifiable inventory.
 2. **Scout Interview** — start an SME session and fill the Work Capture Grid live; watch Genome Strength climb. Tour the five elevations.
 3. **Future Preview → Generate V8 Work Units** — the generated genome is scored by the same GQS gate as any import, and is *expected* to be blocked. Scout data is honestly labelled `declared` provenance, and GQS weights `observed` at 40%, so a Scout-only genome is structurally capped below the gate. The gate reporting that gap is the point, not a bug.
