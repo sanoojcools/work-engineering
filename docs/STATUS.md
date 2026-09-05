@@ -1,6 +1,6 @@
-# Product state — 1 September 2026
+# Product state — 5 September 2026
 
-*(This file previously described the state as of 25 August 2026 — before Scout, before multi-tenant per-org auth, before Alembic. That version is superseded; nothing below should be read as consistent with an older copy of this file elsewhere. See `V8-STATE-AND-REFERENCE.md` for a fuller standalone snapshot and `V8-PRODUCTION-ENGINEERING.md` for how the product got from there to here.)*
+*(This file previously described the state as of 1 September 2026 — before V9's guided pitch walk (Home → Enterprise → HR → Offer Desk) merged to `main`. That version is superseded; nothing below should be read as consistent with an older copy of this file elsewhere. See `V8-STATE-AND-REFERENCE.md` for a fuller standalone snapshot and `V8-PRODUCTION-ENGINEERING.md` for how the product got from there to here.)*
 
 Concept: [Work-Engineering-V8.md](Work-Engineering-V8.md) (now including Part K, Scout). Code mapping: [../ARCHITECTURE.md](../ARCHITECTURE.md). HTTP: [API.md](API.md). Honesty ledger: [HONESTY.md](HONESTY.md). How to run: [../README.md](../README.md). What's next, pending review: [ROADMAP-DECISIONS.md](ROADMAP-DECISIONS.md).
 
@@ -18,7 +18,7 @@ This repo remains the **specification layer** (V8 C4). It does not log an indivi
 
 | Bar | Now | Meaning |
 |---|---|---|
-| **Colleague demo** | **Yes** | One-click setup on Overview seeds both demo tenants, mints their keys, and signs the browser in. Walk Client A's HR census through Discovery → Projections → VERDICT, then Scout Interview → the five elevations → Future Preview, then switch to Sample Genome Co and ratify/drill/Automation-Index a document-backed genome. |
+| **Colleague demo** | **Yes** | One click (**Set up the demo**) mints the key and signs the browser in. The 12-minute guided walk is now the front door: Home → Enterprise track → HR → Offer Desk SME → Playback → Spreadsheet → Save talk-only (proves persistence stays honestly empty) → How we cut it → Gap → Document check → Hours (declared 95 vs defended 61.8) → Spec deny → Sitting record. The older Overview → Discovery → Projections → VERDICT → Scout Interview walk still exists under Specification / Analysis in the nav, but it is no longer what a colleague is shown first. |
 | **End-to-end (wedge)** | **Yes, and past J1** | One company × one function × inventory, graph, VERDICT, economics, gap, pack — plus the capture side (Scout) that produces that inventory from a structured interview, and the quality gate (GQS) that decides whether a genome is trustworthy enough to write. |
 | **Multi-tenant, RLS-isolated** | **Yes, HTTP-proven** | Per-org `X-Spec-Key`, hashed at rest, rotatable with a grace window. Two-tenant cross-isolation proven by a real HTTP test matrix (`test_rls_http.py`), not a manual check. |
 | **Customer-ready** | **Not yet** | The HR census is a sample employer's data. Scout captures real structured input from a real interview, but per-*user* login does not exist — only per-org keys. |
@@ -28,17 +28,22 @@ V8 alignment: **C3** (five projections of one record), **C4** (spec, not executi
 
 ---
 
-## What a colleague should see (10 minutes)
+## What a colleague should see (12 minutes)
 
-1. Open the app. Click **Set up the demo** on Overview — one click, no terminal, no copy-pasted keys.
-2. Overview: real numbers for Client A (work units, VERDICT L4+ drafts, attributed hours, FTE) — banner states plainly that VERDICT and hours are drafts until confirmed.
-3. Work Units → Discovery → Projections → VERDICT: the specified, verifiable inventory (V8's C-through-H core).
-4. Function Scope: the function-agnostic selector (HR active/detailed; Finance/Legal/Sales/Operations honestly marked "coming soon", no fabricated data behind them) and the CHRO blast-radius grid — 44 HR sub-functions across 6 clusters, check what's in scope, name an owner, set a priority, watch the live meter, then Start interview hands the sub-function and owner name off to a new Scout session.
-5. Scout Interview: start a session (Function Head, Sub-function Lead, or SME track), load the sample rows (or type your own), watch the Genome Strength meter climb, tour the five elevations, try Story to Structure against a live model if `LLM_PROVIDER=anthropic` is configured.
-6. Future Preview → Generate V8 Work Units: watch it score low and get blocked — a Scout-only genome is *structurally* capped under GQS's 90-point gate (declared, not observed, provenance), stated as the intended behaviour, not a bug.
-7. Switch to Sample Genome Co (one click from the sidebar). Open its genome: ratify, drill business objects → work units → full 18-attribute detail, read the Automation Index.
+The front door is now Home, not Overview. Click **Set up the demo**, then:
 
-Do not treat any inferred VERDICT score, attributed FTE, or GQS score as more certain than the app itself states it to be.
+1. **Enterprise track**: a company with HR, Finance, Legal, Operations listed — only HR is live; the rest are honest "not built" placeholders. Enter through HR operations at the Offer Desk.
+2. **Offer Desk SME → Playback**: the three-seat model (CHRO / HR Ops stand-in, SME, and a 3-column playback of what each seat said), transcribed from a real interview.
+3. **Spreadsheet → Save talk-only**: saving a talk-only session stays honestly empty — no GQS score, no fabricated genome — until real observed evidence backs it.
+4. **How we cut it → Gap**: the conformance gap between what was declared in the interview and what the sitting record shows.
+5. **Document check**: whether an evidence file actually backs a step, not just an assertion.
+6. **Hours**: declared 95 hrs/month stays on screen next to the defended 61.8 — the smaller, evidence-backed number is not hidden behind the bigger declared one.
+7. **Spec deny**: a live Spec API check against this Offer Desk work unit — evidence-free returns `denied, "evidence_ref required by contract"`; a real evidence_ref returns `allowed`.
+8. **Sitting record**: the close of the 12-minute walk.
+
+The pre-V9 walk (Overview → Discovery → Projections → VERDICT, then Scout Interview → the five elevations → Future Preview, then Sample Genome Co's ratify/drill/Automation-Index) still works and still lives in the nav under Specification / Analysis — it is just no longer the first thing a colleague is shown.
+
+Do not treat any inferred VERDICT score, attributed FTE, or GQS score as more certain than the app itself states it to be. Do not demo `offer-desk-inputs/` as Rashmi's real production data — it is fabricated test evidence built to prove the observed-evidence path works end to end; see `offer-desk-inputs/README.md`.
 
 ---
 
@@ -51,10 +56,12 @@ Do not treat any inferred VERDICT score, attributed FTE, or GQS score as more ce
 - Offer Desk worked example: 11 real steps, a handoff map, an exception catalog, and an automation-readiness summary, transcribed verbatim from a real interview. Its "Run this on the platform" action seeds them as a real Scout session — the completeness numbers that come back are the platform's own (verified: 84%, not the fabricated 100% a demo might reach for), not a copy of the source document's claims.
 - Work Graph dependency-cycle detection: `POST /api/genome/import` now rejects a genome whose `dependencies[]` form a cycle (self-reference, mutual pair, or a longer ring), reporting the actual cycle path as a `circular_dependency` violation — the same pre-pass shape as the file-provenance and duplicate-code checks. GQS's own completeness check only validated that a dependency reference exists, never that the graph it forms is acyclic; this was a real, reachable gap (the shipped sample genome fixture had exactly this shape once — see below).
 - Generating Work Units from a Scout session reuses the *same* import pipeline and faces the *same* GQS gate as any other genome — no relaxed path for the product's own capture instrument.
+- V9's guided pitch walk (Home → Enterprise → HR → Offer Desk) is merged to `main` and closes end to end: three-seat interview + playback, talk-only save honestly stays empty, the cut/gap view, a document-backed evidence check, declared-vs-defended hours (95 vs 61.8), and a live Spec API deny → allow. `offer-desk-inputs/` is a **fabricated** evidence set (invented candidates, invented transcripts, invented system-of-record exports) built to prove that path works when observed evidence exists — not Rashmi's real production data, and not proof any real Zwayam/Zoho/UAN integration exists (there is none; the only real ingestion path is the generic `.csv`/`.xlsx` upload endpoint).
+- `render.yaml` defines a free-tier Render blueprint (Postgres + Docker backend + static frontend) — present, but the hosted pitch is not yet the walk a colleague would be given; see "Ship-ready" above.
 
 ## What is not built, named precisely
 
-A Function Pack SDK; adaptive, AI-generated interview follow-up questions (the question bank is static and hand-written); trace/log/ERP-based upward discovery (Scout captures declared intent only); a dedup/split engine for malformed imports; a UI step that prompts a user to create a consent receipt before a Scout session starts (the API requires and checks one at genome-generation time — see below — but no screen guides anyone to create one first); per-user login; a real sub-function catalog for Finance, Legal, Sales, or Operations (the selector shows them as placeholders, not fabricated lists); automatic cascade from a CHRO's blast-radius selection into created interview sessions (Start interview pre-fills the create form — it does not create sessions on its own). See `docs/Work-Engineering-V8.md` Part K11 and `V8-PRODUCTION-ENGINEERING.md` §4 for the full, evidenced list.
+A Function Pack SDK; adaptive, AI-generated interview follow-up questions (the question bank is static and hand-written); trace/log/ERP-based upward discovery (Scout captures declared intent only, and no Zwayam/Zoho/UAN connector exists); a dedup/split engine for malformed imports; a UI step that prompts a user to create a consent receipt before a Scout session starts (the API requires and checks one at genome-generation time — see below — but no screen guides anyone to create one first); per-user login or SSO; a real sub-function catalog for Finance, Legal, Sales, or Operations (the selector shows them as placeholders, not fabricated lists); automatic cascade from a CHRO's blast-radius selection into created interview sessions (Start interview pre-fills the create form — it does not create sessions on its own); a hosted, ship-ready pitch URL (`render.yaml` exists, deploy is not yet confirmed clean). See `docs/Work-Engineering-V8.md` Part K11, `V8-PRODUCTION-ENGINEERING.md` §4, and `docs/ROADMAP-DECISIONS.md` for the full, evidenced list and what's proposed next.
 
 ## What not to promise
 
@@ -62,3 +69,4 @@ A Function Pack SDK; adaptive, AI-generated interview follow-up questions (the q
 - That attributed FTE or an inferred VERDICT score is measured, confirmed labour.
 - That a customer can log in and see only their own data — per-org keys exist; per-user login does not.
 - That this product executes work, connects to a real ERP, or runs agents. It specifies work; execution systems consume the spec.
+- That `offer-desk-inputs/` is Rashmi's real production month, or that any real Zwayam/Zoho/UAN system-of-record integration exists — both are fabricated test fixtures proving the observed-evidence path, not real data or a real connector.
