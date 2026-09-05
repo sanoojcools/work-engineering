@@ -33,6 +33,8 @@ from .scout import (  # noqa: F401
     ScoutInterviewSession,
 )
 from .security import (  # noqa: F401
+    AppUser,
+    AppUserRole,
     AuditLog,
     ConsentReceipt,
     ConsentStatus,

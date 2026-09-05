@@ -13,6 +13,17 @@ lists. Those stay accurate until something below actually ships.
 
 ## Track 4 — Make it a real product (per-user login, self-serve onboarding, SSO)
 
+**Status: schema scaffolding only, landed.** The `users` table this section
+proposes exists (alembic `efc855b7d06a`): `client_id` FK, `external_id`
+(provider-agnostic — not `workos_user_id`, so the table doesn't lock in the
+provider decision below before it's actually made), `role` (admin/editor/
+viewer per the recommendation below), RLS from creation (same
+`tenant_isolation` shape as every other tenant table). **Nothing reads or
+writes it yet** — no router, no session, no provider call, no login. Built
+this far because it's decision-independent (the column shapes don't change
+based on which provider gets picked), not because the three decisions below
+got made — they haven't, and still need you.
+
 **Recommendation: WorkOS**, layered on top of the existing per-org API key
 model rather than replacing it.
 

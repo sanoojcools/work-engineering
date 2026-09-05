@@ -259,3 +259,39 @@ class Ratification(Base):
     client: Mapped["Client"] = relationship()
     version: Mapped["GenomeVersion"] = relationship()
     work_unit: Mapped["WorkUnit"] = relationship()
+
+
+class AppUserRole(str, enum.Enum):
+    admin = "admin"
+    editor = "editor"
+    viewer = "viewer"
+
+
+class AppUser(Base):
+    """Track 4 (docs/ROADMAP-DECISIONS.md) scaffolding ONLY — schema, not a
+    login system. Nothing reads or writes this table yet: no router, no
+    session, no provider call. OrgApiKey remains the only real credential in
+    this codebase; per-user login does not exist until three decisions this
+    file cannot make on its own are confirmed (see ROADMAP-DECISIONS.md
+    Track 4): WorkOS vs. Clerk vs. Auth0 vs. something already in use, 3
+    roles vs. a 4th, and whether org_api_keys stays live as a parallel path.
+
+    external_id is deliberately provider-agnostic (not "workos_user_id") so
+    this table doesn't lock in that choice before it's actually confirmed --
+    it's whatever opaque user id the chosen provider issues. A person's
+    provider identity is one row here; client_id is this app's own
+    tenant-membership boundary (RLS-bound, like every other tenant table),
+    an application-layer check layered on top of RLS, not a replacement for
+    it -- same reasoning the roadmap doc gives."""
+    __tablename__ = "users"
+    __table_args__ = (UniqueConstraint("external_id", name="uq_users_external_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    external_id: Mapped[str] = mapped_column(String(200))
+    email: Mapped[str] = mapped_column(String(320), default="")
+    role: Mapped[AppUserRole] = mapped_column(Enum(AppUserRole), default=AppUserRole.viewer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    client: Mapped["Client"] = relationship()
