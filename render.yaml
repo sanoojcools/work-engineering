@@ -23,6 +23,13 @@ services:
           property: connectionString
       - key: PII_ENCRYPTION_KEY
         generateValue: true
+      # Requests from the static frontend arrive same-origin through this
+      # service's own /api/* rewrite (see the routes block below), so this is
+      # a defensive addition, not the fix for the demo/bootstrap 500 — but a
+      # direct browser call against work-engineering-api.onrender.com (e.g.
+      # hitting /docs) is genuinely cross-origin and needs this.
+      - key: ALLOWED_ORIGINS
+        value: '["https://work-engineering.onrender.com","https://work-engineering-api.onrender.com"]'
 
   - type: web
     name: work-engineering

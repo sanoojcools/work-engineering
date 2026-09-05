@@ -44,7 +44,7 @@ type BootstrapResult = {
  * The endpoint is gated by DEMO_BOOTSTRAP_ENABLED, so where the demo path is
  * turned off this reports that rather than pretending to work. */
 export function DemoSetup() {
-  const { reload, keyClientId, clients } = useCompany();
+  const { keyClientId, clients } = useCompany();
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<BootstrapResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,14 +56,16 @@ export function DemoSetup() {
     setBusy(true);
     setError(null);
     try {
-      // A key's plaintext exists only at the moment it is minted, so a tenant
-      // that already has one returns null and this browser would be left
-      // signed out — the exact dead end this button exists to remove. When we
-      // are not already holding a usable key, ask for fresh ones so "set up
-      // the demo" always ends signed in. If we do hold one, leave it alone
-      // rather than churning a credential that is working.
-      const holdsUsableKey = Boolean(readDemoKeys().clientA) && keyClientId !== null;
-      const newKeys = forceNewKeys || !holdsUsableKey;
+      // Only the explicit "Issue fresh keys" button may pass new_keys=true.
+      // This used to also trigger whenever *this browser* held no key —
+      // fine on a single developer's laptop, but on the shared public pitch
+      // instance every new visitor's browser starts with empty localStorage,
+      // so that auto-force silently retired the previous visitor's Client A
+      // key on every single "Set up the demo" click, signing them out with
+      // no warning. A tenant's first-ever bootstrap still mints a real key
+      // here (new_keys=false only ever returns null when a key *already
+      // exists*), so a fresh local dev database is unaffected.
+      const newKeys = forceNewKeys;
 
       const body = await api.post<BootstrapResult>(
         `/demo/bootstrap${newKeys ? "?new_keys=true" : ""}`,
@@ -81,8 +83,17 @@ export function DemoSetup() {
 
       // Adopt Client A's key; setSpecKey re-resolves the company context, so
       // the switcher follows without a reload.
-      if (merged.clientA) setSpecKey(merged.clientA);
-      else reload();
+      if (merged.clientA) {
+        setSpecKey(merged.clientA);
+      } else {
+        // Someone else already set this tenant up and this browser was never
+        // given the plaintext (only shown once, to whoever minted it). Say so
+        // plainly instead of silently rotating their key out from under them.
+        setError(
+          "The demo tenant already exists, but this browser was never signed in to it. " +
+            "Use “Issue fresh keys” if you understand that invalidates whatever key is currently in use.",
+        );
+      }
     } catch (err) {
       setError(errorMessage(err));
     } finally {

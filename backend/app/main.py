@@ -20,11 +20,18 @@ async def lifespan(app: FastAPI):
             conn.execute(text("SELECT 1"))
         # bootstrap_tenants clones catalog Work Units across clients — an
         # inherently cross-tenant maintenance step, so it deliberately runs
-        # on the RLS-bypassing system session, not the per-request one.
+        # on the RLS-bypassing system session, not the per-request one. Uses
+        # SystemSessionLocal directly rather than the get_system_db()
+        # dependency (this isn't a request handler), so the app.system_bypass
+        # GUC (see get_system_db's docstring, alembic 68c3926e1143) has to be
+        # set here too — without it this silently failed on every Render
+        # deploy/restart, caught by the broad except below into
+        # db_ready=False with no visible error.
         from .db import SystemSessionLocal
         from .services.tenants import bootstrap_tenants
         db = SystemSessionLocal()
         try:
+            db.execute(text("SET app.system_bypass = 'on'"))
             bootstrap_tenants(db)
         finally:
             db.close()

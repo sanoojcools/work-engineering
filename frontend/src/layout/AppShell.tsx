@@ -66,7 +66,7 @@ export default function AppShell() {
     <div className="shell">
       <nav className="nav">
         <h1>Work Engineering</h1>
-        <p>V9 on V8 · specification layer</p>
+        <p>Specification layer</p>
         <label className="company-switch">
           <span>Company</span>
           <select
