@@ -51,7 +51,10 @@ export function setSpecKey(value: string): void {
 async function request<T>(path: string, init: RequestInit & { specKey?: string } = {}): Promise<T> {
   const { specKey, ...rest } = init;
   const headers = new Headers(rest.headers);
-  if (rest.body && !headers.has("Content-Type")) {
+  // FormData bodies (file upload) must NOT get a manual Content-Type — the
+  // browser sets multipart/form-data with the correct boundary itself, and
+  // overriding it here breaks the multipart parse server-side.
+  if (rest.body && !(rest.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
   if (specKey) headers.set("X-Spec-Key", specKey);
@@ -66,6 +69,8 @@ export const api = {
   get: <T>(path: string, specKey?: string) => request<T>(path, { specKey }),
   post: <T>(path: string, body?: unknown, specKey?: string) =>
     request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body), specKey }),
+  postForm: <T>(path: string, form: FormData, specKey?: string) =>
+    request<T>(path, { method: "POST", body: form, specKey }),
   put: <T>(path: string, body: unknown) => request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown, specKey?: string) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body), specKey }),

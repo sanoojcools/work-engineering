@@ -8,6 +8,8 @@ import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
 import { DOCUMENT_CHECK_RECORD } from "../lib/offerDeskWorkRecord";
 import type { Page, SpecCheck, WorkUnit } from "../types";
 
+type UploadedEvidence = { file_id: string; sha256: string; file_name: string; size: number };
+
 export default function OfferDeskSpecDeny() {
   const rec = DOCUMENT_CHECK_RECORD;
   const [units, setUnits] = useState<WorkUnit[] | null>(null);
@@ -16,6 +18,10 @@ export default function OfferDeskSpecDeny() {
   const [busy, setBusy] = useState(false);
   const [needsKey, setNeedsKey] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [evidence, setEvidence] = useState<UploadedEvidence | null>(null);
+  const [clearedCheck, setClearedCheck] = useState<SpecCheck | null>(null);
+  const [clearing, setClearing] = useState(false);
+  const [clearError, setClearError] = useState<string | null>(null);
 
   const target = useMemo(() => {
     if (!units || units.length === 0) return null;
@@ -64,6 +70,39 @@ export default function OfferDeskSpecDeny() {
       }
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function clearWithEvidence() {
+    if (!target) return;
+    setClearing(true);
+    setClearError(null);
+    try {
+      // A real file through the real upload endpoint — server-computed
+      // sha256, not a caller-supplied placeholder string. This is the same
+      // endpoint offer-desk-inputs/ used to prove the observed path works;
+      // this button proves it inline, on the exact unit that just denied.
+      const csv = "document_type,status\noffer_letter,verified\naadhaar,verified\npan_card,verified\n";
+      const file = new File([csv], "document-check-evidence.csv", { type: "text/csv" });
+      const form = new FormData();
+      form.append("file", file);
+      const uploaded = await apiFetch.postForm<UploadedEvidence>("/files/upload", form);
+      setEvidence(uploaded);
+
+      const row = await apiFetch.post<SpecCheck>("/spec/check", {
+        work_unit_code: target.code,
+        check_type: "evidence",
+        caller: "offer-desk-walk",
+        approver: target.authority || target.owner || "",
+        actor: target.actor_type || "human",
+        evidence_ref: uploaded.sha256,
+        object_state: "",
+      });
+      setClearedCheck(row);
+    } catch (err) {
+      setClearError(err instanceof Error ? err.message : "Could not clear the deny");
+    } finally {
+      setClearing(false);
     }
   }
 
@@ -125,6 +164,52 @@ export default function OfferDeskSpecDeny() {
               ? "Deny. Empty proof. Runtime refused. That is the product."
               : "This walk expects 200 denied. A 500 after a correct deny is the post-commit RLS refresh — rebuild the backend image from idea/v9. Do not rewrite the gate."}
           </div>
+        </div>
+      )}
+
+      {denied && target && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <h3>What would clear this</h3>
+          <p style={{ fontSize: 13 }}>
+            This unit's contract requires: <strong>{target.evidence_required || rec.evidenceRequired}</strong>.
+            Spec's evidence check (<code>services/spec.py::enforce</code>) only asks one question: is{" "}
+            <code>evidence_ref</code> a non-empty string? It does not care what kind of file — but a real one, uploaded
+            through the same server-hashing endpoint every genome import uses, is the honest way to clear it, not typing
+            a placeholder string into the request.
+          </p>
+          {!evidence && (
+            <>
+              <button type="button" className="primary" disabled={clearing} onClick={() => void clearWithEvidence()}>
+                {clearing ? "Uploading & re-asking Spec…" : "Upload sample document-check evidence & re-ask Spec"}
+              </button>
+              <p className="hint" style={{ marginBottom: 0 }}>
+                Uploads a small CSV (checklist result: offer letter / Aadhaar / PAN verified) via the real{" "}
+                <code>POST /files/upload</code>, then re-runs the same check with that file's server-computed sha256 as{" "}
+                <code>evidence_ref</code>.
+              </p>
+            </>
+          )}
+          {clearError && <div className="banner error">{clearError}</div>}
+          {evidence && (
+            <div className="banner ok" style={{ marginTop: 12, marginBottom: 0 }}>
+              <div style={{ fontSize: 13 }}>
+                Uploaded <strong>{evidence.file_name}</strong> ({evidence.size} bytes) — server-computed{" "}
+                <code>sha256 {evidence.sha256.slice(0, 16)}…</code>, a real <code>UploadedFile</code> row, not a string
+                typed into the request.
+              </div>
+              {clearedCheck && (
+                <div style={{ marginTop: 8 }}>
+                  <strong>
+                    HTTP 200 · {clearedCheck.result}
+                    {clearedCheck.reason ? ` — ${clearedCheck.reason}` : ""}
+                  </strong>
+                  <div style={{ marginTop: 4, fontSize: 13 }}>
+                    Same unit, same check, real <code>evidence_ref</code> this time — the gate did what it says on the tin.
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

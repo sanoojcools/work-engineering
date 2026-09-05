@@ -126,6 +126,20 @@ export default function OfferDeskSaveTalkOnly() {
         </ul>
       </div>
 
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3>What would clear this</h3>
+        <p style={{ fontSize: 13, marginBottom: 0 }}>
+          Not one file — this gate is failing GQS because most of the sitting's Work Units are <code>declared</code>{" "}
+          (an interview claim), not <code>observed</code> (backed by an uploaded, server-hashed system-of-record file:
+          a Zwayam export, a Zoho signing log, a payroll report). Clearing it for real means uploading that whole
+          evidence pack and importing a genome that cites it per-unit — one button here can't manufacture nine files
+          Rashmi's interview never produced. <code>offer-desk-inputs/</code> is exactly that pack, fabricated for
+          testing and proven to clear this same gate (GQS 92.73/90) — not wired into this screen, on purpose, so it's
+          never mistaken for Rashmi's real production data. Next build: a clearly separate "with sample evidence" view
+          reusing that pack, not a mutation of this real result.
+        </p>
+      </div>
+
       <IoPanes
         given="Three interviews, optional sheet as a note, no event log."
         understood="Talk is declared. Declared is not observed. Completeness is not clearance."

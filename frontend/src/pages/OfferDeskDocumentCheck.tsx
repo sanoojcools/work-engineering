@@ -92,6 +92,17 @@ export default function OfferDeskDocumentCheck() {
         </p>
       </div>
 
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3>What would clear this</h3>
+        <p style={{ fontSize: 13, marginBottom: 0 }}>
+          Nothing, on purpose — this screen has no evidence-upload button, unlike Save talk-only or Spec deny.
+          Dual employment isn't a missing document; it's a policy stop. A missing-document gate and a compliance stop
+          look the same on screen (both disable release) but aren't the same kind of block — one is a data gap you
+          close with a file, the other is a rule that no file is allowed to lift. Treating this like the other two
+          would misrepresent a hard "no" as a data-completeness problem.
+        </p>
+      </div>
+
       <IoPanes
         given={`Sheet step ${rec.sheetStep} and the hire-type checklist language.`}
         understood="Missing documents are a list. Dual employment is a veto. Those are different."
