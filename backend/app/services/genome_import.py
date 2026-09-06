@@ -557,6 +557,64 @@ def _flag_split_recommended(
     return flagged
 
 
+def _flag_missing_terminal_state(db: Session, client_id: int, code_to_wu: dict[str, WorkUnit]) -> int:
+    """Gate 9 (docs/ROADMAP-DECISIONS.md, docs/BUILD_PROGRAM.md Track 1 slice
+    1.3): advisory, not blocking -- same reasoning as Gate 6. Infers a
+    business-object state graph from every current_condition ->
+    desired_condition transition among the Work Units that share a business
+    object, cumulative across this client's Work Units (not just this
+    import) -- a BO's real state graph is built incrementally across
+    imports, the same way Gate 10's corroboration check looks past this
+    batch rather than only at it.
+
+    A "terminal state" is a desired_condition that is never any other
+    unit's current_condition for the same business object -- a sink the
+    graph flows into and never out of. A business object backed by fewer
+    than 3 Work Units is exempt (too small a sample for "no terminal
+    state" to mean anything -- ROADMAP-DECISIONS.md's own threshold); one
+    with >=3 units and no sink gets a ConformanceGap
+    (kind=missing_terminal_state, severity=P2). entity_types.state_machine
+    is never written here -- this only ever warns, it does not infer or
+    auto-fix the state machine itself.
+
+    Only business objects touched by *this* import are evaluated, and each
+    gets at most one gap per import (not one per unit) -- this is a
+    property of the whole graph, not of any single Work Unit."""
+    touched_bo_ids = {wu.business_object_type_id for wu in code_to_wu.values()}
+    flagged = 0
+    for bo_id in touched_bo_ids:
+        rows = (
+            db.query(WorkUnit.code, WorkUnit.current_condition, WorkUnit.desired_condition)
+            .filter(WorkUnit.client_id == client_id, WorkUnit.business_object_type_id == bo_id)
+            .all()
+        )
+        if len(rows) < 3:
+            continue
+        current_states = {r[1] for r in rows}
+        desired_states = {r[2] for r in rows}
+        if desired_states - current_states:
+            continue  # at least one terminal state exists -- the graph closes
+
+        bo_name = db.query(EntityType.name).filter(EntityType.id == bo_id).scalar() or ""
+        codes = sorted(r[0] for r in rows)
+        db.add(ConformanceGap(
+            kind=GapKind.missing_terminal_state,
+            severity="P2",
+            description=(
+                f"Business object '{bo_name}' has {len(rows)} work units ({', '.join(codes)}) "
+                f"but no terminal state -- every desired_condition is also some unit's "
+                f"current_condition, so the inferred state graph never closes. Advisory only -- "
+                f"the import was accepted and no state machine was written."
+            ),
+            declared_ref=bo_name,
+            discovered_ref="",
+            work_unit_id=None,
+            client_id=client_id,
+        ))
+        flagged += 1
+    return flagged
+
+
 def _write_genome(
     db: Session,
     client_id: int,
@@ -684,6 +742,7 @@ def _write_genome(
 
     gaps_flagged = _flag_undeclared_gaps(db, client_id, parsed, code_to_wu)
     split_recommended_flagged = _flag_split_recommended(db, client_id, parsed, code_to_wu)
+    missing_terminal_state_flagged = _flag_missing_terminal_state(db, client_id, code_to_wu)
 
     version.work_unit_count = len(code_to_wu)
     version.gates_passed = json.dumps(["gqs", "pydantic_validation"])
@@ -715,4 +774,8 @@ def _write_genome(
         # Gate 6: business_object/authority naming more than one object or
         # approver -- warned, not rejected, not auto-split.
         "split_recommended_flagged": split_recommended_flagged,
+        # Gate 9: a business object with >=3 Work Units whose inferred state
+        # graph has no terminal state -- warned, not rejected, no state
+        # machine written.
+        "missing_terminal_state_flagged": missing_terminal_state_flagged,
     }
