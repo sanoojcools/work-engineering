@@ -101,7 +101,9 @@ export default function OfferDeskEvidencePack() {
       <SeatStepper />
 
       <div className="card" style={{ marginBottom: 16, borderColor: "#b8860b" }}>
-        <strong>Fabricated data, on purpose — not Rashmi's production month.</strong>
+        <strong>
+          Fabricated data, on purpose — not Rashmi's production month, and not a real Zwayam, Zoho, or UAN connector.
+        </strong>
         <p style={{ fontSize: 13, marginTop: 6, marginBottom: 0 }}>{packDisclaimer()}</p>
       </div>
 

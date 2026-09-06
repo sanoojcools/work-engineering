@@ -52,6 +52,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Validate HR Function Pack (packs/hr)
+        # BUILD_PROGRAM.md Track 1 slice 1.4's coverage check, now on every
+        # PR instead of run by hand: fails the job if any of the 18 Work
+        # Unit attributes has zero interview questions mapped to it. Needs
+        # no database — same reason this step runs before migrations.
+        working-directory: ${{ github.workspace }}
+        run: python scout pack validate packs/hr
+
       - name: Run migrations
         run: python -m alembic upgrade head
 
