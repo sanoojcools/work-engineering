@@ -1,15 +1,15 @@
 """Elevation 1: Time-Travel Replay. Deterministic scheduling over a
-published 9am-6pm window -- no LLM involved, this is arithmetic over
-frequency + time_minutes, same spirit as automation-index's existing
+published 8am-8pm, 12-hour window -- no LLM involved, this is arithmetic
+over frequency + time_minutes, same spirit as automation-index's existing
 hours math (services/automation_index.py's WORKING_DAYS_PER_MONTH=22).
 """
 from __future__ import annotations
 
 from ..models.scout import ScoutCapturedUnit
 
-DAY_START_MIN = 9 * 60  # 09:00
-DAY_END_MIN = 18 * 60  # 18:00
-WORKING_WINDOW_MINUTES = DAY_END_MIN - DAY_START_MIN  # 540
+DAY_START_MIN = 8 * 60  # 08:00
+DAY_END_MIN = 20 * 60  # 20:00
+WORKING_WINDOW_MINUTES = DAY_END_MIN - DAY_START_MIN  # 720
 WORKING_DAYS_PER_MONTH = 22  # matches automation_index's published constant
 GAP_THRESHOLD_MINUTES = 30  # below this, don't bother surfacing it as a gap
 

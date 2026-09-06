@@ -95,8 +95,8 @@ def test_timeline_places_blocks_and_finds_gap(real_client, tenant):
         "type": "sme", "interviewee_name": "Anjali",
     }).json()["id"]
 
-    # Two daily-frequency units: 09:00-10:00, 10:00-11:00 -- then a gap
-    # until 18:00 (a 7-hour gap, well above the 30-min noise threshold).
+    # Two daily-frequency units: 08:00-09:00, 09:00-10:00 -- then a gap
+    # until 20:00 (a 10-hour gap, well above the 30-min noise threshold).
     real_client.post(f"/api/scout/sessions/{sid}/units", headers=headers, json={
         "name": "Morning Standup", "frequency": "daily", "time_minutes": 60,
     })
@@ -120,7 +120,7 @@ def test_timeline_over_allocation_flagged(real_client, tenant):
         "type": "sme", "interviewee_name": "Anjali",
     }).json()["id"]
     real_client.post(f"/api/scout/sessions/{sid}/units", headers=headers, json={
-        "name": "Deep Work Block", "frequency": "daily", "time_minutes": 600,  # 10 hrs > 540-min window
+        "name": "Deep Work Block", "frequency": "daily", "time_minutes": 800,  # 13.3 hrs > 720-min (12hr) window
     })
     timeline = real_client.get(f"/api/scout/sessions/{sid}/timeline", headers=headers)
     assert timeline.json()["over_allocated"] is True

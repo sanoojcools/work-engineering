@@ -145,7 +145,7 @@ Requires `X-Spec-Key` (per-org). `scout_interview_sessions` and `scout_captured_
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/scout/sessions/{id}/timeline` | Returns the session's timeline, computing and caching it on first call. Deterministic placement (`services/scout_timeline.py`): units sorted by daily-minutes descending, packed into a published 09:00–18:00 window; `frequency` text converts to a daily minutes figure (`day`→as-is, `week`→÷5, `month`→÷22, matching automation-index's existing `WORKING_DAYS_PER_MONTH`). Flags `over_allocated` when total exceeds the window; reports gaps ≥30 min. |
+| GET | `/scout/sessions/{id}/timeline` | Returns the session's timeline, computing and caching it on first call. Deterministic placement (`services/scout_timeline.py`): units sorted by daily-minutes descending, packed into a published 08:00–20:00, 12-hour window; `frequency` text converts to a daily minutes figure (`day`→as-is, `week`→÷5, `month`→÷22, matching automation-index's existing `WORKING_DAYS_PER_MONTH`). Flags `over_allocated` when total exceeds the window; reports gaps ≥30 min. |
 | POST | `/scout/sessions/{id}/timeline/rebuild` | Re-runs the deterministic placement, discarding any manual edit. |
 | PATCH | `/scout/sessions/{id}/timeline` | Saves a manually-corrected timeline verbatim (drag corrections) — the stored JSON is open-ended, not limited to the auto-builder's own shape. Audits `scout.timeline.update`. |
 

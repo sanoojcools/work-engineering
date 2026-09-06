@@ -189,6 +189,27 @@ const ELEVATIONS = [
   "Future Preview",
 ] as const;
 
+/** One plain-language sentence per elevation, shown the same way in the same
+ * place every time -- so "what is this and why should I care" never depends
+ * on reading the more technical copy each panel already has below it. */
+const ELEVATION_EXPLAINERS: Record<(typeof ELEVATIONS)[number], string> = {
+  "Time-Travel Replay":
+    "Lays out everything captured so far on a clock for a normal working day, so you can see at a glance " +
+    "which hours are accounted for and which are still empty.",
+  "Contradiction Resolver":
+    "When two people describe the same work unit differently, this shows both answers side by side so a " +
+    "human — not the app — decides which one is true.",
+  "Pain Heatmap":
+    "Ranks the systems mentioned in the interview by how much frustration and time they cost, so the worst " +
+    "offenders are obvious before you go looking for them.",
+  "Story to Structure":
+    "Turns a paragraph of someone describing their day into individual rows for the grid above, so a real " +
+    "interview doesn't have to be manually broken apart by hand.",
+  "Future Preview":
+    "A locked look at what this session would add to the Genome once it's complete — a taste of the payoff, " +
+    "held back until there's enough real detail captured to earn it.",
+};
+
 function ElevationModules({
   session,
   onNeedsKey,
@@ -230,7 +251,8 @@ function ElevationModules({
       </div>
       {open && (
         <div className="card">
-          <h3>{open}</h3>
+          <h3 style={{ marginBottom: 4 }}>{open}</h3>
+          <p className="lede" style={{ marginTop: 0, marginBottom: 14 }}>{ELEVATION_EXPLAINERS[open]}</p>
           {open === "Time-Travel Replay" && <TimeTravelReplay sessionId={session.id} onNeedsKey={onNeedsKey} />}
           {open === "Contradiction Resolver" && (
             <ContradictionResolver sessionId={session.id} onNeedsKey={onNeedsKey} />
