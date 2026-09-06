@@ -182,6 +182,14 @@ export default function OfferDeskEvidencePack() {
               ))}
             </ul>
           )}
+          {result.accepted && result.version_id && (
+            <p className="hint" style={{ marginTop: 8, marginBottom: 0 }}>
+              If you open this version's own Automation Index later and see a total-hours figure there (this exact
+              pack computes ~72.2 hrs/mo), that is a different calculation — real VERDICT/cost-profile arithmetic over
+              this fabricated evidence pack — from Rashmi's declared 95 or defended 61.8 on the Hours screen. Do not
+              merge it into either number; it is not the same measurement.
+            </p>
+          )}
         </div>
       )}
 
