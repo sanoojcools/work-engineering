@@ -24,7 +24,7 @@ List endpoints return `{ "total": n, "items": [...] }`.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/health` | `{ status, version, db_ready }` |
+| GET | `/health` | `{ status, version, db_ready }`. 200 when `db_ready`, else 503 with `status: "db_unavailable"` — Render's `healthCheckPath` (render.yaml) only looks at the HTTP status, not the body (Slice 6.1) |
 | POST | `/seed` | Idempotent O2C census. 16 Work Units if `WU-OTC-01` is absent |
 
 ## Ontology (Layer 0)
