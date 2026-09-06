@@ -94,6 +94,10 @@ class GapKind(str, enum.Enum):
     workaround = "workaround"
     undeclared = "undeclared"
     unimplemented = "unimplemented"
+    # Gate 6 (docs/ROADMAP-DECISIONS.md, docs/BUILD_PROGRAM.md Track 1 slice
+    # 1.2): advisory-only "this Work Unit looks like it should be split"
+    # warning -- never blocks import, never auto-splits.
+    split_recommended = "split_recommended"
 
 
 class ConformanceGap(Base):

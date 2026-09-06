@@ -11,6 +11,7 @@ redundant with GQS.
 from __future__ import annotations
 
 import json
+import re
 
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -490,6 +491,72 @@ def _flag_undeclared_gaps(
     return flagged
 
 
+_SPLIT_DELIMITER_RE = re.compile(r"\s*(?:,|/|\band\b)\s*", re.IGNORECASE)
+
+
+def _split_distinct_parts(value: str) -> list[str]:
+    """Splits on the Gate 6 multi-object delimiters (comma, slash, "and")
+    and dedupes case-insensitively, preserving first-seen casing -- used to
+    tell "Offer" (one part, no split needed) from "Offer, Employee" or
+    "Payroll and Benefits" (more than one distinct part -> split candidate)."""
+    parts = [p.strip() for p in _SPLIT_DELIMITER_RE.split(value) if p.strip()]
+    seen_lower: set[str] = set()
+    distinct: list[str] = []
+    for part in parts:
+        low = part.lower()
+        if low not in seen_lower:
+            seen_lower.add(low)
+            distinct.append(part)
+    return distinct
+
+
+def _flag_split_recommended(
+    db: Session, client_id: int, parsed: GenomeImportRequest, code_to_wu: dict[str, WorkUnit],
+) -> int:
+    """Gate 6 (docs/ROADMAP-DECISIONS.md, docs/BUILD_PROGRAM.md Track 1 slice
+    1.2): advisory, not blocking. A Work Unit whose business_object contains
+    a multi-object delimiter (comma, slash, "and") OR whose authority names
+    more than one distinct approver gets a ConformanceGap
+    (kind=split_recommended, severity=P2) at import -- surfaced to the
+    ratifying manager at Playback, never rejected and never auto-split
+    (auto-splitting silently risks misattributing a condition to the wrong
+    half of a merged unit).
+
+    Reuses the existing ConformanceGap table Gate 10 already writes to
+    rather than a second warnings table -- import_genome's result already
+    knows how to report a gap count alongside "accepted": true."""
+    flagged = 0
+    for wu_in in parsed.work_units:
+        wu = code_to_wu[wu_in.id]
+        reasons: list[str] = []
+
+        bo_parts = _split_distinct_parts(wu_in.business_object)
+        if len(bo_parts) > 1:
+            reasons.append(f"business_object names more than one object: {', '.join(bo_parts)}")
+
+        authority_parts = _split_distinct_parts(wu_in.authority)
+        if len(authority_parts) > 1:
+            reasons.append(f"authority names more than one distinct approver: {', '.join(authority_parts)}")
+
+        if not reasons:
+            continue
+
+        db.add(ConformanceGap(
+            kind=GapKind.split_recommended,
+            severity="P2",
+            description=(
+                f"{wu.code}: split recommended -- {'; '.join(reasons)}. Advisory only -- the "
+                f"import was accepted and the unit was not auto-split."
+            ),
+            declared_ref=wu.code,
+            discovered_ref="",
+            work_unit_id=wu.id,
+            client_id=client_id,
+        ))
+        flagged += 1
+    return flagged
+
+
 def _write_genome(
     db: Session,
     client_id: int,
@@ -616,6 +683,7 @@ def _write_genome(
                 edge_count += 1
 
     gaps_flagged = _flag_undeclared_gaps(db, client_id, parsed, code_to_wu)
+    split_recommended_flagged = _flag_split_recommended(db, client_id, parsed, code_to_wu)
 
     version.work_unit_count = len(code_to_wu)
     version.gates_passed = json.dumps(["gqs", "pydantic_validation"])
@@ -644,4 +712,7 @@ def _write_genome(
         # rejected. Zero is the common, healthy case; a positive count is
         # not an import failure ("accepted" stays true either way).
         "conformance_gaps_flagged": gaps_flagged,
+        # Gate 6: business_object/authority naming more than one object or
+        # approver -- warned, not rejected, not auto-split.
+        "split_recommended_flagged": split_recommended_flagged,
     }
