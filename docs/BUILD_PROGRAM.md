@@ -7,17 +7,17 @@ Architecture map = WEP System Architecture (boxes 1–6).
 
 ## Pending slices (alignment table)
 
-**Unlocked now = one mega-slice `TIGHT-WEDGE` (T1–T6 together).** Do not split it.
+**`TIGHT-WEDGE` (T1–T6 together) shipped in one PR, not split.** Nothing else is unlocked until 6.2 / 4.0 / 3.0 / 5.0 are answered.
 
 | ID | Box / joint | Status | Who | Done when |
 |---|---|---|---|---|
-| **TIGHT-WEDGE** | **3a–3e on Offer Desk** | **UNLOCKED** | Claude, one PR | See T1–T6 below, all in the same PR |
-| T1 | **3b→3c** checkable desired condition | inside TIGHT-WEDGE | Claude | Document check **unit card**: before/after/acceptance/evidence/dual-employment stop. Uncheckable desired → **warn**, not reject |
-| T2 | **3b O1** Work Graph | inside TIGHT-WEDGE | Claude | **Sequence edges** for 11 Offer Desk steps after keyed import. No other edge types. Guest: no fake arrows |
-| T3 | **3c** verification artefact | inside TIGHT-WEDGE | Claude | Document check **verification spec card** (method, independent checker in words, file hash if uploaded). **No** promote/demote ladder |
-| T4 | **3a** coverage map | inside TIGHT-WEDGE | Claude | Gap: real kinds + “what we cannot see” (no Zwayam; judgment-blind). No fake coverage % |
-| T5 | **Box 2** contract freeze | inside TIGHT-WEDGE | Claude | `docs/INTENT_CONTRACT.md` only. **No INT-007 tables** |
-| T6 | **3e** honesty | inside TIGHT-WEDGE | Claude | Hours: 95 vs 61.8 stay. If pack hours (72.2) appear, footnote they are a **different** calc |
+| **TIGHT-WEDGE** | **3a–3e on Offer Desk** | **SHIPPED** | Claude, one PR | See T1–T6 below, all in the same PR |
+| T1 | **3b→3c** checkable desired condition | shipped | Claude | Document check **unit card**: before/after/acceptance/evidence/dual-employment stop. Uncheckable desired → **warn**, not reject |
+| T2 | **3b O1** Work Graph | shipped | Claude | **Sequence edges** for 11 Offer Desk steps after keyed import. No other edge types. Guest: no fake arrows |
+| T3 | **3c** verification artefact | shipped | Claude | Document check **verification spec card** (method, independent checker in words, file hash if uploaded). **No** promote/demote ladder |
+| T4 | **3a** coverage map | shipped | Claude | Gap: real kinds + “what we cannot see” (no Zwayam; judgment-blind). No fake coverage % |
+| T5 | **Box 2** contract freeze | shipped | Claude | `docs/INTENT_CONTRACT.md` only. **No INT-007 tables** |
+| T6 | **3e** honesty | shipped | Claude | Hours: 95 vs 61.8 stay. If pack hours (72.2) appear, footnote they are a **different** calc |
 | **6.2** | Operate: Postgres backup | **STOP-GATE** | Founder | Free DB, **no backup, expires ~2026-10-05**. Pay or lose the pitch instance |
 | **4.0** | Identity | **STOP-GATE** | Founder | Login vendor? Default: **wait** for a named CHRO |
 | **3.0** | 3a upward traces | **STOP-GATE** | Founder | Which **real** file? Default: wait |
@@ -34,7 +34,7 @@ Architecture map = WEP System Architecture (boxes 1–6).
 
 ### Already shipped (do not reopen)
 
-0.1 hosted guest Hours · 0.2 waking banner · PITCH-FACTORY (#10 Gap live) · 1.1 Gate 10 · 1.2 Gate 6 · 1.3 Gate 9 · 1.4 HR pack · 2.1 consent UI · 6.1 health 503 / request id
+0.1 hosted guest Hours · 0.2 waking banner · PITCH-FACTORY (#10 Gap live) · 1.1 Gate 10 · 1.2 Gate 6 · 1.3 Gate 9 · 1.4 HR pack · 2.1 consent UI · 6.1 health 503 / request id · **TIGHT-WEDGE (T1–T6)**: Document check unit card + checkability warn (T1), Offer Desk Work Graph — 11 real sequence edges, no other types (T2), verification spec card on Document check — method, independent checker named honestly, optional file hash, no promotion ladder (T3), Gap "what this sitting cannot see" (T4), `docs/INTENT_CONTRACT.md` (T5), Hours 95/61.8 unchanged + 72.2 footnote guard (T6)
 
 ---
 
@@ -53,7 +53,7 @@ Architecture map = WEP System Architecture (boxes 1–6).
 
 ---
 
-## TIGHT-WEDGE (the only unlocked build)
+## TIGHT-WEDGE (shipped)
 
 One PR. Maximum tightness we can earn **without** founder STOP-GATES.
 

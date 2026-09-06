@@ -2,13 +2,21 @@ import { OFFER_DESK_META, OFFER_DESK_STEPS, OFFER_DESK_TOTAL_SAVINGS } from "./o
 
 /** One work record the Slice E walk hangs on: sheet step 2, document check.
  * Derived from the workbook. Not a saved Work Unit. Talk-only must not write
- * Offer Desk rows into the company list. */
+ * Offer Desk rows into the company list.
+ *
+ * acceptanceCriteria is step 2's own decisionBranches (offerDeskData.ts),
+ * not a paraphrase -- those lines already state exactly what separates
+ * "accepted" from "blocked" for this business object. verificationMethod
+ * and independentChecker are new (Slice TIGHT-WEDGE T3): the record has no
+ * second checker today, which is Exception 9 in offerDeskData.ts
+ * (OFFER_DESK_EXCEPTIONS), not an invented gap. */
 export const DOCUMENT_CHECK_RECORD = {
   sheetStep: 2,
   name: "Check candidate documents before offer release",
   businessObject: "Candidate offer pack",
   currentCondition: "Documents unchecked",
   desiredCondition: "Accepted or blocked",
+  acceptanceCriteria: OFFER_DESK_STEPS.find((s) => s.step === 2)!.decisionBranches,
   owner: "Offer Desk SME",
   sitting: "Rashmi KN, 12 May 2026",
   source: OFFER_DESK_META.interviewSource,
@@ -16,10 +24,47 @@ export const DOCUMENT_CHECK_RECORD = {
   helperMay: "Draft the missing-document list for the recruiter.",
   helperMayNot: "Release the offer.",
   evidenceRequired: "Checklist result on the candidate pack (complete / missing / dual-employment stop)",
+  verificationMethod: "human_spot_check" as const,
+  independentChecker: {
+    label: "None today",
+    detail:
+      "Rashmi checks her own list. Exception 9 in the sitting: she is the single point of failure for this desk " +
+      "and there is no formal, trained backup for this specific check.",
+  },
   declaredHours: 95,
   defendedHours: 61.8,
   declaredHoursLabel: OFFER_DESK_TOTAL_SAVINGS,
 };
+
+/** T1: "uncheckable desired -> warn, not reject." A desired condition is
+ * only checkable by a stranger if both halves of the check exist: a stated
+ * rule for what counts as met (acceptance_criteria) and a stated proof a
+ * checker could point to (evidence_required) -- the same pairing Spec's own
+ * acceptance/evidence checks and VERDICT's Hard Gate 4 rely on (see
+ * ARCHITECTURE.md "Spec API"). Missing either warns; it never hides the
+ * card or disables the helper list -- this record happens to pass today,
+ * but the check stays real so a future edit that clears one of those two
+ * fields would surface here instead of silently going uncheckable. */
+export function desiredConditionCheckability(rec: {
+  acceptanceCriteria: string[];
+  evidenceRequired: string;
+}): { checkable: boolean; reason: string } {
+  const hasAcceptance = rec.acceptanceCriteria.length > 0;
+  const hasEvidence = rec.evidenceRequired.trim().length > 0;
+  if (hasAcceptance && hasEvidence) {
+    return {
+      checkable: true,
+      reason: "Acceptance criteria and required evidence are both stated, so a stranger could check this.",
+    };
+  }
+  const missing = [!hasAcceptance && "acceptance criteria", !hasEvidence && "evidence required"]
+    .filter(Boolean)
+    .join(" and ");
+  return {
+    checkable: false,
+    reason: `No ${missing} stated for this desired condition — a stranger could not check it yet. Warning only: the card still renders and the helper list still works.`,
+  };
+}
 
 export const HOW_WE_CUT = [
   {

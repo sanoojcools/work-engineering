@@ -141,6 +141,36 @@ export default function OfferDeskGap() {
         </div>
       )}
 
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3>
+          What this sitting cannot see{" "}
+          <InfoTooltip
+            term="Sitting-blind"
+            simple="A conformance gap only catches what someone thought to declare, or what a genome import happens to check for. It is not a coverage guarantee."
+          />
+        </h3>
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+          <li style={{ marginBottom: 8 }}>
+            <strong>No Zwayam connector.</strong> Zwayam holds the real candidate documents and fitment data; Zoho
+            holds real signing status. Nothing in this product reads either system — every "declared" or "observed"
+            label on this page comes from an interview or an uploaded file, never a live Zwayam or Zoho event. The
+            transition notes say those systems are moving toward automation; that is exactly why we do not simulate
+            them here.
+          </li>
+          <li>
+            <strong>Judgment-blind.</strong> Step 2's own notes name what a check cannot see: "judgment on employment
+            gaps, dual employment decisions, non-standard documents." Those calls happen in Rashmi's head, on each
+            candidate, and leave no record this platform can compare against — Exception 9 is that she is the only
+            person who makes them, with no formal backup. A gap check can tell you a business object has no
+            corroborating file; it cannot tell you whether a judgment call inside a step was made well.
+          </li>
+        </ul>
+        <p className="hint" style={{ marginBottom: 0 }}>
+          Neither of these is a percentage. There is no "coverage" number on this page — a gap check is a spotlight,
+          not a meter.
+        </p>
+      </div>
+
       <IoPanes
         given={
           isGuest
@@ -163,7 +193,7 @@ export default function OfferDeskGap() {
       />
 
       <p style={{ marginTop: 20 }}>
-        <Link to="/scout/offer-desk/document-check">Open document check →</Link>
+        <Link to="/scout/offer-desk/hours">Hours 95 / 61.8 →</Link>
       </p>
     </>
   );

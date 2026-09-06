@@ -62,7 +62,7 @@ export default function OfferDeskHowWeCut() {
       />
 
       <p style={{ marginTop: 20 }}>
-        <Link to="/scout/offer-desk/gap">Show the gap next →</Link>
+        <Link to="/scout/offer-desk/document-check">Open document check →</Link>
       </p>
     </>
   );
