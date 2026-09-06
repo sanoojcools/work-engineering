@@ -102,6 +102,12 @@ class ConformanceGap(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     kind: Mapped[GapKind] = mapped_column(Enum(GapKind), default=GapKind.undeclared)
+    # Gate 10 (docs/ROADMAP-DECISIONS.md): P2 is the only severity anything
+    # assigns today -- P0/P1 needs a business-criticality signal the schema
+    # doesn't have yet, deferred to manual triage at ratification rather than
+    # guessed at here. The column stays a plain string (not an enum) so that
+    # future manual triage isn't blocked on a migration.
+    severity: Mapped[str] = mapped_column(String(4), default="P2")
     description: Mapped[str] = mapped_column(Text, default="")
     discovered_ref: Mapped[str] = mapped_column(String(200), default="")
     declared_ref: Mapped[str] = mapped_column(String(200), default="")

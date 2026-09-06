@@ -16,6 +16,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from ..models.client import Client
+from ..models.discovery import ConformanceGap, GapKind
 from ..models.graph import EdgeType, WorkEdge
 from ..models.ontology import EntityKind, EntityType, Provenance
 from ..models.regulatory import RegulatoryEntry
@@ -442,6 +443,53 @@ def import_genome(
         }], version_type=version_type)
 
 
+def _flag_undeclared_gaps(
+    db: Session, client_id: int, parsed: GenomeImportRequest, code_to_wu: dict[str, WorkUnit],
+) -> int:
+    """Gate 10 (docs/ROADMAP-DECISIONS.md, docs/BUILD_PROGRAM.md Track 1 slice
+    1.1): a Work Unit imported with provenance.source_type=declared and no
+    corroborating observed Work Unit for the same business object gets a
+    ConformanceGap (kind=undeclared, severity=P2) -- warn, never reject.
+
+    work_units.code is UNIQUE per client, so a declared unit's own code can
+    never literally match an existing one (that collision is already caught
+    earlier, by _validate_work_unit_codes, as a hard reject). The only real,
+    checkable corroboration available is business_object_type_id: does this
+    client have *any* Work Unit -- from this import or an earlier one -- whose
+    provenance is observed for the same business object. Deliberately
+    separate from /discovery/gaps/scan, which compares against real trace
+    data (the upward arm, not built yet); this only ever has the declared
+    side to look at, per the frozen Gate 10 contract."""
+    observed_bo_ids = {
+        row[0]
+        for row in db.query(WorkUnit.business_object_type_id)
+        .filter(WorkUnit.client_id == client_id, WorkUnit.provenance == Provenance.observed)
+        .distinct()
+        .all()
+    }
+    flagged = 0
+    for wu_in in parsed.work_units:
+        wu = code_to_wu[wu_in.id]
+        if wu.provenance != Provenance.declared:
+            continue
+        if wu.business_object_type_id in observed_bo_ids:
+            continue
+        db.add(ConformanceGap(
+            kind=GapKind.undeclared,
+            severity="P2",
+            description=(
+                f"{wu.code} is declared (business object '{wu_in.business_object}') with no "
+                f"corroborating observed Work Unit for that business object -- warn, not rejected."
+            ),
+            declared_ref=wu.code,
+            discovered_ref="",
+            work_unit_id=wu.id,
+            client_id=client_id,
+        ))
+        flagged += 1
+    return flagged
+
+
 def _write_genome(
     db: Session,
     client_id: int,
@@ -567,6 +615,8 @@ def _write_genome(
                 db.add(WorkEdge(source_id=source.id, target_id=target.id, edge_type=EdgeType.sequence))
                 edge_count += 1
 
+    gaps_flagged = _flag_undeclared_gaps(db, client_id, parsed, code_to_wu)
+
     version.work_unit_count = len(code_to_wu)
     version.gates_passed = json.dumps(["gqs", "pydantic_validation"])
     version.gates_failed = json.dumps([])
@@ -590,4 +640,8 @@ def _write_genome(
         "violations": [],
         "work_unit_count": len(code_to_wu),
         "work_graph_edge_count": edge_count,
+        # Gate 10: declared units with no observed twin -- warned, not
+        # rejected. Zero is the common, healthy case; a positive count is
+        # not an import failure ("accepted" stays true either way).
+        "conformance_gaps_flagged": gaps_flagged,
     }
