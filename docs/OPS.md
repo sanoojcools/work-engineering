@@ -1,8 +1,9 @@
 # Ops runbook — when bootstrap or guest Hours dies
 
-Slice 6.1. Not a general SRE handbook — just where to look on *this* stack,
-written from an actual incident found in this slice's own Render logs (see
-below), not a hypothetical.
+Slices 6.1 (alerting) and 6.2 (backup). Not a general SRE handbook — just
+where to look on *this* stack, written from an actual incident found in
+6.1's own Render logs (see below) and an actual Render API read for 6.2,
+not a hypothetical either time.
 
 Related: [STATUS.md](STATUS.md) (Slice 6.1's own honesty ledger entry, and
 the Render-notification click path) · [BUILD_PROGRAM.md](BUILD_PROGRAM.md)
@@ -101,9 +102,56 @@ Track 6.2 or general test hardening next.
 ## 4. Postgres
 
 `work-engineering-db` (Render Postgres, free plan) is the only datastore.
-No backup policy is documented yet — that's Slice 6.2, not this one.
 
-## 5. What this slice deliberately did not build
+## 4a. Backup policy — Slice 6.2, checked for real via the Render API, not guessed
+
+**Read directly from Render's API this slice** (`get_postgres` on
+`dpg-dadu7sn40ujc73d0or9g-a`, the same id `list_postgres_instances` names
+for `work-engineering-db`):
+
+```
+plan: free
+highAvailabilityEnabled: false
+expiresAt: 2026-10-05T09:42:10Z
+```
+
+Two separate facts, not one:
+
+1. **No backup/point-in-time-recovery field exists anywhere in this
+   instance's API representation.** It isn't a switch left off — the free
+   plan's resource has no backup configuration to read at all. The
+   `create_postgres` tool's own parameter schema (mirrors Render's API)
+   confirms the same shape: backup behavior is a function of `plan`, not a
+   separate flag this project — or this agent — can toggle.
+2. **The free database itself expires 2026-10-05, roughly 29 days from
+   today (2026-09-06) — a harder deadline than "unbacked-up."** This is
+   Render's standard free-Postgres lifecycle (a 30-day instance, not a
+   permanent free tier), not a bug or a misconfiguration found this slice.
+   Past that date, without action, the primary copy is gone — there would
+   be nothing left to have backed up.
+
+**Not independently re-confirmed this slice**: Render's own docs on exactly
+what a paid plan's backup/PITR retention looks like. `render.com` is
+egress-blocked in this session, the same way `onrender.com` already is
+(confirmed again this slice — see STATUS.md's Ship-ready row for the
+established precedent). So the next sentence is stated as this product's
+general understanding of Render's model, not something read live this
+slice: paid Postgres plans get Render-managed daily backups (retention
+scales with plan) and, on some tiers, point-in-time recovery; free has
+neither, and also does not persist past 30 days at all.
+
+**STOP-GATE, per docs/BUILD_PROGRAM.md's own rule (agent may document, may
+not buy a plan):** enabling backup here means upgrading `work-engineering-db`
+off the free plan. This slice did not do that and did not invent a
+workaround (no cron-job `pg_dump`-to-somewhere was wired in as a substitute
+"backup product" — docs/BUILD_PROGRAM.md Track 6.2 asks for the policy to be
+*documented*, and where a paid plan is the only real path, to STOP-GATE it,
+not to paper over it with a smaller thing and call it done). See
+`docs/STATUS.md`'s "paid Render backup" line — founder decides, and the
+30-day expiry means this is worth deciding before 2026-10-05, not at
+leisure.
+
+## 5. What 6.1 deliberately did not build
 
 No Sentry/PagerDuty/APM, no synthetic uptime prober, no push notification
 for a 500 on one endpoint while the process and `/api/health` both stay
@@ -114,3 +162,11 @@ open, since nothing here required one) or a from-scratch uptime prober
 (a monitoring product this slice was told not to invent). What *is* pushed
 today, free, natively: Render's own deploy-failed email — see
 `STATUS.md` for the exact setting and what it does and doesn't cover.
+
+## 6. What 6.2 deliberately did not build
+
+No plan upgrade, no `pg_dump`-to-S3 cron job standing in as a home-grown
+"backup," no restore drill (there is nothing paid-tier to restore from
+yet). §4a names the STOP-GATE precisely — this section exists so the two
+"did not build" lists don't get merged into one and lose which slice each
+refusal belongs to.
