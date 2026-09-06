@@ -47,6 +47,9 @@ def _cleanup(session, client_ids):
     session.execute(text(
         "UPDATE work_units SET genome_version_id = NULL WHERE client_id = ANY(:ids)"
     ), ids)
+    # Gate 6/10 (docs/BUILD_PROGRAM.md Track 1) can leave conformance_gaps
+    # rows referencing these work units -- must clear before the FK below.
+    session.execute(text("DELETE FROM conformance_gaps WHERE client_id = ANY(:ids)"), ids)
     session.execute(text("DELETE FROM work_units WHERE client_id = ANY(:ids)"), ids)
     session.execute(text("DELETE FROM genome_versions WHERE client_id = ANY(:ids)"), ids)
     session.execute(text("DELETE FROM scout_contradictions WHERE client_id = ANY(:ids)"), ids)

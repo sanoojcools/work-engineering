@@ -53,6 +53,9 @@ def _cleanup(session, client_ids):
     session.execute(text("DELETE FROM work_unit_regulatory_links WHERE work_unit_id IN (SELECT id FROM work_units WHERE client_id = ANY(:ids))"), ids)
     session.execute(text("DELETE FROM verdict_scores WHERE work_unit_id IN (SELECT id FROM work_units WHERE client_id = ANY(:ids))"), ids)
     session.execute(text("DELETE FROM work_edges WHERE source_id IN (SELECT id FROM work_units WHERE client_id = ANY(:ids)) OR target_id IN (SELECT id FROM work_units WHERE client_id = ANY(:ids))"), ids)
+    # Gate 6/10 (docs/BUILD_PROGRAM.md Track 1) can leave conformance_gaps
+    # rows referencing these work units -- must clear before the FK below.
+    session.execute(text("DELETE FROM conformance_gaps WHERE client_id = ANY(:ids)"), ids)
     session.execute(text("DELETE FROM work_units WHERE client_id = ANY(:ids)"), ids)
     session.execute(text("DELETE FROM audit_logs WHERE client_id = ANY(:ids)"), ids)
     session.execute(text("DELETE FROM genome_versions WHERE client_id = ANY(:ids)"), ids)
