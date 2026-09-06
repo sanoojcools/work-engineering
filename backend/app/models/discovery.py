@@ -98,6 +98,10 @@ class GapKind(str, enum.Enum):
     # 1.2): advisory-only "this Work Unit looks like it should be split"
     # warning -- never blocks import, never auto-splits.
     split_recommended = "split_recommended"
+    # Gate 9 (docs/ROADMAP-DECISIONS.md, docs/BUILD_PROGRAM.md Track 1 slice
+    # 1.3): advisory-only "this business object's inferred state graph never
+    # closes" warning -- never blocks import, never writes state_machine.
+    missing_terminal_state = "missing_terminal_state"
 
 
 class ConformanceGap(Base):
