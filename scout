@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Scout CLI — slice 1.4 ships exactly one subcommand: `pack validate`.
+
+    ./scout pack validate packs/hr
+
+Fails (non-zero exit) unless the pack's question_bank.yaml has at least one
+interview question mapped to each of the 18 Work Unit attributes
+(backend/app/services/gqs.py::REQUIRED_18). Does not touch GQS, Gate 11
+order, or any pack other than the one path given.
+"""
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(REPO_ROOT / "backend"))
+
+from app.services.pack_validate import validate_pack  # noqa: E402
+
+
+def cmd_pack_validate(args: argparse.Namespace) -> int:
+    pack_dir = Path(args.pack_dir)
+    try:
+        result = validate_pack(pack_dir)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"pack: {result['pack']} ({pack_dir})")
+    for attr, count in result["coverage"].items():
+        marker = "ok" if count else "MISSING"
+        print(f"  {attr:28s} {count} question(s)  [{marker}]")
+
+    if result["unknown_attributes"]:
+        print(
+            f"\nFAIL: attribute(s) referenced that are not one of the 18: "
+            f"{result['unknown_attributes']}",
+            file=sys.stderr,
+        )
+        return 1
+
+    if result["missing"]:
+        print(
+            f"\nFAIL: {len(result['missing'])} of 18 attribute(s) have zero questions: "
+            f"{result['missing']}",
+            file=sys.stderr,
+        )
+        return 1
+
+    print("\nOK: all 18 attributes have at least one question.")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="scout")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    pack = sub.add_parser("pack", help="Function Pack operations")
+    pack_sub = pack.add_subparsers(dest="pack_command", required=True)
+
+    pack_validate = pack_sub.add_parser(
+        "validate",
+        help="validate a pack's question bank covers all 18 Work Unit attributes",
+    )
+    pack_validate.add_argument("pack_dir", help="path to the pack directory, e.g. packs/hr")
+    pack_validate.set_defaults(func=cmd_pack_validate)
+
+    args = parser.parse_args(argv)
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,72 @@
+# HR Function Pack v0 — question bank.
+#
+# Source: frontend/src/components/scout/DiscoveryPartner.tsx QUESTION_BANK,
+# the existing hand-written HR interview bank (function_head / sub_function_lead /
+# sme tracks). No question below was invented for this pack — text and `why`
+# are copied verbatim from that file; only the `attributes` mapping onto the
+# 18 Work Unit attributes (backend/app/services/gqs.py::REQUIRED_18) is new.
+#
+# `scout pack validate packs/hr` fails unless every one of the 18 attributes
+# is named in at least one question's `attributes` list below.
+pack: hr
+version: v0
+source: frontend/src/components/scout/DiscoveryPartner.tsx
+
+tracks:
+  function_head:
+    - id: f1
+      text: "What does this function own that, if it broke tomorrow, the business would notice within a week?"
+      why: "Names the highest-stakes business objects first."
+      attributes: [business_object]
+    - id: f2
+      text: "Which of those are governed by a regulator, versus just internal policy?"
+      why: "Regulatory items get stricter gates later — worth knowing now."
+      attributes: [regulatory_register_link]
+    - id: f3
+      text: "Which sub-functions are in scope for this census, and who leads each one?"
+      why: "Sets the blast radius and assigns the next round of sub-function-lead interviews."
+      attributes: [context, authority]
+
+  sub_function_lead:
+    - id: l1
+      text: "Which of the sub-functions the function head named do you own, and who's on your team for each?"
+      why: "Confirms the ownership boundary the blast-radius scoping assigned to you."
+      attributes: [authority, actor_constraints]
+    - id: l2
+      text: "For each one, what are the two or three biggest recurring activities inside it?"
+      why: "Seeds the initial Work Unit list before an SME session fills in the operational detail."
+      attributes: [id, name]
+    - id: l3
+      text: "What systems does your team touch across those activities?"
+      why: "Surfaces shared-resource coupling on the Work Graph before any SME session runs."
+      attributes: [input, dependencies]
+    - id: l4
+      text: "Roughly how often does each activity happen, and how many people touch it?"
+      why: "Frequency and headcount feed the automation-index volume math and the F1 split arithmetic."
+      attributes: [sla_timing, actor_constraints]
+    - id: l5
+      text: "Which specialist on your team should we talk to next for the step-by-step detail?"
+      why: "Feeds the SME roster, same purpose as the function head's question but scoped to this sub-function."
+      attributes: [provenance]
+
+  sme:
+    - id: s1
+      text: "Walk me through what happens today, step by step — from the trigger to it being done."
+      why: "Trigger, current condition, and desired condition all come out of one answer."
+      attributes: [trigger, current_condition, desired_condition]
+    - id: s2
+      text: "What system or tool do you use at each step?"
+      why: "Systems reveal automation potential."
+      attributes: [input]
+    - id: s3
+      text: "How do you know it's actually finished — what's the evidence?"
+      why: "Maps to evidence_required and verification_method."
+      attributes: [acceptance_criteria, evidence_required, verification_method]
+    - id: s4
+      text: "What's the most annoying, manual part of this?"
+      why: "Feeds the Pain & Exceptions dimension."
+      attributes: [failure_semantics]
+    - id: s5
+      text: "Who do you hand this off to, or receive it from?"
+      why: "Maps to handoffs."
+      attributes: [dependencies]
