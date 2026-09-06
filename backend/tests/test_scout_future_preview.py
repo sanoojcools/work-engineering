@@ -55,6 +55,7 @@ def _cleanup(session, client_ids):
         "(SELECT id FROM scout_interview_sessions WHERE client_id = ANY(:ids))"
     ), ids)
     session.execute(text("DELETE FROM scout_interview_sessions WHERE client_id = ANY(:ids)"), ids)
+    session.execute(text("DELETE FROM consent_receipts WHERE client_id = ANY(:ids)"), ids)
     session.execute(text("DELETE FROM org_api_keys WHERE client_id = ANY(:ids)"), ids)
     session.execute(text("DELETE FROM clients WHERE id = ANY(:ids)"), ids)
     session.commit()
@@ -98,8 +99,16 @@ def test_future_preview_locked_below_100(real_client, tenant):
 @pg_skip
 def test_generate_genome_uses_real_import_pipeline_and_gate(real_client, tenant):
     headers = tenant["headers"]
+    # Slice 2.1: generate-genome now 4xx's outright without a consent
+    # receipt attached (see test_generate_genome_without_consent_4xx below)
+    # -- a real receipt is needed here so this test can still isolate what
+    # it actually means to test: that generate-genome wraps the real import
+    # pipeline and its GQS gate, not the consent gate.
+    receipt_id = real_client.post("/api/consent/receipts", headers=headers, json={
+        "subject_id": "Anjali", "purpose": "Scout discovery interview",
+    }).json()["id"]
     sid = real_client.post("/api/scout/sessions", headers=headers, json={
-        "type": "sme", "interviewee_name": "Anjali",
+        "type": "sme", "interviewee_name": "Anjali", "consent_receipt_id": receipt_id,
     }).json()["id"]
     # Thin unit -- most of the 18 attrs will be honest placeholders, so
     # this is EXPECTED to fail (or at least not lie about passing) the
@@ -133,6 +142,87 @@ def test_generate_genome_empty_session_400(real_client, tenant):
     }).json()["id"]
     generated = real_client.post(f"/api/scout/sessions/{sid}/generate-genome", headers=headers)
     assert generated.status_code == 400, generated.text
+
+
+@pg_skip
+def test_generate_genome_without_consent_receipt_4xx(real_client, tenant):
+    """Slice 2.1: the API already rejects a missing/invalid
+    provenance.consent_receipt_id deep in genome_import.py's own gate
+    (test_scout_consent_gate.py) -- this proves the Scout HTTP path fails
+    the same way at the door, as a real 4xx, not a 200 with accepted=false,
+    since the new consent screen (ConsentGate.tsx) means a caller only
+    reaches this without one by skipping that screen."""
+    headers = tenant["headers"]
+    sid = real_client.post("/api/scout/sessions", headers=headers, json={
+        "type": "sme", "interviewee_name": "Anjali",
+    }).json()["id"]
+    real_client.post(f"/api/scout/sessions/{sid}/units", headers=headers, json={"name": "Onboarding"})
+
+    generated = real_client.post(f"/api/scout/sessions/{sid}/generate-genome", headers=headers)
+    assert 400 <= generated.status_code < 500, generated.text
+
+    # No GenomeVersion row at all -- unlike a GQS-blocked attempt, this
+    # never reaches the import pipeline, so nothing gets recorded.
+    session_row = SetupSession()
+    count = session_row.execute(text(
+        "SELECT count(*) FROM genome_versions WHERE client_id = :cid"
+    ), {"cid": tenant["client_id"]}).scalar()
+    session_row.close()
+    assert count == 0
+
+
+@pg_skip
+def test_attach_consent_receipt_then_generate_runs_existing_path(real_client, tenant):
+    """Once a real, active receipt is attached (via the new PATCH endpoint
+    the consent screen calls), generate-genome runs the existing pipeline
+    again -- GQS may still correctly block a thin Scout-mapped genome; that
+    is not this gate's job to override."""
+    headers = tenant["headers"]
+    sid = real_client.post("/api/scout/sessions", headers=headers, json={
+        "type": "sme", "interviewee_name": "Anjali",
+    }).json()["id"]
+    real_client.post(f"/api/scout/sessions/{sid}/units", headers=headers, json={"name": "Onboarding"})
+
+    receipt_id = real_client.post("/api/consent/receipts", headers=headers, json={
+        "subject_id": "Anjali", "purpose": "Scout discovery interview",
+    }).json()["id"]
+    attached = real_client.patch(
+        f"/api/scout/sessions/{sid}/consent-receipt", headers=headers,
+        json={"consent_receipt_id": receipt_id},
+    )
+    assert attached.status_code == 200, attached.text
+    assert attached.json()["consent_receipt_id"] == receipt_id
+
+    generated = real_client.post(f"/api/scout/sessions/{sid}/generate-genome", headers=headers)
+    assert generated.status_code == 200, generated.text
+    # Whatever GQS decides for this thin genome, it is decided -- not
+    # short-circuited by a missing-consent 4xx any more.
+    assert "gqs" in generated.json()
+
+
+@pg_skip
+def test_attach_consent_receipt_cross_tenant_404(real_client, tenant):
+    headers = tenant["headers"]
+    setup = SetupSession()
+    other_key, other_cid = _make_tenant(setup, "future-b")
+    setup.commit()
+    setup.close()
+    try:
+        sid = real_client.post("/api/scout/sessions", headers=headers, json={
+            "type": "sme", "interviewee_name": "Anjali",
+        }).json()["id"]
+        other_receipt_id = real_client.post(
+            "/api/consent/receipts", headers={"X-Spec-Key": other_key},
+            json={"subject_id": "Someone Else", "purpose": "Unrelated"},
+        ).json()["id"]
+
+        attached = real_client.patch(
+            f"/api/scout/sessions/{sid}/consent-receipt", headers=headers,
+            json={"consent_receipt_id": other_receipt_id},
+        )
+        assert attached.status_code == 404, attached.text
+    finally:
+        _cleanup(SetupSession(), [other_cid])
 
 
 @pg_skip

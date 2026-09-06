@@ -52,8 +52,8 @@ function NewSessionForm({
         </button>
       </div>
       <p className="hint" style={{ marginTop: 12 }}>
-        No consent step wired in here yet (that's the existing POST /api/consent/receipts — linking it to a new
-        session is a follow-up, not this PR).
+        Consent is confirmed later, right before you generate a genome from this session — not required to start
+        capturing work here.
       </p>
     </div>
   );
@@ -259,7 +259,9 @@ function ElevationModules({
           )}
           {open === "Pain Heatmap" && <PainHeatmap sessionId={session.id} onNeedsKey={onNeedsKey} />}
           {open === "Story to Structure" && <StoryToStructure onNeedsKey={onNeedsKey} onAdd={addExtracted} />}
-          {open === "Future Preview" && <FuturePreview sessionId={session.id} onNeedsKey={onNeedsKey} />}
+          {open === "Future Preview" && (
+            <FuturePreview session={session} onNeedsKey={onNeedsKey} onChange={onChange} />
+          )}
         </div>
       )}
     </div>
