@@ -70,6 +70,7 @@ class CandidateOut(BaseModel):
 
 class GapCreate(BaseModel):
     kind: GapKind = GapKind.undeclared
+    severity: str = "P2"
     description: str = ""
     discovered_ref: str = ""
     declared_ref: str = ""
@@ -79,6 +80,7 @@ class GapCreate(BaseModel):
 class GapOut(BaseModel):
     id: int
     kind: GapKind
+    severity: str
     description: str
     discovered_ref: str
     declared_ref: str
