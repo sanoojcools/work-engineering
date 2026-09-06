@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { errorMessage } from "../../api";
 import { apiFetch, NeedsApiKeyError } from "../../lib/apiFetch";
+import type { ScoutSession } from "../../types";
+import { Banner } from "../../ui";
+import { ConsentGate } from "./ConsentGate";
 
 type Preview = {
   completeness_pct: number;
@@ -20,9 +24,19 @@ type GenerateResult = {
   violations: { code?: string; detail?: string }[];
 };
 
-export function FuturePreview({ sessionId, onNeedsKey }: { sessionId: number; onNeedsKey: () => void }) {
+export function FuturePreview({
+  session,
+  onNeedsKey,
+  onChange,
+}: {
+  session: ScoutSession;
+  onNeedsKey: () => void;
+  onChange: (s: ScoutSession) => void;
+}) {
+  const sessionId = session.id;
   const [preview, setPreview] = useState<Preview | null>(null);
   const [result, setResult] = useState<GenerateResult | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function load() {
@@ -42,17 +56,30 @@ export function FuturePreview({ sessionId, onNeedsKey }: { sessionId: number; on
   async function generate() {
     setBusy(true);
     setResult(null);
+    setGenError(null);
     try {
       const r = await apiFetch.post<GenerateResult>(`/scout/sessions/${sessionId}/generate-genome`);
       setResult(r);
     } catch (err) {
       if (err instanceof NeedsApiKeyError) onNeedsKey();
+      else {
+        // The server refuses outright (4xx) when this session has no consent
+        // record attached -- shouldn't happen through this screen (the
+        // ConsentGate below runs first), but stays a plain-language message
+        // rather than a raw error if it ever does (a stale tab, a second
+        // interviewer racing this one).
+        setGenError(errorMessage(err));
+      }
     } finally {
       setBusy(false);
     }
   }
 
   if (!preview) return <p className="health">Loading…</p>;
+
+  if (!session.consent_receipt_id) {
+    return <ConsentGate session={session} onNeedsKey={onNeedsKey} onAttached={onChange} />;
+  }
 
   const locked = !preview.unlocked;
 
@@ -94,6 +121,8 @@ export function FuturePreview({ sessionId, onNeedsKey }: { sessionId: number; on
         <button type="button" className="primary" disabled={busy || locked} onClick={generate}>
           Generate V8 Work Units
         </button>
+
+        {genError && <Banner kind="error">{genError}</Banner>}
 
         {result && (
           <div className={`banner ${result.accepted ? "ok" : "warn"}`} style={{ marginTop: 12 }}>

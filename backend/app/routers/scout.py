@@ -23,7 +23,7 @@ from ..models.scout import (
     ScoutContradiction,
     ScoutInterviewSession,
 )
-from ..models.security import AuditLog, OrgApiKey
+from ..models.security import AuditLog, ConsentReceipt, OrgApiKey
 from ..schemas.common import Page
 from ..schemas.scout import (
     BlastRadiusOut,
@@ -35,6 +35,7 @@ from ..schemas.scout import (
     PersistTalkOnlyIn,
     PersistTalkOnlyOut,
     PainHeatmapOut,
+    SessionConsentUpdate,
     SessionCreate,
     SessionOut,
     StoryExtractIn,
@@ -127,6 +128,30 @@ def list_sessions(db: TenantDbDep, key: OrgKeyDep) -> Page[SessionOut]:
 @router.get("/sessions/{session_id}", response_model=SessionOut)
 def get_session(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> SessionOut:
     session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
+    return _to_session_out(session)
+
+
+@router.patch("/sessions/{session_id}/consent-receipt", response_model=SessionOut)
+def update_session_consent(
+    session_id: int, payload: SessionConsentUpdate, db: TenantDbDep, key: OrgKeyDep
+) -> SessionOut:
+    """Slice 2.1: attach a consent receipt to a session created before one was
+    picked. get_or_404 on ConsentReceipt is the tenant check -- RLS plus its
+    own client_id filter means a receipt id from another tenant 404s the
+    same as one that doesn't exist. Does not itself judge active/withdrawn:
+    that's genome_import.py::_validate_consent's job at generate-genome time,
+    same as any other consent_receipt_id (see that function's docstring)."""
+    session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
+    get_or_404(db, ConsentReceipt, payload.consent_receipt_id, "ConsentReceipt")
+    session.consent_receipt_id = payload.consent_receipt_id
+    db.add(AuditLog(
+        client_id=key.client_id, actor=key.label or f"org_api_key:{key.id}",
+        action="scout.session.consent_receipt.attach", resource="scout_interview_session",
+        resource_id=str(session.id), detail=f"consent_receipt_id={payload.consent_receipt_id}",
+    ))
+    db.commit()
+    _rebind_tenant(db, key)
+    db.refresh(session)
     return _to_session_out(session)
 
 
@@ -303,6 +328,16 @@ def generate_genome(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> Generat
     session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
     if not session.units:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "No captured units to generate a genome from")
+    # Slice 2.1: fail fast, before the (real) import pipeline even runs GQS --
+    # same missing_consent rule genome_import.py::_validate_consent enforces
+    # deeper in, just surfaced as an actual 4xx here instead of a 200 with
+    # accepted=false, since the UI now guarantees this is always avoidable
+    # (Consent screen runs before this call, see ConsentGate.tsx).
+    if not session.consent_receipt_id:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "This session has no consent record attached yet -- pick or create one before generating a genome.",
+        )
     result = genome_svc.generate_genome(db, session, actor=key.label or f"org_api_key:{key.id}")
     _rebind_tenant(db, key)
     return GenerateGenomeOut(**result)

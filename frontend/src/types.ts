@@ -412,3 +412,16 @@ export type ScoutSession = {
   created_at: string;
   updated_at: string;
 };
+
+// Slice 2.1: consent receipts, POST /api/consent/receipts. Mirrors
+// backend/app/schemas/consent.py::ConsentReceiptOut.
+export type ConsentReceipt = {
+  id: number;
+  subject_id: string;
+  purpose: string;
+  consented_at: string;
+  expires_at: string | null;
+  status: "active" | "withdrawn" | "purged";
+  revoked_at: string | null;
+  purged_at: string | null;
+};

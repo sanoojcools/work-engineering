@@ -11,6 +11,10 @@ class SessionCreate(BaseModel):
     consent_receipt_id: int | None = None
 
 
+class SessionConsentUpdate(BaseModel):
+    consent_receipt_id: int
+
+
 class UnitCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     inputs: str = ""
