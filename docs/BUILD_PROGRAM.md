@@ -3,7 +3,7 @@
 Architecture map = WEP System Architecture (boxes 1–6).
 **Bet:** tighten 3a–3e on Offer Desk. Do not fill Box 1/2/4/6 with theatre.
 
-**Founder 6 Sep:** 6.2 (Render backup) and 5.0 (Finance/Legal) **deferred to 2026-09-30**. Keep both **open**. Do not pay, do not invent catalogs. **TIGHT-3D shipped 7 Sep. HR-FAMILY (VERDICT-CARD + 5-desk HR family) shipped 7 Sep, founder-authorized directly, not blocked on 6.2/4.0/3.0/5.0** — it adds no login, no execution, no new backend surface, so it does not touch what those four are gating. Next unlocked build = none until 6.2 / 4.0 / 3.0 / 5.0 are answered.
+**Founder 6 Sep:** 6.2 (Render backup) and 5.0 (Finance/Legal) **deferred to 2026-09-30**. Keep both **open**. Do not pay, do not invent catalogs. **TIGHT-3D shipped 7 Sep. HR-FAMILY (VERDICT-CARD + 5-desk HR family) shipped 7 Sep, founder-authorized directly, not blocked on 6.2/4.0/3.0/5.0** — it adds no login, no execution, no new backend surface, so it does not touch what those four are gating. **FAMILY-GENOME (VERDICT write fix + one declared family genome across all six desks) shipped 7 Sep**, same authorization — one backend service function fixed (a real 500-under-load bug, plus the frontend key bug HR-FAMILY's own entry already named), no new endpoint, no login, no execution. Next unlocked build = none until 6.2 / 4.0 / 3.0 / 5.0 are answered.
 
 ---
 
@@ -11,6 +11,7 @@ Architecture map = WEP System Architecture (boxes 1–6).
 
 | ID | Box / joint | Status | Who | Done when |
 |---|---|---|---|---|
+| **FAMILY-GENOME** | **VERDICT write fix + one declared family genome (3b/3d)** | **SHIPPED** | Claude, one PR | See below |
 | **HR-FAMILY** | **VERDICT-CARD (3d) + 5-desk HR family** | **SHIPPED** | Claude, one PR | See below |
 | **TIGHT-3D** | **3d scenarios + 3b field provenance** | **SHIPPED** | Claude, one PR | See below |
 | **6.2** | Postgres backup | **OPEN until 2026-09-30** | Founder | Free DB, no backup, expires ~2026-10-05 |
@@ -24,7 +25,21 @@ Architecture map = WEP System Architecture (boxes 1–6).
 
 ### Shipped (do not reopen)
 
-Guest Hours · Gap live · Gates 6/9/10 · HR pack · consent UI · health 503 · **TIGHT-WEDGE** (unit card, 11 sequence edges, verification spec, cannot-see, INTENT_CONTRACT.md, 95/61.8) · **TIGHT-3D** (S1/S2/S3 scenario strip + field-provenance strip on Document check, gate-capped, not-scored honestly) · **HR-FAMILY** (VERDICT-CARD on Document check; Onboarding/Offboarding/Vendor Mgmt/US HR/HRBP desks from the real May 2026 T&M sittings; HR function graph with the 3 sheet-named cross-desk handoffs)
+Guest Hours · Gap live · Gates 6/9/10 · HR pack · consent UI · health 503 · **TIGHT-WEDGE** (unit card, 11 sequence edges, verification spec, cannot-see, INTENT_CONTRACT.md, 95/61.8) · **TIGHT-3D** (S1/S2/S3 scenario strip + field-provenance strip on Document check, gate-capped, not-scored honestly) · **HR-FAMILY** (VERDICT-CARD on Document check; Onboarding/Offboarding/Vendor Mgmt/US HR/HRBP desks from the real May 2026 T&M sittings; HR function graph with the 3 sheet-named cross-desk handoffs) · **FAMILY-GENOME** (VERDICT write 500-under-load fix + `api.ts` missing `X-Spec-Key` fix; one 95-unit declared family genome across all six desks, GQS-gate-honest at 30/90; keyed function graph reads the genome payload)
+
+---
+
+## FAMILY-GENOME (shipped)
+
+One PR. Fixes the one real, previously-named gap in the VERDICT write path, then builds the one family genome HR-FAMILY's own map implied but never imported.
+
+**VERDICT write fix.** `PUT /api/verdict/{id}` 500 under load — named as a real, unfixed gap in both TIGHT-3D's and HR-FAMILY's own entries — is fixed: `services/work_units.py::apply_verdict`'s check-then-insert race on `verdict_scores.work_unit_id` (UNIQUE) now wraps the speculative insert in a `SAVEPOINT`, falling back to the winner's row on conflict instead of surfacing an `IntegrityError`. A full `db.rollback()` was tried first and reproduced a second, worse failure (stripped RLS tenant scoping, `ObjectDeletedError`) — see `docs/HONESTY.md` for the full trace. `frontend/src/api.ts`'s `put()` now accepts and forwards `specKey`, and `Verdict.tsx` passes it — the save action sends `X-Spec-Key` for the first time.
+
+**One family genome, same client as Offer Desk.** `frontend/src/lib/desks/familyGenome.ts` builds a `POST /genome/import` payload from all six `DeskSpec`s — 95 Work Units, `WU-OD-`/`WU-ONB-`/`WU-OFF-`/`WU-VEN-`/`WU-US-`/`WU-HRBP-` codes (3-digit, disjoint from the pre-existing 2-digit generic HR census seed), every unit `declared`. Edges: sequence within each desk (per step-id cluster, so HRBP's three independent sub-processes don't chain into each other), plus the exact three handoffs already on the function graph, wired as real `sequence` edges — no new edge type. GQS fails honestly (30/90, live) because Observed% is structurally 0 — not padded, no invented `dual_scoring_kappa`. The Offer Desk evidence pack stays the only path that clears GQS for `WU-OD-*` units; this genome's own `WU-OD-001..011` (declared) never collide with or get merged into its `WU-OD-01..11` (observed, 92.73/90).
+
+**Screens.** `pages/HrFamilyGenome.tsx` (new, `/hr/family-genome`) — keyed import action, lists units/edges before and after attempting the real import, shows the real GQS breakdown either way. `HrFunctionGraph.tsx` gains a keyed-only section reading `buildFamilyGenomePayload()` directly (the same object the import screen posts) instead of only the pre-existing static per-sheet schematic; guest view is unchanged.
+
+Refused, unchanged: WorkOS, Finance, Darwinbox/Zwayam/Job Vite APIs, login, extra Work Graph edge types, observed-pack theatre for any desk, merging the evidence pack's 92.73 into the family, backend rewrite beyond the one `apply_verdict` fix.
 
 ---
 

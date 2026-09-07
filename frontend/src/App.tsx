@@ -12,6 +12,7 @@ import Economics from "./pages/Economics";
 import Enterprise from "./pages/Enterprise";
 import Genome from "./pages/Genome";
 import GenomeVersions from "./pages/GenomeVersions";
+import HrFamilyGenome from "./pages/HrFamilyGenome";
 import HrFunctionGraph from "./pages/HrFunctionGraph";
 import HrMap from "./pages/HrMap";
 import HrOps from "./pages/HrOps";
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/hr/operations/us-hr" element={<DeskUsHr />} />
           <Route path="/hr/hrbp" element={<DeskHrbp />} />
           <Route path="/hr/function-graph" element={<HrFunctionGraph />} />
+          <Route path="/hr/family-genome" element={<HrFamilyGenome />} />
           <Route path="/overview" element={<Overview />} />
           <Route path="/ontology" element={<Ontology />} />
           <Route path="/work-units" element={<WorkUnits />} />
