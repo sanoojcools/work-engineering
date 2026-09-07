@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, errorMessage } from "../api";
+import { api, errorMessage, getSpecKey } from "../api";
 import { CompanyBanner } from "../components/CompanyBanner";
 import { EducationalNudge } from "../components/EducationalNudge";
 import { LabelWithInfo } from "../components/InfoTooltip";
@@ -113,7 +113,7 @@ export default function VerdictPage() {
             for (const key of VERDICT_KEYS) body[key] = Number(data.get(key));
             setError(null);
             try {
-              const saved = await api.put<Verdict>(`/verdict/${id}`, body);
+              const saved = await api.put<Verdict>(`/verdict/${id}`, body, getSpecKey());
               setResult(saved);
               setShowNext(true);
               scores.reload();

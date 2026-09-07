@@ -3,7 +3,9 @@ import { InfoTooltip } from "../components/InfoTooltip";
 import { IoPanes } from "../components/IoPanes";
 import { DESKS_BY_ID } from "../lib/desks";
 import { CROSS_DESK_HANDOFFS } from "../lib/desks/functionGraph";
+import { buildFamilyGenomePayload } from "../lib/desks/familyGenome";
 import type { DeskSpec } from "../lib/desks/types";
+import { useIsGuest } from "../lib/guestMode";
 
 /** HR-FAMILY v0, task D (the stitch): one node per desk, sequence edges
  * read straight off each desk's own step list, and HANDOFF edges only
@@ -46,7 +48,10 @@ function DeskNode({ spec, note }: { spec: DeskSpec; note?: string }) {
   );
 }
 
+const familyGenome = buildFamilyGenomePayload();
+
 export default function HrFunctionGraph() {
+  const isGuest = useIsGuest();
   const indiaDeskIds = ["offer-desk", "onboarding", "offboarding", "vendor-mgmt", "hrbp"];
 
   return (
@@ -65,7 +70,8 @@ export default function HrFunctionGraph() {
       <p className="lede">
         Six real Time & Motion sittings, stitched into one picture. Every arrow below is either a sequence read
         straight off a desk's own step list, or a handoff a sheet names by name — nothing observed, nothing
-        invented. Guest and signed-in see the same thing here.
+        invented. Guest and signed-in see the same static schematic; signed-in also sees a section reading the real
+        family-genome payload below it.
       </p>
 
       <div className="card" style={{ marginBottom: 16 }}>
@@ -140,6 +146,37 @@ export default function HrFunctionGraph() {
         resource, or reciprocal claims — those belong to the real Work Graph, not this sheet-derived schematic), and
         no handoff invented past the three named above.
       </p>
+
+      {!isGuest && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <h3>
+            Read from the family genome{" "}
+            <InfoTooltip
+              term="This genome"
+              simple="Not a second, independently hand-maintained picture -- the same buildFamilyGenomePayload() object the family-genome import screen POSTs, read here instead of re-derived."
+            />
+          </h3>
+          <p className="hint" style={{ marginTop: 0 }}>
+            Everything above this line is the static sheet schematic, unchanged. This section instead reads the
+            actual genome payload: {familyGenome.payload.work_units.length} Work Units across{" "}
+            {Object.keys(familyGenome.unitsByDesk).length} desks, {familyGenome.crossDeskEdges.length} cross-desk
+            dependency edges (the same three handoffs above, wired as real <code>WU-*</code> code pairs, not desk
+            names):
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+            {familyGenome.crossDeskEdges.map((e) => (
+              <li key={`${e.fromCode}-${e.toCode}`}>
+                <code>{e.fromCode}</code> → <code>{e.toCode}</code>
+              </li>
+            ))}
+          </ul>
+          <p className="hint" style={{ marginTop: 8, marginBottom: 0 }}>
+            This is still built client-side from <code>lib/desks/*.ts</code>, same as the rest of this page — the
+            real GQS score for this exact payload only exists once it is actually posted.{" "}
+            <Link to="/hr/family-genome">Import family (declared) →</Link>
+          </p>
+        </div>
+      )}
 
       <IoPanes
         given="Six desks' own step lists and handoff maps (desks/*.xlsx)."

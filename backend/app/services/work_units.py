@@ -56,8 +56,33 @@ def apply_verdict(db: Session, wu: WorkUnit, scores: dict, origin: str = "confir
     )
     row = wu.verdict
     if row is None:
-        row = VerdictScore(work_unit_id=wu.id)
-        db.add(row)
+        try:
+            # SAVEPOINT, not a full db.rollback(): this request's own
+            # transaction opened with a plain `SET app.current_client_id`
+            # (dependencies.py::optional_tenant_db/tenant_db, deliberately
+            # not SET LOCAL so it survives this function's own multiple
+            # commits) -- and Postgres undoes a plain SET, same as any other
+            # statement, if the transaction that issued it is rolled back.
+            # A full rollback here was tried first and reproduced a second,
+            # worse failure live: ObjectDeletedError on the very next `wu`
+            # reload, because the rollback silently dropped RLS's tenant
+            # scoping and the reload then saw zero rows. A nested
+            # transaction confines the rollback to just this speculative
+            # insert; the outer transaction, and the SET it carries, is
+            # untouched.
+            with db.begin_nested():
+                row = VerdictScore(work_unit_id=wu.id)
+                db.add(row)
+                db.flush()
+        except IntegrityError:
+            # PUT is an upsert; two concurrent first-time scores for the same
+            # work unit both see wu.verdict as None and both try to insert.
+            # verdict_scores.work_unit_id is UNIQUE, so the loser's flush
+            # hits the winner's row (reproduced live: concurrent PUTs to a
+            # freshly created unit 500'd with exc_type=IntegrityError before
+            # this fix) -- fall back to updating that row instead of
+            # surfacing a 500 for a request that was otherwise valid.
+            row = db.query(VerdictScore).filter(VerdictScore.work_unit_id == wu.id).one()
     for prop in PROPERTIES:
         setattr(row, prop, result["scores"][prop])
     persist_derivation(row, result, wu.actor_type.value)

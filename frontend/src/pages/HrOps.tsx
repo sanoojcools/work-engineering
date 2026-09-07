@@ -30,6 +30,8 @@ export default function HrOps() {
       />
       <p style={{ marginTop: 20 }}>
         <Link to="/hr/function-graph">See how these five desks hand off to each other →</Link>
+        {" · "}
+        <Link to="/hr/family-genome">Import all six desks as one declared genome →</Link>
       </p>
     </>
   );
