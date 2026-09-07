@@ -14,6 +14,7 @@ from . import (
     moderation,
     ontology,
     org,
+    pointers,
     projections,
     regulatory,
     scout,
@@ -35,6 +36,7 @@ api_router.include_router(census.router, prefix="/census", tags=["census"])
 api_router.include_router(censuses.router, prefix="/censuses", tags=["censuses"])
 api_router.include_router(ontology.router, prefix="/ontology", tags=["ontology"])
 api_router.include_router(work_units.router, prefix="/work-units", tags=["work-units"])
+api_router.include_router(pointers.router, prefix="/work-units", tags=["pointers"])
 api_router.include_router(work_graph.router, prefix="/work-graph", tags=["work-graph"])
 api_router.include_router(verdict.router, prefix="/verdict", tags=["verdict"])
 api_router.include_router(economics.router, prefix="/economics", tags=["economics"])

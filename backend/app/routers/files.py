@@ -4,6 +4,13 @@ This is the missing Stage 4 primitive. Until this endpoint existed, every
 provenance.hash_sha256 anywhere in the system was caller-supplied, which
 made the "tamper-evident" claim false. This PR does not parse file content —
 that's PR 1b (classifier) and 1c (Track A mapper).
+
+V10-2 (docs/V10_BUILD.md) added .pdf to ALLOWED_EXTENSIONS so a PDF-sourced
+field pointer (services/pointers.py) is real and end-to-end testable, not a
+dead code path. No PDF parser was added -- classify()/map_track_a() already
+degrade a non-CSV/XLSX-shaped file to review_queue rather than guessing, so
+an uploaded PDF just queues honestly through those two endpoints; only the
+new pointers router treats it specially (file-only resolution).
 """
 from __future__ import annotations
 
@@ -27,7 +34,7 @@ router = APIRouter()
 
 # Explicit, documented, tested cap (playbook E.1.1) — not a silent drop.
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MiB
-ALLOWED_EXTENSIONS = {".csv", ".xlsx"}
+ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".pdf"}
 
 
 @router.get("", response_model=Page[UploadedFileOut])

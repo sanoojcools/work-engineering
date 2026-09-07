@@ -102,6 +102,12 @@ class GapKind(str, enum.Enum):
     # 1.3): advisory-only "this business object's inferred state graph never
     # closes" warning -- never blocks import, never writes state_machine.
     missing_terminal_state = "missing_terminal_state"
+    # V10-2 (docs/V10_BUILD.md): a field pointer claimed observed/
+    # reconstructed but its file_id + page/line/cell could not be opened
+    # (services/pointers.py::resolve_pointer) -- the claim is downgraded to
+    # predicted and this gap records why, same warn-not-reject shape as
+    # every other GapKind here.
+    broken_pointer = "broken_pointer"
 
 
 class ConformanceGap(Base):
