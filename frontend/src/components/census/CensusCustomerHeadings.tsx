@@ -1,0 +1,57 @@
+import { InfoTooltip } from "../InfoTooltip";
+
+/** Customer-facing headings for every /census/* screen, Chart, and Plan.
+ * Coined canon (Work Unit, VERDICT, provenance, verification, S1/S2/S3)
+ * lives only in the i-buttons. Not a table. */
+const HEADINGS: {
+  label: string;
+  term: string;
+  simple: string;
+  technical: string;
+}[] = [
+  {
+    label: "Piece of work",
+    term: "Work Unit",
+    simple: "One small piece of work with a clear start and finish.",
+    technical: "Work Unit — 18 contract attributes including authority, acceptance, evidence, verification.",
+  },
+  {
+    label: "How sure we are",
+    term: "VERDICT",
+    simple: "How confident this record is, from the checks that already exist — not a new score invented for this screen.",
+    technical: "VERDICT (7 questions) plus the careful / as calculated / ambitious replay of S1 / S2 / S3.",
+  },
+  {
+    label: "How we know it",
+    term: "Provenance",
+    simple: "Where this claim came from — a file, a sitting, or a reconstruction. Empty means we do not know yet.",
+    technical: "Provenance / evidence_ref on the Work Unit. This slice does not add pointer columns (that is V10-2).",
+  },
+  {
+    label: "Checked by",
+    term: "Verification",
+    simple: "Who or what is supposed to check this piece, when that is stated. 'Not ready' means the check is missing, not that it passed.",
+    technical: "verification_method and the handoff readiness rule on Plan. Independent-check columns arrive in V10-3, not here.",
+  },
+  {
+    label: "Careful / as calculated / ambitious",
+    term: "S1 / S2 / S3",
+    simple: "Three ways to read the same score: careful is the floor, as calculated is what VERDICT derived, ambitious is the ceiling. Appetite does not lift a stop.",
+    technical: "S1 floor / S2 derived / S3 ceiling — the same scenarioStrip() Document check already uses. No second scoring engine.",
+  },
+];
+
+export function CensusCustomerHeadings() {
+  return (
+    <div className="census-copy-headings" data-testid="census-copy-headings">
+      {HEADINGS.map((h) => (
+        <div key={h.label} className="census-copy-item">
+          <span className="census-copy-label">
+            {h.label}{" "}
+            <InfoTooltip term={h.term} simple={h.simple} technical={h.technical} />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}

@@ -28,6 +28,20 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows Offer 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Scope", exact: false }).first()).toBeVisible();
   await expect(stepCount(page)).toContainText("1 of 6");
+  await expect(page.getByTestId("census-readiness")).toBeVisible();
+  await expect(page.getByTestId("readiness-consent")).toBeVisible();
+  await expect(page.getByTestId("readiness-three-people")).toBeVisible();
+  await expect(page.getByTestId("readiness-docs")).toBeVisible();
+  await expect(page.getByTestId("census-copy-headings").getByText("Piece of work")).toBeVisible();
+  await expect(page.getByTestId("census-copy-headings").getByText("How sure we are")).toBeVisible();
+  await expect(page.getByTestId("census-copy-headings").getByText("How we know it")).toBeVisible();
+  await expect(page.getByTestId("census-copy-headings").getByText("Checked by")).toBeVisible();
+  await expect(page.getByTestId("census-copy-headings").getByText(/Careful \/ as calculated \/ ambitious/)).toBeVisible();
+
+  // Guest Start does not mint a key and does not leave Scope.
+  await page.getByRole("button", { name: "Start census" }).click();
+  await expect(stepCount(page)).toContainText("1 of 6");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 
   await page.getByRole("link", { name: "Next: Capture →" }).click();
   await expect(page).toHaveURL(/\/census\/capture$/);
@@ -74,6 +88,31 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows Offer 
   await expect(page.getByText("95", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("61.8", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/~30\/90 is not a pass/)).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+test("keyed Start census persists across a refresh", async ({ page, request }) => {
+  await signInWithFreshDemoKey(page, request);
+  await page.goto("/");
+
+  const startButton = page.getByRole("button", { name: "Start census" });
+  const startedBadge = page.getByText("Census started");
+  await Promise.race([
+    startButton.waitFor({ state: "visible", timeout: 10_000 }),
+    startedBadge.waitFor({ state: "visible", timeout: 10_000 }),
+  ]);
+
+  if (await startButton.isVisible()) {
+    await startButton.click();
+    await expect(startedBadge).toBeVisible();
+  } else {
+    await expect(startedBadge).toBeVisible();
+  }
+
+  await expect(page.getByTestId("census-readiness")).toBeVisible();
+  await page.reload();
+  await expect(startedBadge).toBeVisible();
+  await expect(page.getByTestId("census-readiness")).toBeVisible();
 });
 
 test("Hours 95 declared / 61.8 defended still visible from Plan", async ({ page }) => {

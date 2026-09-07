@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { CensusCustomerHeadings } from "./CensusCustomerHeadings";
 import { DownloadCensusButton } from "./DownloadCensusButton";
 
 /** The Work Census shell's own six steps (docs/BUILD_PROGRAM.md CENSUS-v0
@@ -24,28 +25,31 @@ export function CensusStepper() {
   const current = CENSUS_STEPS.findIndex((s) => s.path === loc.pathname);
 
   return (
-    <div className="progress" style={{ marginBottom: 16 }}>
-      {CENSUS_STEPS.map((s, i) => {
-        const done = current >= 0 && i < current;
-        const active = i === current;
-        return (
-          <div key={s.path} className="progress-step">
-            <button
-              type="button"
-              className={done ? "pill done" : active ? "pill active" : "pill"}
-              onClick={() => nav(s.path)}
-            >
-              {done ? "done · " : ""}
-              {s.label}
-            </button>
-            {i < CENSUS_STEPS.length - 1 && <span className={done ? "progress-line done" : "progress-line"} />}
-          </div>
-        );
-      })}
-      <div className="progress-count">
-        Work Census · {current < 0 ? "?" : current + 1} of {CENSUS_STEPS.length}
+    <div style={{ marginBottom: 16 }}>
+      <div className="progress" style={{ marginBottom: 0 }}>
+        {CENSUS_STEPS.map((s, i) => {
+          const done = current >= 0 && i < current;
+          const active = i === current;
+          return (
+            <div key={s.path} className="progress-step">
+              <button
+                type="button"
+                className={done ? "pill done" : active ? "pill active" : "pill"}
+                onClick={() => nav(s.path)}
+              >
+                {done ? "done · " : ""}
+                {s.label}
+              </button>
+              {i < CENSUS_STEPS.length - 1 && <span className={done ? "progress-line done" : "progress-line"} />}
+            </div>
+          );
+        })}
+        <div className="progress-count">
+          Work Census · {current < 0 ? "?" : current + 1} of {CENSUS_STEPS.length}
+        </div>
+        <DownloadCensusButton compact />
       </div>
-      <DownloadCensusButton compact />
+      <CensusCustomerHeadings />
     </div>
   );
 }
