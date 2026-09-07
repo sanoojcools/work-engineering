@@ -63,9 +63,34 @@ function UnitsLane({ deskId, units, verdicts }: { deskId: LaneDeskId; units: Wor
         rows={rows}
         columns={[
           { key: "code", header: "Code", render: (r) => <code style={{ fontSize: 12 }}>{r.displayCode}</code> },
-          { key: "name", header: "Name" },
-          { key: "scenarios", header: "VERDICT · S1 / S2 / S3", render: (r) => scenarioCell(r.strip) },
-          { key: "handoff", header: "Handoff", render: (r) => handoffCell(unitReadiness(r.matched, r.verdict)) },
+          { key: "name", header: "Piece of work" },
+          {
+            key: "scenarios",
+            header: (
+              <>
+                How sure we are{" "}
+                <InfoTooltip
+                  term="VERDICT"
+                  simple="Careful / as calculated / ambitious: floor, derived, ceiling — the same three numbers Document check already shows. Not scored means no real score exists yet."
+                  technical="scenarioStrip() S1 / S2 / S3. No new arithmetic on this page."
+                />
+              </>
+            ),
+            render: (r) => scenarioCell(r.strip),
+          },
+          {
+            key: "handoff",
+            header: (
+              <>
+                Checked by{" "}
+                <InfoTooltip
+                  term="Handoff"
+                  simple="Ready only if a real record exists, it names how it is checked, and VERDICT has scored it. Not ready is a missing check, not a pass."
+                />
+              </>
+            ),
+            render: (r) => handoffCell(unitReadiness(r.matched, r.verdict)),
+          },
         ]}
       />
     </div>
@@ -359,7 +384,13 @@ export default function CensusPlan() {
         real row — nothing here is computed fresh for this screen.
       </p>
 
-      <h3 style={{ marginBottom: 4 }}>This journey's units</h3>
+      <h3 style={{ marginBottom: 4 }}>
+        Pieces of work in this journey{" "}
+        <InfoTooltip
+          term="Work Unit"
+          simple="Each row is one piece of work. How sure we are, how we know it, and checked by are the customer labels; coined terms stay in the i-buttons."
+        />
+      </h3>
       {!isGuest && (unitsApi.loading || verdictsApi.loading) && (
         <p className="hint">Loading this tenant's real Work Units and VERDICT scores…</p>
       )}

@@ -19,9 +19,9 @@ import type { IntentOut, Page, Verdict, WorkUnit } from "../types";
 
 type ScenarioKey = "careful" | "as-calculated" | "ambitious";
 const SCENARIOS: { key: ScenarioKey; label: string }[] = [
-  { key: "careful", label: "Careful (S1 floor)" },
-  { key: "as-calculated", label: "As-calculated (S2)" },
-  { key: "ambitious", label: "Ambitious (S3 ceiling)" },
+  { key: "careful", label: "Careful" },
+  { key: "as-calculated", label: "As calculated" },
+  { key: "ambitious", label: "Ambitious" },
 ];
 
 function levelBadge(strip: ScenarioStrip, scenario: ScenarioKey): string {
@@ -66,9 +66,21 @@ function Lane({
         onRowClick={(row) => nav(row.clickTo)}
         columns={[
           { key: "code", header: "Code", render: (r) => <code style={{ fontSize: 12 }}>{r.displayCode}</code> },
-          { key: "name", header: "Name" },
+          { key: "name", header: "Piece of work" },
           { key: "spoc", header: "SPOC", render: (r) => <span className="hint">{r.spoc}</span> },
-          { key: "level", header: "Level", render: (r) => levelBadge(r.strip, scenario) },
+          {
+            key: "level",
+            header: (
+              <>
+                How sure we are{" "}
+                <InfoTooltip
+                  term="VERDICT"
+                  simple="Careful / as calculated / ambitious replay the same score Document check already uses. 'Not scored' means no real VERDICT exists yet for this piece on this tenant."
+                />
+              </>
+            ),
+            render: (r) => levelBadge(r.strip, scenario),
+          },
         ]}
       />
     </div>
@@ -313,8 +325,13 @@ export default function CensusWorkChart() {
         ))}
       </div>
       <p className="hint" style={{ marginTop: 0, marginBottom: 12 }}>
-        Same scenario math as Document check's own S1/S2/S3 strip — no second scoring engine. "Not scored" means no
-        real VERDICT exists yet for that unit on this tenant.
+        Careful / as calculated / ambitious{" "}
+        <InfoTooltip
+          term="S1 / S2 / S3"
+          simple="Three ways to read the same score: careful is the floor, as calculated is what VERDICT derived, ambitious is the ceiling. Appetite does not lift a stop."
+          technical="Same scenarioStrip() as Document check — S1 floor / S2 derived / S3 ceiling. No second scoring engine."
+        />{" "}
+        — "Not scored" means no real score exists yet for that piece on this tenant.
       </p>
 
       {!isGuest && (unitsApi.loading || verdictsApi.loading) && (

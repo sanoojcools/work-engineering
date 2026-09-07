@@ -492,6 +492,32 @@ export type HandoffOut = {
   bundle: WorkUnit | null;
 };
 
+// V10-1 FRONTEND. Mirrors backend/app/schemas/censuses.py::ReadinessOut /
+// CensusOut. Readiness is computed live on every GET/POST — never stored,
+// never a fabricated "documents received" flag.
+export type CensusReadiness = {
+  consent: boolean;
+  consent_receipt_count: number;
+  people: boolean;
+  people_seats_filled: number;
+  people_seats_total: number;
+  docs: boolean;
+  docs_uploaded_count: number;
+};
+
+export type CensusRecord = {
+  id: number;
+  client_id: number;
+  work_system_id: number;
+  status: "draft" | "started";
+  scope: Record<string, unknown>;
+  document_requests: unknown[];
+  created_at: string;
+  updated_at: string;
+  started_at: string | null;
+  readiness: CensusReadiness;
+};
+
 // Slice 2.1: consent receipts, POST /api/consent/receipts. Mirrors
 // backend/app/schemas/consent.py::ConsentReceiptOut.
 export type ConsentReceipt = {

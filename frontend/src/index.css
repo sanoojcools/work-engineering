@@ -352,6 +352,24 @@ tbody tr[onclick], tbody tr.selected { cursor: pointer; }
   white-space: nowrap;
 }
 .badge.ok { border-color: var(--accent-edge); color: var(--accent-ink); background: var(--accent-wash); }
+.badge.good { border-color: var(--good); color: var(--good); background: var(--good-wash); }
+.badge.bad { border-color: var(--danger); color: var(--danger); background: var(--danger-wash); }
+
+.readiness-strip { display: flex; flex-direction: column; gap: 10px; }
+.readiness-row { display: flex; gap: 10px; align-items: flex-start; }
+.readiness-row .badge { margin-top: 2px; flex-shrink: 0; }
+
+.census-copy-headings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  width: 100%;
+  padding: 10px 34px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.census-copy-item { font-size: 12px; color: var(--ink-2); }
+.census-copy-label { font-weight: 600; }
 
 .split { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.9fr); gap: 20px; }
 
