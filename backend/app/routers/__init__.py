@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from . import (
     admin,
     census,
+    censuses,
     clients,
     consent,
     discovery,
@@ -31,6 +32,7 @@ api_router.include_router(clients.router, prefix="/clients", tags=["clients"])
 api_router.include_router(genome.router, prefix="/genome", tags=["genome"])
 api_router.include_router(files.router, prefix="/files", tags=["files"])
 api_router.include_router(census.router, prefix="/census", tags=["census"])
+api_router.include_router(censuses.router, prefix="/censuses", tags=["censuses"])
 api_router.include_router(ontology.router, prefix="/ontology", tags=["ontology"])
 api_router.include_router(work_units.router, prefix="/work-units", tags=["work-units"])
 api_router.include_router(work_graph.router, prefix="/work-graph", tags=["work-graph"])
