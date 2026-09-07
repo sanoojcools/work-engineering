@@ -8,7 +8,7 @@ export default function HrMap() {
   return (
     <>
       <h2>
-        HR · CHRO map <LabelWithInfo label="Blast radius" />
+        HR · CHRO map <LabelWithInfo label="Scope" />
       </h2>
       <p className="lede">Sub-functions that move if the CHRO changes intent.</p>
       <div className="split" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>

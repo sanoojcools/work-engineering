@@ -413,6 +413,22 @@ export type ScoutSession = {
   updated_at: string;
 };
 
+// CENSUS-v0 Part B: one named cross-desk journey (this slice ships one --
+// Offer Desk -> Onboarding). Mirrors backend/app/schemas/work_system.py::WorkSystemOut.
+export type WorkSystem = {
+  id: number;
+  code: string;
+  name: string;
+  entry: string;
+  exit: string;
+  owner: string;
+  outcome: string;
+  status: "candidate" | "ratified";
+  ratified_by: string;
+  ratified_at: string | null;
+  created_at: string;
+};
+
 // Slice 2.1: consent receipts, POST /api/consent/receipts. Mirrors
 // backend/app/schemas/consent.py::ConsentReceiptOut.
 export type ConsentReceipt = {

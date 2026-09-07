@@ -2,6 +2,11 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { GuidedTour } from "./components/GuidedTour";
 import AppShell from "./layout/AppShell";
 import BlastRadius from "./pages/BlastRadius";
+import CensusCapture from "./pages/CensusCapture";
+import CensusEvidence from "./pages/CensusEvidence";
+import CensusGap from "./pages/CensusGap";
+import CensusPlan from "./pages/CensusPlan";
+import CensusWorkChart from "./pages/CensusWorkChart";
 import DeskHrbp from "./pages/DeskHrbp";
 import DeskOffboarding from "./pages/DeskOffboarding";
 import DeskOnboarding from "./pages/DeskOnboarding";
@@ -52,6 +57,11 @@ export default function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<Start />} />
+          <Route path="/census/capture" element={<CensusCapture />} />
+          <Route path="/census/evidence" element={<CensusEvidence />} />
+          <Route path="/census/gap" element={<CensusGap />} />
+          <Route path="/census/chart" element={<CensusWorkChart />} />
+          <Route path="/census/plan" element={<CensusPlan />} />
           <Route path="/enterprise" element={<Enterprise />} />
           <Route path="/hr" element={<HrMap />} />
           <Route path="/hr/operations" element={<HrOps />} />
