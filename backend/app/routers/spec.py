@@ -10,7 +10,9 @@ from ..models.execution import SpecCheck, Trajectory
 from ..models.workunit import WorkUnit
 from ..schemas.common import Page
 from ..schemas.execution import SpecCheckIn, SpecCheckOut, TrajectoryIn, TrajectoryOut
+from ..schemas.handoff import HandoffOut
 from ..schemas.workunit import WorkUnitOut
+from ..services import handoff as handoff_svc
 from ..services import spec as spec_svc
 from ..services import work_units as wu_svc
 from ..services.lookup import get_by_code_or_404
@@ -23,6 +25,18 @@ def get_spec(code: str, db: TenantDbDep, _key: OrgKeyDep) -> WorkUnitOut:
     """The specification an execution system consumes (C4)."""
     wu = get_by_code_or_404(db, WorkUnit, code)
     return wu_svc.to_out(wu)
+
+
+@router.get("/handoff/{code}", response_model=HandoffOut)
+def handoff(code: str, db: TenantDbDep, _key: OrgKeyDep) -> HandoffOut:
+    """P2 (docs/BUILD_PROGRAM.md CENSUS-PACK): refuse a bundle if the unit
+    is not ready -- same 200-with-the-verdict-in-the-body idiom POST
+    /spec/check already uses for allow/deny, not a 4xx. A code with no
+    record on this tenant is a legitimate "not ready" answer, not a 404:
+    Plan needs to render that inline for a unit that was never imported,
+    the same way every other honest-empty-state on this walk renders
+    rather than erroring."""
+    return handoff_svc.check_readiness(db, code)
 
 
 @router.post("/check", response_model=SpecCheckOut)

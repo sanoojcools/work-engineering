@@ -41,6 +41,11 @@ export type ChartRow = {
   name: string;
   spoc: string;
   matched: WorkUnit | null;
+  // The same real-or-null Verdict row `strip` was replayed from -- kept
+  // alongside it (not just inside the strip) because P2's handoff
+  // readiness (lib/handoffReadiness.ts) needs the raw row, not the
+  // scenario-derived S1/S2/S3 points.
+  verdict: Verdict | null;
   strip: ScenarioStrip;
   clickTo: string;
 };
@@ -62,6 +67,7 @@ export function buildRows(
       name: step.name,
       spoc: step.spoc,
       matched,
+      verdict,
       strip: scenarioStrip(verdict),
       clickTo: documentCheckRoute(deskId, position),
     };

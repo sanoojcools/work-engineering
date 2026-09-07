@@ -65,6 +65,21 @@ const GUEST_WORK_SYSTEM_INTENT: IntentOut = {
   confirmed_at: null,
 };
 
+/** The same declared-schematic fallback useWorkSystem() renders for a
+ * guest, exported so lib/censusExport.ts (CENSUS-PACK P1) can build a
+ * guest export without a hook -- one shape, not a second one invented for
+ * the download. */
+export const GUEST_JOURNEY: WorkSystem = {
+  id: -1,
+  ...OFFER_TO_ONBOARDING_JOURNEY,
+  status: "candidate",
+  ratified_by: "",
+  ratified_at: null,
+  created_at: "",
+  function_intent: GUEST_FUNCTION_INTENT,
+  work_system_intent: GUEST_WORK_SYSTEM_INTENT,
+};
+
 export async function listWorkSystems(): Promise<WorkSystem[]> {
   const page = await apiFetch.get<{ total: number; items: WorkSystem[] }>("/work-systems");
   return page.items;
@@ -128,16 +143,7 @@ export function useWorkSystem() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGuest, keyClientId]);
 
-  const journey: WorkSystem = workSystem ?? {
-    id: -1,
-    ...OFFER_TO_ONBOARDING_JOURNEY,
-    status: "candidate",
-    ratified_by: "",
-    ratified_at: null,
-    created_at: "",
-    function_intent: GUEST_FUNCTION_INTENT,
-    work_system_intent: GUEST_WORK_SYSTEM_INTENT,
-  };
+  const journey: WorkSystem = workSystem ?? GUEST_JOURNEY;
 
   return { isGuest, workSystem, journey, loading, error, needsKey, setNeedsKey, setWorkSystem, setError };
 }

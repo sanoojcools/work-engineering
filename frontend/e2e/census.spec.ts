@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 /** CENSUS-v0's five required scenarios (docs/BUILD_PROGRAM.md, "Playwright
@@ -246,4 +247,84 @@ test("keyed Evidence lists this tenant's real uploaded files and what each one b
 
   // Real conformance-gap counts, not the guest's illustrative four rows.
   await expect(page.getByText(/Read from this tenant's own conformance gaps/)).toBeVisible();
+});
+
+/** CENSUS-PACK (docs/BUILD_PROGRAM.md P1/P2). */
+
+test("guest census download contains 95, 61.8, and 'not a pass'", async ({ page }) => {
+  await page.goto("/census/plan");
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download census" }).first().click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^census-offer-day1-\d{8}\.md$/);
+  const path = await download.path();
+  const content = readFileSync(path as string, "utf-8");
+  expect(content).toContain("95");
+  expect(content).toContain("61.8");
+  expect(content).toMatch(/not a pass/);
+  // Guest banner (P1: "talk-only empty").
+  expect(content).toMatch(/Guest \/ talk-only/);
+});
+
+test("keyed census download includes confirmed intent once confirmed", async ({ page, request }) => {
+  await signInWithFreshDemoKey(page, request);
+  const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
+  const headers = { "X-Spec-Key": apiKey };
+
+  // Get-or-create (never overwrites an existing row) then confirm Function
+  // intent directly via the API -- Client A is a warm singleton tenant, so
+  // an earlier run may already have confirmed it; a 409 "already confirmed"
+  // is treated the same as a fresh 200, since either way the row now has a
+  // confirmed intent, which is the only thing this test needs to exist
+  // before it downloads and checks the export reflects it.
+  const ensured = await request.post("/api/work-systems", {
+    headers,
+    data: {
+      code: "WS-OFFER-ONBOARD", name: "Recruiter asks for offer → offer released → Day-1 ready",
+      entry: "x", exit: "x", owner: "x", outcome: "x",
+      function_intent_outcome: "x", function_intent_owner: "x", function_intent_measure: "x",
+      work_system_intent_purpose: "x", work_system_intent_owner: "x",
+    },
+  });
+  expect(ensured.ok(), await ensured.text()).toBeTruthy();
+  const workSystemId = (await ensured.json()).id as number;
+  const confirm = await request.post(`/api/work-systems/${workSystemId}/confirm-function-intent`, {
+    headers,
+    data: { confirmed_by: "Census QA" },
+  });
+  expect([200, 409]).toContain(confirm.status());
+
+  await page.goto("/census/plan");
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download census" }).first().click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  const content = readFileSync(path as string, "utf-8");
+  expect(content).toMatch(/confirmed by /);
+  expect(content).not.toMatch(/Guest \/ talk-only/);
+});
+
+test("handoff is refused (not ready) without evidence", async ({ page, request }) => {
+  // Guest: no tenant exists at all, so the rule's own "no record" branch is
+  // the only honest answer -- every unit on Plan reads Not ready, never a
+  // fake allow, per P2's own "Guest: explain, never fake allow."
+  await page.goto("/census/plan");
+  await expect(page.getByText("Not ready").first()).toBeVisible();
+  await expect(page.getByText(/Guest: the rule above is real/)).toBeVisible();
+
+  // The same refusal, direct from the server (GET/Spec must refuse a bundle
+  // if not ready) -- a code no import path on this tenant could ever
+  // produce, so this is deterministic regardless of what earlier tests left
+  // on the shared demo tenant.
+  const bootstrap = await request.post("/api/demo/bootstrap?new_keys=true");
+  expect(bootstrap.ok(), await bootstrap.text()).toBeTruthy();
+  const { api_key } = (await bootstrap.json()) as { api_key: string };
+  const resp = await request.get("/api/spec/handoff/WU-CENSUS-PACK-NO-SUCH-UNIT", {
+    headers: { "X-Spec-Key": api_key },
+  });
+  expect(resp.ok(), await resp.text()).toBeTruthy();
+  const body = (await resp.json()) as { ready: boolean; bundle: unknown; reasons: string[] };
+  expect(body.ready).toBe(false);
+  expect(body.bundle).toBeNull();
+  expect(body.reasons.join(" ")).toMatch(/no record/i);
 });
