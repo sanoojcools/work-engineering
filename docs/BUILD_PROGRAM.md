@@ -1,10 +1,8 @@
 # Build program — Work Engineering
 
-Engine = V9 joints on `main`. Product SKU from V10 canon = **Work Census** (six screens, hero = Work Chart).
+SKU = **Work Census** (V10). Engine = V9 joints on `main`.
 
-**Founder 7 Sep:** speed + quality, one meaty PR. **CENSUS-v0** is unlocked (same authorization as HR-FAMILY: no login, no execution, no Finance, no Render purchase). Do not drop Offer Desk; **demote it off Home** — it is Capture depth.
-
-OBJECTS-HOURS, FAMILY-GENOME, HR-FAMILY, TIGHT-3D, TIGHT-WEDGE, CENSUS-v0: **shipped**. Do not reopen.
+**CENSUS-v0 shipped (PR #16).** Next unlocked = **INTENT-PLAN** (one PR: D + E). Founder 7 Sep: meaty chunks, no login/Finance/Render.
 
 ---
 
@@ -12,54 +10,45 @@ OBJECTS-HOURS, FAMILY-GENOME, HR-FAMILY, TIGHT-3D, TIGHT-WEDGE, CENSUS-v0: **shi
 
 | ID | Status | Who |
 |---|---|---|
-| **CENSUS-v0** | **Shipped** | Claude |
-| 6.2 Render backup | Open → 30 Sep | Founder |
+| **INTENT-PLAN** | **UNLOCKED — do now, one PR** | Claude |
+| 6.2 Render | Open → 30 Sep (~DB dies 5 Oct) | Founder |
 | 5.0 Finance/Legal | Open → 30 Sep | Founder |
 | 4.0 Login | STOP | Founder |
 | 3.0 Real traces | STOP | Founder |
-| Next after CENSUS-v0 | D INTENT-LITE + E PLAN (not this PR) | — |
+| After INTENT-PLAN | F EVIDENCE+GAP census-grade (not this PR) | — |
+
+Shipped (do not reopen): TIGHT-WEDGE · TIGHT-3D · HR-FAMILY · FAMILY-GENOME · OBJECTS-HOURS · **CENSUS-v0** (6-step shell, work_systems table, Work Chart hero)
 
 ---
 
-## CENSUS-v0 (only unlocked build)
+## INTENT-PLAN (only unlocked build)
 
-One PR. Three parts, all required. Raja V10: Scope → Capture → Evidence → Gap → **Work Chart** → Plan. This slice ships **shell + Work System + Chart**. Plan/Evidence stay existing pages linked, not rebuilt.
+One PR. Two parts, both required. Do not reopen CENSUS-v0. Do not delete Offer Desk / 95/61.8 / Spec deny / Chart / family genome.
 
-**Do not delete** Offer Desk routes, 95/61.8, Spec deny, family genome, object cards, function hours, desks/*.xlsx.
+### D — INTENT-LITE (declared spine, not INT-007 tables)
+Two intents only, attached to the existing Work System (offer → Day-1):
+1. **Function intent** (HR operations) — one sentence outcome + owner (stand-in ok) + measure if the T&M sheets name one, else “not stated”.
+2. **Work System intent** — entry/exit already on the Work System; add **what this journey is for** in sheet words + owner.
 
-### A — Census shell
-Guest **and** keyed Home (or first click after Enterprise/HR): **six-step path** with position (n of 6).
-1 Scope (today’s blast-radius/HR map — rename copy to Scope; keep data)
-2 Capture (three seats; Offer Desk walk reachable **from here**, not as the product home)
-3 Evidence (link existing upload / document-check evidence; do not invent a new store)
-4 Gap (existing OfferDeskGap + family gaps if keyed)
-5 **Work Chart** (new — part C)
-6 Plan (link Document check VERDICT + Hours 95/61.8 + function hours — do not rebuild Plan this PR)
+Draft from existing sitting/sheet text — do **not** invent a COO strategy. Status **draft** until keyed **Confirm as owner** (name + time). Unconfirmed intent MUST NOT look governed (badge). Show both on Work Chart purpose strip and on Plan.
+Prefer persist on work_systems (columns or child table). Guest: labelled draft/sitting.
+No strategy-level constitution. No Intent Studio product.
 
-Copy: blast radius → scope; GQS → quality gate (customer-facing); genome strength → completeness. Keep genome in HONESTY.md.
-V8 progress pills stay gone.
+### E — PLAN (census step 6 is a real screen)
+Replace the Plan **link farm** with **one page**:
+- This journey’s units (Offer Desk + Onboarding): VERDICT or “not scored”, S1/S2/S3 strip, dual-employment stop restated, Spec deny still a link that still denies without a file.
+- Hours: Offer Desk **95 vs 61.8** both visible; other desks **stated** from function-hours panel — do not invent defended numbers.
+- **Moderation:** changing S2 toward S3 requires **reason + name**; log it (table or append-only JSON). Appetite **never** lifts the stop; S3 cannot enable release-offer without evidence.
+- Quality gate reminder: family genome ~30/90 is not a pass.
 
-### B — One Work System (missing middle)
-Journey: **recruiter asks for offer → offer released → Day-1 ready** (Offer Desk + Onboarding only).
-Record: name, entry, exit, owner (labelled stand-in unless a real name exists), outcome in sheet words, status **candidate** until a **Ratify** click (keyed) sets **ratified** + name + time.
-**Rule in UI (and backend if a column is cheap):** units of this journey stay **candidates** until the Work System is ratified. Do not block viewing. Do not invent a second journey for Offboarding this PR.
-Honor V10: *a candidate Work System MUST NOT be cut into governed units* — show the badge; do not delete the 95 declared units.
+IoPanes + i-buttons. HONESTY.md.
+Playwright: guest 1→6 Plan shows 95/61.8; Chart purpose shows draft intent; keyed Confirm-as-owner; keyed moderation requires a reason; Spec deny unchanged; family GQS still fails.
+Refuse: WorkOS, Finance, Darwinbox, login, Box 4, ladder, extra edges, observed packs, buy Render, Evidence/Gap rebuild, delinquency register.
 
-### C — Work Chart (hero)
-One screen: purpose strip (function: HR ops; this journey’s target from sheets); **lanes** from desks on this journey (Offer Desk, Onboarding; HRBP only if a named handoff touches it); each Work Unit a card (code + name + owner/SPOC + S1/S2/S3 if scored else not scored).
-Toggle careful / as-calculated / ambitious = existing scenarioStrip, **no new math**.
-Keyed: nodes from family genome payload / import if present; guest: declared schematic from DeskSpec, labelled sitting.
-Click unit → existing Document check or desk walk. Click object → existing Employee/Offer cards.
-Appetite never lifts dual-employment stop. No Box 4. No Palantir. No extra edge types.
-
-**Walk done when:** guest Home → 1…6 → Chart shows Offer→Onboarding; Hours 95/61.8 still on Plan/Hours; keyed Ratify Work System; family genome still quality-gate ~30; Spec deny unchanged.
-
-Refuse: WorkOS, Finance, Darwinbox, observed-pack theatre, login, buy Render, rewrite backend except a **minimal** work_systems table if required for ratify persist. If persist is too large, ratify in-session + HONESTY that it does not survive refresh — prefer a real table.
-
-Slice report CENSUS-v0. PR to main, squash-merge CI green. Stop. Do not start INTENT-LITE or PLAN rebuild.
+PR to main, squash-merge CI green. Slice INTENT-PLAN. Stop.
 
 ---
 
 ## Non-negotiables
 
-Spec layer. Talk-only empty. Fabricated ≠ Rashmi. 95 and 61.8 both visible. Dual employment = stop. Two graphs. Gate 11 not order. `main` only. IoPanes + i-buttons. Guest Hours still works.
+Spec layer. Talk-only empty. Fabricated ≠ Rashmi. 95 and 61.8 both visible. Dual employment = stop. Two graphs. Gate 11 not order. `main` only. Guest Hours still works.
