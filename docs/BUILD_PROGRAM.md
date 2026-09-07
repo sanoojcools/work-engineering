@@ -2,34 +2,34 @@
 
 **Work order:** [`docs/V10_BUILD.md`](V10_BUILD.md)
 
-V10-1 **shipped:** #21 backend + #22 frontend. Next = **V10-2 BACKEND** (Claude). Cursor idle until that merge.
+V10-1 shipped (#21+#22). **V10-2 BACKEND shipped (#23).** Next = **Cursor Evidence UI**.
 
 ---
 
 | Who | Slice | Status |
 |---|---|---|
-| **Claude Code** | **V10-2 pointers + resolver + 5 statuses (API only)** | **UNLOCKED** |
-| Cursor | V10-2 Evidence UI (click claim) | LOCKED until this PR merges |
-| V10-3 … 14 | — | locked |
-
-Host/Render ignored until 30 Sep.
+| **Cursor** | **V10-2 Evidence UI** (click claim → pointer) | **UNLOCKED** |
+| Claude | V10-3 verify/cert/5th gate | LOCKED until Cursor # (this UI) merged — then new chat |
+| V10-4 … 14 | — | locked |
 
 ---
 
-## V10-2 Claude (only unlocked)
+## Cursor V10-2 UI (only unlocked)
 
-One PR. Backend only. Do not edit Census Chart Plan UI (Cursor after).
+Branch `cursor/v10-2-ui` off latest `main` (must include `3513afc` / PR #23).
 
-- Pointer: file_id + page/line/cell on provenance (CSV/XLSX cell required; PDF = file-only honesty if no parser this PR)
-- Resolver on write: open pointer; fail → field is not a fact, ConformanceGap + increment fabrication_count (tenant counter is enough; not a 12-metric dashboard)
-- Five statuses: observed, declared, reconstructed, composed, predicted. Binding fields (authority, acceptance, constraints) remain declared+quote only — composed/predicted cannot bind.
-- Reuse existing UploadedFile / provenance tables. No Darwinbox. No V10-3 verify-design.
+Evidence (census step 3):
+- Click a claim → show pointer (file + cell/page/line) or honest **cannot open**
+- Status in plain words: seen in records / said by a person / pieced together / proposed by us / predicted by a model
+- **Composed** badge until adopted; binding fields never look like model output
+- Guest: no live Client A pointers, no key minted
+- Do not add tables, resolvers, or V10-3. Do not rebuild Chart 18-leaf.
 
-Playwright: not required this PR (no UI). Backend tests: broken pointer cannot stay observed; binding field rejects predicted; RLS; guest/API 401.
-HONESTY.md. Branch claude/v10-2 off latest main. PR → main. Squash-merge CI green. Stop. Do not start V10-3.
+Playwright: guest 1→6 still; Evidence click does not mint a key; keyed claim with a real XLSX cell shows the cell; broken pointer does not display as a fact.
+PR → main. Stop.
 
 ---
 
 ## Non-negotiables
 
-Spec deny without evidence. Talk-only empty. 95 vs 61.8. Dual employment = stop. Fabricated ≠ Rashmi. Guest mints no key. `main` only.
+Spec deny. Talk-only empty. 95 vs 61.8. Dual employment = stop. Fabricated ≠ Rashmi. Guest mints no key.
