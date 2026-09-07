@@ -55,6 +55,11 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows Offer 
   await page.getByRole("link", { name: "Next: Plan →" }).click();
   await expect(page).toHaveURL(/\/census\/plan$/);
   await expect(stepCount(page)).toContainText("6 of 6");
+  // E -- PLAN: 95/61.8 visible directly on Plan itself, not just behind a
+  // click through to the Hours page.
+  await expect(page.getByText("95", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("61.8", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/~30\/90 is not a pass/)).toBeVisible();
 });
 
 test("Hours 95 declared / 61.8 defended still visible from Plan", async ({ page }) => {
@@ -63,6 +68,16 @@ test("Hours 95 declared / 61.8 defended still visible from Plan", async ({ page 
   await expect(page).toHaveURL(/\/scout\/offer-desk\/hours$/);
   await expect(page.getByText("95", { exact: true })).toBeVisible();
   await expect(page.getByText("61.8", { exact: true })).toBeVisible();
+});
+
+test("Chart purpose strip shows draft intent", async ({ page }) => {
+  await page.goto("/census/chart");
+  await expect(page.getByRole("heading", { name: "Purpose", exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Function intent — HR operations/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Work System intent — this journey/ })).toBeVisible();
+  // Unconfirmed must not look governed: draft badge, not the "ok"/ratified styling.
+  await expect(page.getByText("draft · unconfirmed").first()).toBeVisible();
+  await expect(page.getByText("Guest: shown as draft/sitting").first()).toBeVisible();
 });
 
 test("keyed Ratify Work System persists across a refresh", async ({ page, request }) => {
@@ -93,6 +108,53 @@ test("keyed Ratify Work System persists across a refresh", async ({ page, reques
 
   await page.reload();
   await expect(page.getByText(/ratified — /)).toBeVisible();
+});
+
+test("keyed Confirm-as-owner persists across a refresh", async ({ page, request }) => {
+  // Same reasoning as the Ratify test above: Client A is a singleton
+  // tenant, so a warm Postgres may already carry one or both intents
+  // confirmed from a prior run -- there are two independent intents here,
+  // not one, so this scopes each fill to its own button's own input
+  // (an immediate preceding sibling in the same card) rather than assuming
+  // "first Confirm as owner button" always means Function intent -- once
+  // Function intent is confirmed, "first" shifts to Work System intent's
+  // own button instead.
+  await signInWithFreshDemoKey(page, request);
+  await page.goto("/census/chart");
+
+  const confirmButtons = page.getByRole("button", { name: "Confirm as owner" });
+  const confirmedTexts = page.getByText(/confirmed — /);
+  await Promise.race([
+    confirmButtons.first().waitFor({ state: "visible", timeout: 10_000 }),
+    confirmedTexts.first().waitFor({ state: "visible", timeout: 10_000 }),
+  ]);
+
+  while ((await confirmButtons.count()) > 0) {
+    const button = confirmButtons.first();
+    await button.locator("xpath=preceding-sibling::input[1]").fill("QA Owner");
+    await button.click();
+    await expect(page.getByText(/confirmed — QA Owner/).first()).toBeVisible();
+  }
+
+  await expect(confirmedTexts.first()).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(/confirmed — /).first()).toBeVisible();
+});
+
+test("keyed moderation requires a reason", async ({ page, request }) => {
+  await signInWithFreshDemoKey(page, request);
+  await page.goto("/census/plan");
+
+  const logButton = page.getByRole("button", { name: "Log moderation request" });
+  await expect(logButton).toBeVisible();
+  await expect(logButton).toBeDisabled();
+
+  // A name alone is not enough -- the reason is what's required here.
+  await page.getByLabel("Moderation — moderated by").fill("QA Moderator");
+  await expect(logButton).toBeDisabled();
+
+  await page.getByLabel("Moderation — reason").fill("Six clean weeks on this checklist, no exceptions raised.");
+  await expect(logButton).toBeEnabled();
 });
 
 test("family import still quality-gates around 30 of 90", async ({ page, request }) => {

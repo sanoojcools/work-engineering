@@ -427,6 +427,38 @@ export type WorkSystem = {
   ratified_by: string;
   ratified_at: string | null;
   created_at: string;
+  function_intent: IntentOut;
+  work_system_intent: IntentOut;
+};
+
+// D -- INTENT-LITE. Mirrors backend/app/schemas/work_system.py::IntentOut.
+// Named IntentOut, not Intent -- `Intent` above (line 117) already mirrors
+// the unrelated, already-shipped IntentSource (Box 2 "downward" discovery
+// intent, docs/INTENT_CONTRACT.md); this is a different concept (the two
+// D -- INTENT-LITE intents attached to a WorkSystem row), not a rename of
+// that one. `label` is the function's outcome sentence (Function intent) or
+// the journey's purpose sentence (Work System intent) -- the two intents
+// don't share a field name, so this type names it generically, same as the
+// backend schema's own comment explains. `measure` is populated only for
+// Function intent; Work System intent always carries null.
+export type IntentOut = {
+  label: string;
+  owner: string;
+  measure: string | null;
+  status: "draft" | "confirmed";
+  confirmed_by: string;
+  confirmed_at: string | null;
+};
+
+// E -- PLAN, moderation log. Mirrors backend/app/schemas/moderation.py::ModerationEntryOut.
+export type ModerationEntry = {
+  id: number;
+  work_unit_code: string;
+  from_level: number;
+  to_level: number;
+  reason: string;
+  moderated_by: string;
+  created_at: string;
 };
 
 // Slice 2.1: consent receipts, POST /api/consent/receipts. Mirrors

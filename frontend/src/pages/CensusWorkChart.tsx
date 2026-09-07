@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CensusStepper } from "../components/census/CensusStepper";
 import { IoPanes } from "../components/IoPanes";
@@ -6,35 +6,16 @@ import { InfoTooltip } from "../components/InfoTooltip";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
 import { DataTable } from "../ui";
 import { NeedsApiKeyError } from "../lib/apiFetch";
-import { useIsGuest } from "../lib/guestMode";
 import { useCompany } from "../company";
 import { useApi } from "../hooks";
 import { withClient } from "../lib/withClient";
 import { DESKS_BY_ID } from "../lib/desks";
-import type { DeskSpec, DeskStep } from "../lib/desks/types";
 import { DESK_TO_OBJECT, OBJECTS_BY_ID } from "../lib/desks/objects";
-import { scenarioStrip, type ScenarioStrip } from "../lib/offerDeskScenarios";
+import type { ScenarioStrip } from "../lib/offerDeskScenarios";
 import { DOCUMENT_CHECK_RECORD } from "../lib/offerDeskWorkRecord";
-import { OFFER_TO_ONBOARDING_JOURNEY, ensureOfferToOnboardingWorkSystem, ratifyWorkSystem } from "../lib/workSystem";
-import type { Page, Verdict, WorkSystem, WorkUnit } from "../types";
-
-const LANE_DESK_IDS = ["offer-desk", "onboarding"] as const;
-type LaneDeskId = (typeof LANE_DESK_IDS)[number];
-
-const DESK_CODE_PREFIX: Record<LaneDeskId, string> = { "offer-desk": "OD", onboarding: "ONB" };
-
-/** Real matched-code candidates for one sheet step -- the family-genome
- * 3-digit code (HrFamilyGenome.tsx's own scheme, covers both lanes) tried
- * first, then Offer Desk's own 2-digit evidence-pack code (the only path
- * in this app that actually clears the quality gate for Offer Desk units).
- * Never invented: these are the exact two code shapes this codebase's own
- * import paths already produce. */
-function candidateCodes(deskId: LaneDeskId, position: number): string[] {
-  const prefix = DESK_CODE_PREFIX[deskId];
-  const codes = [`WU-${prefix}-${String(position).padStart(3, "0")}`];
-  if (deskId === "offer-desk") codes.push(`WU-OD-${String(position).padStart(2, "0")}`);
-  return codes;
-}
+import { LANE_DESK_IDS, buildRows, type ChartRow, type LaneDeskId } from "../lib/workSystemUnits";
+import { confirmFunctionIntent, confirmWorkSystemIntent, ratifyWorkSystem, useWorkSystem } from "../lib/workSystem";
+import type { IntentOut, Page, Verdict, WorkUnit } from "../types";
 
 type ScenarioKey = "careful" | "as-calculated" | "ambitious";
 const SCENARIOS: { key: ScenarioKey; label: string }[] = [
@@ -49,43 +30,6 @@ function levelBadge(strip: ScenarioStrip, scenario: ScenarioKey): string {
   return `L${point.level} · ${point.allocation}`;
 }
 
-type ChartRow = {
-  id: number;
-  displayCode: string;
-  name: string;
-  spoc: string;
-  strip: ScenarioStrip;
-  clickTo: string;
-};
-
-function documentCheckRoute(deskId: LaneDeskId, position: number): string {
-  if (deskId === "offer-desk" && position === 2) return "/scout/offer-desk/document-check";
-  if (deskId === "offer-desk") return "/scout/offer-desk";
-  return "/hr/operations/onboarding";
-}
-
-function buildRows(
-  deskId: LaneDeskId,
-  desk: DeskSpec,
-  units: WorkUnit[],
-  verdicts: Verdict[],
-): ChartRow[] {
-  return desk.steps.map((step: DeskStep, i: number) => {
-    const position = i + 1;
-    const codes = candidateCodes(deskId, position);
-    const matched = units.find((u) => codes.includes(u.code)) ?? null;
-    const verdict = matched ? verdicts.find((v) => v.work_unit_id === matched.id) ?? null : null;
-    return {
-      id: i,
-      displayCode: matched ? matched.code : `(step ${step.id} — not imported)`,
-      name: step.name,
-      spoc: step.spoc,
-      strip: scenarioStrip(verdict),
-      clickTo: documentCheckRoute(deskId, position),
-    };
-  });
-}
-
 function Lane({
   deskId, units, verdicts, scenario, workSystemStatus,
 }: {
@@ -97,7 +41,7 @@ function Lane({
 }) {
   const nav = useNavigate();
   const desk = DESKS_BY_ID[deskId];
-  const rows = useMemo(() => buildRows(deskId, desk, units, verdicts), [deskId, desk, units, verdicts]);
+  const rows: ChartRow[] = useMemo(() => buildRows(deskId, desk, units, verdicts), [deskId, desk, units, verdicts]);
   const objectId = DESK_TO_OBJECT[deskId];
 
   return (
@@ -131,14 +75,77 @@ function Lane({
   );
 }
 
+/** D -- INTENT-LITE. One intent's card: label (outcome or purpose) + owner +
+ * (Function intent only) measure, a draft/confirmed badge that never looks
+ * governed while unconfirmed, and — keyed only — a name field + "Confirm as
+ * owner" button. Guest sees the identical drafted text, labelled draft. */
+function IntentCard({
+  title, infoTerm, infoSimple, intent, isGuest, onConfirm, confirming,
+}: {
+  title: string;
+  infoTerm: string;
+  infoSimple: string;
+  intent: IntentOut;
+  isGuest: boolean;
+  onConfirm: (name: string) => void;
+  confirming: boolean;
+}) {
+  const [name, setName] = useState("");
+  const confirmed = intent.status === "confirmed";
+  return (
+    <div className="card" style={{ margin: 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
+        <h4 style={{ margin: 0 }}>
+          {title} <InfoTooltip term={infoTerm} simple={infoSimple} />
+        </h4>
+        <span className={`badge ${confirmed ? "ok" : ""}`}>
+          {confirmed ? `confirmed — ${intent.confirmed_by}` : "draft · unconfirmed"}
+        </span>
+      </div>
+      <p style={{ fontSize: 13, margin: "8px 0" }}>{intent.label || "Not drafted yet."}</p>
+      <p className="hint" style={{ margin: 0 }}>
+        Owner: {intent.owner || "not stated"}
+        {intent.measure !== null && <> · Measure: {intent.measure || "not stated"}</>}
+      </p>
+      {isGuest ? (
+        <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
+          Guest: shown as draft/sitting — sign in to Confirm as owner.
+        </p>
+      ) : confirmed ? (
+        <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
+          Confirmed by {intent.confirmed_by} at {intent.confirmed_at}. Persisted — survives a refresh.
+        </p>
+      ) : (
+        <div className="toolbar" style={{ marginTop: 10 }}>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Confirmed by"
+            aria-label={`${title} — confirmed by`}
+          />
+          <button type="button" disabled={confirming || !name.trim()} onClick={() => onConfirm(name.trim())}>
+            {confirming ? "Confirming…" : "Confirm as owner"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** CENSUS-v0 Part C: Work Chart (hero). Purpose strip + the Offer Desk /
  * Onboarding lanes of the one Work System this slice ships. No new math:
  * S1/S2/S3 replays the existing scenarioStrip() exactly as Document check
  * already does. Guest sees the static DeskSpec schematic only (labelled
  * "not imported" where no real code matches); keyed additionally reads
- * real WorkUnit/VerdictScore rows and the real work_systems Ratify state. */
+ * real WorkUnit/VerdictScore rows and the real work_systems Ratify state.
+ *
+ * INTENT-PLAN adds the purpose strip: D -- INTENT-LITE's two intents,
+ * drafted from sheet/sitting text (lib/intent.ts), draft until a keyed
+ * "Confirm as owner" click -- unconfirmed never carries the "ok"/governed
+ * badge style Ratify uses once actually ratified. */
 export default function CensusWorkChart() {
-  const isGuest = useIsGuest();
+  const { isGuest, workSystem, journey, loading: wsLoading, error: wsError, needsKey, setNeedsKey, setWorkSystem, setError: setWsError } =
+    useWorkSystem();
   const { keyClientId } = useCompany();
 
   const unitsApi = useApi<Page<WorkUnit>>(isGuest ? null : withClient("/work-units/", keyClientId));
@@ -147,39 +154,12 @@ export default function CensusWorkChart() {
   const verdicts = verdictsApi.data?.items ?? [];
 
   const [scenario, setScenario] = useState<ScenarioKey>("as-calculated");
-
-  const [workSystem, setWorkSystem] = useState<WorkSystem | null>(null);
-  const [wsLoading, setWsLoading] = useState(false);
-  const [wsError, setWsError] = useState<string | null>(null);
-  const [needsKey, setNeedsKey] = useState(false);
   const [ratifierName, setRatifierName] = useState("");
   const [ratifying, setRatifying] = useState(false);
+  const [confirmingFn, setConfirmingFn] = useState(false);
+  const [confirmingWs, setConfirmingWs] = useState(false);
 
-  useEffect(() => {
-    if (isGuest) {
-      setWorkSystem(null);
-      return;
-    }
-    let cancelled = false;
-    setWsLoading(true);
-    setWsError(null);
-    ensureOfferToOnboardingWorkSystem()
-      .then((ws) => {
-        if (!cancelled) setWorkSystem(ws);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (err instanceof NeedsApiKeyError) setNeedsKey(true);
-        else setWsError(err instanceof Error ? err.message : "Could not load the Work System");
-      })
-      .finally(() => {
-        if (!cancelled) setWsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isGuest, keyClientId]);
+  const status: "candidate" | "ratified" = journey.status;
 
   async function ratify() {
     if (!workSystem || !ratifierName.trim()) return;
@@ -195,8 +175,31 @@ export default function CensusWorkChart() {
     }
   }
 
-  const journey = workSystem ?? { ...OFFER_TO_ONBOARDING_JOURNEY, status: "candidate" as const, ratified_by: "", ratified_at: null };
-  const status: "candidate" | "ratified" = journey.status;
+  async function onConfirmFunctionIntent(name: string) {
+    if (!workSystem) return;
+    setConfirmingFn(true);
+    try {
+      setWorkSystem(await confirmFunctionIntent(workSystem.id, name));
+    } catch (err) {
+      if (err instanceof NeedsApiKeyError) setNeedsKey(true);
+      else setWsError(err instanceof Error ? err.message : "Confirm failed");
+    } finally {
+      setConfirmingFn(false);
+    }
+  }
+
+  async function onConfirmWorkSystemIntent(name: string) {
+    if (!workSystem) return;
+    setConfirmingWs(true);
+    try {
+      setWorkSystem(await confirmWorkSystemIntent(workSystem.id, name));
+    } catch (err) {
+      if (err instanceof NeedsApiKeyError) setNeedsKey(true);
+      else setWsError(err instanceof Error ? err.message : "Confirm failed");
+    } finally {
+      setConfirmingWs(false);
+    }
+  }
 
   return (
     <>
@@ -213,6 +216,36 @@ export default function CensusWorkChart() {
         Function: HR operations. This journey's target, from the sheets: {DOCUMENT_CHECK_RECORD.declaredHours} hrs/mo
         declared, {DOCUMENT_CHECK_RECORD.defendedHours} defended (<Link to="/scout/offer-desk/hours">Hours →</Link>).
       </p>
+
+      <h3 style={{ marginBottom: 4 }}>
+        Purpose{" "}
+        <InfoTooltip
+          term="Intent"
+          simple="Two sentences, drafted from sheet/sitting text, not an invented COO strategy: what HR operations is for, and what this specific journey is for. Draft until a keyed 'Confirm as owner' names who stands behind it and when."
+        />
+      </h3>
+      {needsKey && !isGuest && <ApiKeyBanner onSaved={() => setNeedsKey(false)} />}
+      {wsError && <div className="banner error">{wsError}</div>}
+      <div className="split" style={{ gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+        <IntentCard
+          title="Function intent — HR operations"
+          infoTerm="Function intent"
+          infoSimple="One sentence: what HR operations is for, who owns that outcome (stand-in ok), and the sheet's own SLA measure if it names one — otherwise 'not stated', never invented."
+          intent={journey.function_intent}
+          isGuest={isGuest}
+          onConfirm={(name) => void onConfirmFunctionIntent(name)}
+          confirming={confirmingFn}
+        />
+        <IntentCard
+          title="Work System intent — this journey"
+          infoTerm="Work System intent"
+          infoSimple="What this offer→Day-1 journey is for, in the sitting's own words, plus who owns it. Entry and exit are already on the card below; this is the why."
+          intent={journey.work_system_intent}
+          isGuest={isGuest}
+          onConfirm={(name) => void onConfirmWorkSystemIntent(name)}
+          confirming={confirmingWs}
+        />
+      </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
@@ -244,8 +277,6 @@ export default function CensusWorkChart() {
           </p>
         ) : (
           <>
-            {needsKey && <ApiKeyBanner onSaved={() => { setNeedsKey(false); }} />}
-            {wsError && <div className="banner error">{wsError}</div>}
             {wsLoading && !workSystem && <p className="hint">Loading this tenant's Work System…</p>}
             {status === "candidate" && workSystem && (
               <div className="toolbar" style={{ marginTop: 10 }}>
@@ -312,13 +343,13 @@ export default function CensusWorkChart() {
 
       <IoPanes
         given="Gap: the declared-vs-sitting disagreement, already named."
-        understood="A chart is a journey, not a desk. Lanes come from the desks this journey actually touches; a unit's level is a scenario replay, not a fresh score."
+        understood="A chart is a journey, not a desk. Lanes come from the desks this journey actually touches; a unit's level is a scenario replay, not a fresh score. Purpose is two sentences, not a strategy document."
         processed={
           isGuest
-            ? "Guest schematic: desk steps and SPOCs from lib/desks/*.ts, no backend call. Every unit reads not scored."
-            : "Real GET /work-units/ + GET /verdict/, matched by this app's own two real code shapes. Work System read/created via GET+POST /work-systems."
+            ? "Guest schematic: desk steps and SPOCs from lib/desks/*.ts, no backend call. Every unit reads not scored. Purpose shown as drafted, unconfirmed."
+            : "Real GET /work-units/ + GET /verdict/, matched by this app's own two real code shapes. Work System (incl. both intents) read/created via GET+POST /work-systems; Confirm as owner via POST /work-systems/{id}/confirm-*-intent."
         }
-        output={`${LANE_DESK_IDS.length} lanes, ${LANE_DESK_IDS.reduce((n, d) => n + DESKS_BY_ID[d].steps.length, 0)} units, journey ${status}.`}
+        output={`${LANE_DESK_IDS.length} lanes, ${LANE_DESK_IDS.reduce((n, d) => n + DESKS_BY_ID[d].steps.length, 0)} units, journey ${status}, intents ${journey.function_intent.status}/${journey.work_system_intent.status}.`}
       />
 
       <p style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>

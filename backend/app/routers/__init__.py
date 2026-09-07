@@ -10,6 +10,7 @@ from . import (
     files,
     genome,
     health,
+    moderation,
     ontology,
     org,
     projections,
@@ -44,3 +45,4 @@ api_router.include_router(org.router, prefix="/org", tags=["org"])
 api_router.include_router(consent.router, prefix="/consent", tags=["consent"])
 api_router.include_router(scout.router, prefix="/scout", tags=["scout"])
 api_router.include_router(work_systems.router, prefix="/work-systems", tags=["work-systems"])
+api_router.include_router(moderation.router, prefix="/moderation", tags=["moderation"])

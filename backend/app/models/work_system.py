@@ -57,6 +57,27 @@ class WorkSystem(Base):
     status: Mapped[WorkSystemStatus] = mapped_column(Enum(WorkSystemStatus), default=WorkSystemStatus.candidate)
     ratified_by: Mapped[str] = mapped_column(String(120), default="")
     ratified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # D -- INTENT-LITE (docs/BUILD_PROGRAM.md). Two intents, both attached to
+    # this one journey row -- not a second table, not a per-tenant free-for-
+    # all (see the module docstring). Text fields are drafted client-side
+    # from sheet/sitting text and sent once via the same get-or-create POST
+    # that already seeds entry/exit/owner/outcome; a later ensure call never
+    # overwrites them, identical to how those four fields already behave.
+    # draft vs confirmed is *derived* from confirmed_at being null (see
+    # services/work_system.py::to_out) -- there is no separate status enum
+    # to drift out of sync with it.
+    function_intent_outcome: Mapped[str] = mapped_column(Text, default="")
+    function_intent_owner: Mapped[str] = mapped_column(String(160), default="")
+    function_intent_measure: Mapped[str] = mapped_column(Text, default="")
+    function_intent_confirmed_by: Mapped[str] = mapped_column(String(120), default="")
+    function_intent_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    work_system_intent_purpose: Mapped[str] = mapped_column(Text, default="")
+    work_system_intent_owner: Mapped[str] = mapped_column(String(160), default="")
+    work_system_intent_confirmed_by: Mapped[str] = mapped_column(String(120), default="")
+    work_system_intent_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 

@@ -18,7 +18,12 @@ from ..dependencies import OrgKeyDep, TenantDbDep
 from ..models.security import AuditLog
 from ..models.work_system import WorkSystem, WorkSystemStatus
 from ..schemas.common import Page
-from ..schemas.work_system import WorkSystemEnsureIn, WorkSystemOut, WorkSystemRatifyIn
+from ..schemas.work_system import (
+    WorkSystemEnsureIn,
+    WorkSystemIntentConfirmIn,
+    WorkSystemOut,
+    WorkSystemRatifyIn,
+)
 from ..services import work_system as work_system_svc
 from ..services.lookup import get_or_404
 
@@ -55,6 +60,11 @@ def ensure_work_system(payload: WorkSystemEnsureIn, db: TenantDbDep, key: OrgKey
         exit=payload.exit,
         owner=payload.owner,
         outcome=payload.outcome,
+        function_intent_outcome=payload.function_intent_outcome,
+        function_intent_owner=payload.function_intent_owner,
+        function_intent_measure=payload.function_intent_measure,
+        work_system_intent_purpose=payload.work_system_intent_purpose,
+        work_system_intent_owner=payload.work_system_intent_owner,
     )
     db.add(row)
     db.flush()
@@ -80,6 +90,47 @@ def ratify_work_system(work_system_id: int, payload: WorkSystemRatifyIn, db: Ten
         client_id=key.client_id, actor=key.label or f"org_api_key:{key.id}",
         action="work_system.ratify", resource="work_system", resource_id=str(row.id),
         detail=f"ratified_by={payload.ratified_by}",
+    ))
+    db.commit()
+    _rebind_tenant(db, key)
+    db.refresh(row)
+    return work_system_svc.to_out(row)
+
+
+@router.post("/{work_system_id}/confirm-function-intent", response_model=WorkSystemOut)
+def confirm_function_intent(work_system_id: int, payload: WorkSystemIntentConfirmIn, db: TenantDbDep, key: OrgKeyDep) -> WorkSystemOut:
+    """D -- INTENT-LITE. 'Status draft until keyed Confirm as owner (name +
+    time)' -- this endpoint is the entire state change: it never touches the
+    intent's own outcome/owner/measure text (those are set once, at ensure
+    time, and never overwritten -- same rule the journey's own entry/exit
+    already follow)."""
+    row: WorkSystem = get_or_404(db, WorkSystem, work_system_id, "WorkSystem")
+    if row.function_intent_confirmed_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Function intent already confirmed")
+    row.function_intent_confirmed_by = payload.confirmed_by
+    row.function_intent_confirmed_at = _utcnow()
+    db.add(AuditLog(
+        client_id=key.client_id, actor=key.label or f"org_api_key:{key.id}",
+        action="work_system.confirm_function_intent", resource="work_system", resource_id=str(row.id),
+        detail=f"confirmed_by={payload.confirmed_by}",
+    ))
+    db.commit()
+    _rebind_tenant(db, key)
+    db.refresh(row)
+    return work_system_svc.to_out(row)
+
+
+@router.post("/{work_system_id}/confirm-work-system-intent", response_model=WorkSystemOut)
+def confirm_work_system_intent(work_system_id: int, payload: WorkSystemIntentConfirmIn, db: TenantDbDep, key: OrgKeyDep) -> WorkSystemOut:
+    row: WorkSystem = get_or_404(db, WorkSystem, work_system_id, "WorkSystem")
+    if row.work_system_intent_confirmed_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Work System intent already confirmed")
+    row.work_system_intent_confirmed_by = payload.confirmed_by
+    row.work_system_intent_confirmed_at = _utcnow()
+    db.add(AuditLog(
+        client_id=key.client_id, actor=key.label or f"org_api_key:{key.id}",
+        action="work_system.confirm_work_system_intent", resource="work_system", resource_id=str(row.id),
+        detail=f"confirmed_by={payload.confirmed_by}",
     ))
     db.commit()
     _rebind_tenant(db, key)
