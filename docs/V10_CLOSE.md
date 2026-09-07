@@ -1,134 +1,106 @@
-# V10 close program
+# V10 close program — 80% of platform canon
 
-**Canon = V10_Work_Engineering.** **SKU = six-screen Work Census (WEP_MVP_SCREENS).** Audience = **CHRO** and **VC**. Not BNP. Not Finance. Not Box 4.
+**Canon** = V10_Work_Engineering (the law). **SKU** = six-screen Census. **CHRO + VC.** Same repo. No random work.
 
-**Rule:** nothing ships unless it is on this list. No side desks, no delinquency-as-theatre, no new repo.
+**100% of the paper includes running work (Box 4–5).** The canon itself puts that **outside** the platform. We do **not** count production execution toward the 80%. **80% = platform canon** (Parts 1–11 + Annex invariants), not “we operate BNP Offer Desk.”
 
----
+Today: walk ~70% · MVP ~40% · **canon ~20%** · sellable ~15%.
 
-## Goals (do not move these)
-
-**CHRO (done when):** they finish one census on **offer → Day-1** in six screens, in **plain words**, and leave with a file that matches what they saw. They never see Work Unit / GQS / S1 as the product language. They understand: talk is not clearance; an agent cannot release an offer; how sure we are is separate from what we heard.
-
-**VC (done when):** the **bet is visible** — verification sets freedom, Spec refuses, quality gate fails talk (~30). A second human can **log in**. Host does not die mid-pitch. Honesty ledger still true.
-
-**Canon (done when MVP is true):** Raja’s five blockers closed — pointers+resolver, Work System+Outcome, scenarios+cost, login — plus verification **design** and certification (the actual law).
-
-Today (PR #20): walk ~70%, MVP spec ~40%, canon ~20%, sellable ~15%.
-
-**Target after this program:** walk ~90%, MVP ~80%, canon ~45%, sellable ~60% (still one function, one journey, no execution).
+| After | Walk | MVP | **Canon** | Sellable |
+|---|---|---|---|---|
+| Phase A (V10-1…7) | ~90% | ~80% | **~45%** | ~60% |
+| Phase B (V10-8…14) | ~95% | ~90% | **~80%** | ~75% |
+| Never in this program | — | — | remaining ~20% | live execution, Palantir EG, 12-counter golden-set lab, Finance packs |
 
 ---
 
-## Refuse (until CHRO+VC goals are green)
+## Canon scoreboard (what 80% is made of)
 
-Finance/Legal catalogues · Box 4/5 execution · Darwinbox/Zwayam APIs · Gate 11 as order · intern modelling · workforce simulator · Palantir Box 1 · strategy-intent constitution · 44-sub-function fake completeness · Offboarding as a second hero journey · DELINQ dashboard without pointers (invention is counted **inside V10-2**)
+Weights are of **platform canon** (execution excluded).
 
----
+| Canon block | Wt | Now | After A | After B |
+|---|---|---|---|---|
+| Intent (3 levels, ratify, no silent guess) | 10 | 3 | 5 | 9 |
+| Discovery / pointers / EG-lite / 3 registers | 14 | 4 | 10 | 13 |
+| Work System + states + Outcome | 12 | 4 | 9 | 11 |
+| Units: 18 fields, 5 statuses, cert, admissibility | 12 | 5 | 9 | 12 |
+| Work Chart / singulation (2 cuts, bands) | 10 | 5 | 9 | 10 |
+| Verification design + independence | 8 | 1 | 8 | 8 |
+| VERDICT, 5 gates, S1–S3, moderation | 8 | 5 | 8 | 8 |
+| Economics + harm/exposure + capacity | 8 | 3 | 6 | 8 |
+| Handoff bundle (withhold scores) | 6 | 4 | 5 | 6 |
+| Delinquency + invariants in CI | 8 | 1 | 3 | 8 |
+| Login / census object / packs | 4 | 1 | 4 | 4 |
+| **Total** | **100** | **~20** | **~45** | **~80** |
 
-## Fat slices (strict order)
-
-One PR each. Next is locked until the previous is on `main`.
-
-### V10-1 · CENSUS RECORD + LANGUAGE  *(unlock now)*
-**Why:** six screens are still a wizard over old pages. V10 is **one census**. Customer copy is still builder-speak.
-
-**Build:**
-- `censuses` table (RLS): owns scope selection, work_system_id, seat ids, document-request list, status.
-- Scope: **Start census** creates that row; readiness strip = consent / three people / docs asked (states honest: missing is missing).
-- Customer copy on the six screens: piece of work, how sure we are, how we know it, checked by, careful / as calculated / ambitious. Canon words only in i-buttons.
-- Do not rebuild Chart/Plan engines.
-
-**Done when:** guest Start → step 1 strip shows three reds; keyed consent flips one row; download filename still works; Playwright 1→6; no coined terms in visible Plan/Chart headings.
-
-**Does not include:** login, PDF parser, 18-leaf cut.
+Still **out** of 80%: live agents, ATS connectors, second function, intern modelling, full Palantir graph, production promote/demote ops.
 
 ---
 
-### V10-2 · POINTERS + RESOLVER + FIVE STATUSES
-**Why:** Raja blocker 1+2. Without this, Evidence is a file list and Gap has one side.
+## Refuse forever in this program
 
-**Build:**
-- Pointer: file + page/line/cell (CSV/XLSX first; PDF/DOCX if one library is enough — else PDF = “file only, no line” honesty).
-- Resolver: on write, open pointer; fail → field reverts to gap + **fabrication** counter (delinquency seed). Do not build a 12-counter dashboard.
-- Statuses: observed, declared, reconstructed, composed, predicted — plain words on the unit. Composed badge until owner adopts.
-- Binding fields (authority, acceptance, constraints) stay **declared + quote** only.
+Box 4/5 **production** execution · Darwinbox/Zwayam APIs · Gate 11 as order · Finance catalogues · new repo · 44-sub-function theatre
 
-**Done when:** click a claim on Evidence → see cell/line or honest “cannot open”; a broken pointer cannot stay as a fact; guest still mints no key.
+**Allowed as canon, not execution:** case **simulator** (replay a hire against the Chart) — V10-13.
 
 ---
 
-### V10-3 · VERIFY + CERTIFY + 5TH GATE
-**Why:** the canon bet. CHRO/VC question: *who checks, and how sure?*
+## Phase A — CHRO can sit (V10-1 … 7)
 
-**Build:**
-- Per unit (this journey): check method (one of seven or “none — not ready”), independent? (different lineage / deterministic / no), sampling, cost-of-check if stated else “not stated”.
-- Same-lineage checker rejected where control class needs independence — **Not ready** to hand off.
-- Certification **separate** from provenance: sure / mostly sure / reported not seen / cannot define.
-- Fifth gate: non-waivable guardrail from confirmed intent; error-cost gate labelled **contestable default**. Dual-employment stop still unliftable.
-- Plan column: **independent?** Dual-track = do may be delegated, check stays human — display only, no executor.
+Same seven fat slices as before. Order strict. **Unlocked now = V10-1 only.**
 
-**Done when:** Offer-release unit is Not ready without an independent check; dual-employment still stop at ambitious; download includes “how sure” and “checked by”.
+1. Census record + customer language  
+2. Pointers + resolver + 5 statuses (+ fabrication counter)  
+3. Verify + certify + 5th gate  
+4. Chart 18-leaf + 4 bands + composite  
+5. Gap 3 tiers + Outcome Record  
+6. Plan economics (3 cases, harm rows)  
+7. Login + **you pay host**
 
----
-
-### V10-4 · CHART CUT (v8.1 seed)
-**Why:** Screen 5 is the buy. Current 2-desk lanes are not singulation.
-
-**Build:**
-- Adopt v8.1 **18-leaf** hire cut as seed (map T&M hours onto parents). Retire 16-unit list as history only.
-- Bands: automate / augment / human / **external** (vendor letter, candidate sign).
-- One composite node: “the hire is complete” = the Work System.
-- Synthetic names on customer surfaces (no Rashmi/Zwayam on Chart/Plan/export). Deep honesty pages may keep Rashmi labelled sitting.
-- Toggle still existing VERDICT math — no v8.1 sum bands.
-
-**Done when:** Chart shows 18 leaves + external band + composite; export matches; 95/61.8 still on Plan as parent hours.
+Done-when: see previous V10_CLOSE text / `BUILD_PROGRAM.md`.
 
 ---
 
-### V10-5 · GAP THREE TIERS + OUTCOME
-**Why:** Raja blocker 3. Screen 4 is the buy after Chart.
+## Phase B — 45% → 80% canon (V10-8 … 14)
 
-**Build:**
-- Tier 1: declared process (v8.1 11-step swimlane as **declared sitting**) beside owned pieces; undocumented / paper-only / interview-only — only if we can source it; else empty honest.
-- Tier 2: does one named human own the journey? (Work System owner after ratify.)
-- Tier 3: **Outcome Record** — promised vs measured. If no measured number, **not measured** — never invent 62%.
-- Head vs doer stays.
+Locked until Phase A is on `main`. One PR each.
 
-**Done when:** Gap has three labelled tiers; outcome row exists; no fake KPI.
+### V10-8 · FIELD RATIFY + DECISION CARDS
+CHRO sit closes → drafted goals / authority / acceptance **beside their words** → confirm or correct. Cards: one gap or contradiction, one named human, tap or a line, writes the field. Canon Part 3.
 
----
+### V10-9 · STRATEGY INTENT (one line, not a studio)
+Third intent level: period focus, owner = stand-in until a real sponsor. Guardrails pass down to the 5th gate. Unowned goals = dashed, **counted** (intent debt stock, simple). No COO deck harvest unless a file exists.
 
-### V10-6 · PLAN ECONOMICS
-**Why:** Screen 6 is a plan, not a scorecard.
+### V10-10 · EG-LITE + HARVEST
+Source catalogue + assertion ledger + coverage “connected / not”. PDF/DOCX ingest with page pointer (mail if cheap). Objects Employee/Offer/Contractor become **graph nodes** with the same pointers — still not Palantir. Canon Part 2, thin.
 
-**Build:**
-- One costed case per careful / as-calculated / ambitious from **existing** economics where present; residual-harm and correlated-exposure as **rows**, ranges, or “not stated”.
-- Portfolio of this journey’s pieces (not live sliders unless cheap). Moderation log already exists — keep.
-- Export includes assumptions + open items (already started in CENSUS-PACK — complete to Raja’s seven sections in **plain words**).
+### V10-11 · STATES + ADMISSIBILITY
+Business states as named conditions on Offer/Employee. Second cut: refuse a piece that has no observable exit, two owners, or unaffordable check. Gate 9 warn **stays** warn unless it is this journey. Canon Parts 4–5.
 
-**Done when:** Plan shows three priced cases or honest not-stated; 95 vs 61.8 remain; appetite still cannot lift the stop.
+### V10-12 · DISCOVERY AS PERFORMER + DELINQ
+Extraction runs through VERDICT; binding fields capped at execute-with-approval. Counters on write: invention, omission, distortion, sycophancy (4 is enough for 80%; not 12). Golden set = Offer Desk seed, re-run on model change. Canon 2.3 + Part 11.
 
----
+### V10-13 · CASE SIMULATOR + CAPACITY
+Pick a hire type; which leaves fire; where a human must touch; where Spec blocks. Capacity: peak concurrency → “how many people/agents **if** we ran this” — labelled **not live**. Export includes it. Not Box 4.
 
-### V10-7 · LOGIN + HOST  *(founder-shaped; Claude does product, you pay)*
-**Why:** Raja blocker 5. No second customer without it. VC will ask.
-
-**Build (after you name vendor: Clerk / WorkOS / Auth0 — default Clerk if you say nothing):**
-- Signup: name org, pick HR, create census, invite two emails (viewer/editor).
-- Org keys remain for machine/Spec.
-- You: **paid Postgres + backup** before 2026-10-05.
-
-**Done when:** a stranger creates a tenant without copying a key; invitee sees the same census; guest walk still works without login.
+### V10-14 · HANDOFF SCHEMA + INVARIANTS CI
+Bundle: record + actor policy + gates + validator spec + scenario + provenance; **withhold** scores from the performer view. Lint: binding fields need quotes; composed cannot flow unratified; S1≤S2≤S3≤cap. Red check blocks merge. Canon [7] + [9].
 
 ---
 
-## After the seven (not now)
+## Parallel (after V10-1 is on main)
 
-Decision cards at interview close · PDF/mail harvest · Discovery-as-performer · full delinquency dashboard · second journey (offboarding) · strategy intent · capacity sizing.
+| | Phase A | Phase B |
+|---|---|---|
+| **Claude** | Schema/API: 1, 2, 3, 7 | 8 API, 9, 11, 12, 14 |
+| **Cursor** | UI/copy: 1 polish, 4 Chart, 5 Gap, 6 Plan | 8 UI, 10 harvest UI, 13 simulator |
+| **Grok** | Prompts, reject scope, % scoreboard | Same; no code on `main` |
+| **You** | Pay Render; pick Clerk; walk hosted | A real sitting (3.0) when a CHRO exists |
+
+Do not open two PRs that edit `CensusPlan.tsx` the same week.
 
 ---
 
-## How Claude works
+## How work is released
 
-Only the slice marked **UNLOCKED** in `docs/BUILD_PROGRAM.md`. One PR. Stop. Do not start the next.
+Only **UNLOCKED** in `docs/BUILD_PROGRAM.md`. One PR. Stop. Phase B does not start until V10-7 (login+host) is decided — host can land before login UI if you pay first.
