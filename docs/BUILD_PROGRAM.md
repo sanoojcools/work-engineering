@@ -1,101 +1,65 @@
 # Build program — Work Engineering
 
-Architecture map = WEP System Architecture (boxes 1–6).
-**Bet:** tighten 3a–3e on Offer Desk. Do not fill Box 1/2/4/6 with theatre.
+Engine = V9 joints on `main`. Product SKU from V10 canon = **Work Census** (six screens, hero = Work Chart).
 
-**Founder 6 Sep:** 6.2 (Render backup) and 5.0 (Finance/Legal) **deferred to 2026-09-30**. Keep both **open**. Do not pay, do not invent catalogs. **TIGHT-3D shipped 7 Sep. HR-FAMILY (VERDICT-CARD + 5-desk HR family) shipped 7 Sep, founder-authorized directly, not blocked on 6.2/4.0/3.0/5.0** — it adds no login, no execution, no new backend surface, so it does not touch what those four are gating. **FAMILY-GENOME (VERDICT write fix + one declared family genome across all six desks) shipped 7 Sep**, same authorization — one backend service function fixed (a real 500-under-load bug, plus the frontend key bug HR-FAMILY's own entry already named), no new endpoint, no login, no execution. **OBJECTS-HOURS (Box-1-lite object cards + declared hours-by-desk panel) shipped 7 Sep**, same authorization, frontend only — zero backend files touched. Next unlocked build = none until 6.2 / 4.0 / 3.0 / 5.0 are answered.
+**Founder 7 Sep:** speed + quality, one meaty PR. **CENSUS-v0** is unlocked (same authorization as HR-FAMILY: no login, no execution, no Finance, no Render purchase). Do not drop Offer Desk; **demote it off Home** — it is Capture depth.
 
----
-
-## Pending slices
-
-| ID | Box / joint | Status | Who | Done when |
-|---|---|---|---|---|
-| **OBJECTS-HOURS** | **Box 1 lite object cards + 3e hours honesty** | **SHIPPED** | Claude, one PR | See below |
-| **FAMILY-GENOME** | **VERDICT write fix + one declared family genome (3b/3d)** | **SHIPPED** | Claude, one PR | See below |
-| **HR-FAMILY** | **VERDICT-CARD (3d) + 5-desk HR family** | **SHIPPED** | Claude, one PR | See below |
-| **TIGHT-3D** | **3d scenarios + 3b field provenance** | **SHIPPED** | Claude, one PR | See below |
-| **6.2** | Postgres backup | **OPEN until 2026-09-30** | Founder | Free DB, no backup, expires ~2026-10-05 |
-| **5.0** | Finance/Legal | **OPEN until 2026-09-30** | Founder + reviewer | No catalogs until markup |
-| **4.0** | Login | STOP — wait | Founder | Named CHRO |
-| **3.0** | Real traces | STOP — wait | Founder | Their file |
-| **2.3** | SME door | Later | Founder | |
-| **3c-L** | Promotion ladder | Later | — | Needs Box 5 |
-| **3b-E** | Extra edge types | Later | — | After sequence (shipped) |
-| Box 1 / 2-E / 4+5 / 6 | Palantir, INT-007 engine, execution, simulator | Later or refuse | — | |
-
-### Shipped (do not reopen)
-
-Guest Hours · Gap live · Gates 6/9/10 · HR pack · consent UI · health 503 · **TIGHT-WEDGE** (unit card, 11 sequence edges, verification spec, cannot-see, INTENT_CONTRACT.md, 95/61.8) · **TIGHT-3D** (S1/S2/S3 scenario strip + field-provenance strip on Document check, gate-capped, not-scored honestly) · **HR-FAMILY** (VERDICT-CARD on Document check; Onboarding/Offboarding/Vendor Mgmt/US HR/HRBP desks from the real May 2026 T&M sittings; HR function graph with the 3 sheet-named cross-desk handoffs) · **FAMILY-GENOME** (VERDICT write 500-under-load fix + `api.ts` missing `X-Spec-Key` fix; one 95-unit declared family genome across all six desks, GQS-gate-honest at 30/90; keyed function graph reads the genome payload) · **OBJECTS-HOURS** (three Box-1-lite object cards — Employee/Offer/Contractor — wired to real desks/units and clickable from the function graph; declared hours-by-desk panel summing all six sheets' own stated figures, labelled stated not defended; Offer Desk's own 95/61.8 untouched)
+OBJECTS-HOURS, FAMILY-GENOME, HR-FAMILY, TIGHT-3D, TIGHT-WEDGE: **shipped**. Do not reopen.
 
 ---
 
-## OBJECTS-HOURS (shipped)
+## Pending
 
-One PR, frontend only. Box 1 lite (reference cards, not the real Ontology backend) plus 3e hours honesty across the whole family. FAMILY-GENOME not reopened.
-
-**A. Object cards.** Three cards — Employee, Offer, Contractor — each with name, type, current condition in everyday words (paraphrased from the contributing desks' own `outcome` fields), which desks/units reference it (real `WU-*` codes read from `familyGenome.ts`), and as-of sitting date(s), all declared. Wiring is exactly the brief's: Offer Desk → Offer; Onboarding/Offboarding/HRBP → Employee; Vendor Mgmt + Offer Desk's own contractor-labeled steps (`WU-OD-002/004/005`, found by scanning real step text for the sheet's own `CONTRACTOR:` branches) → Contractor. US HR is deliberately left unwired. Function graph: every desk node and every one of the three handoff cards gets an added "→ object card" link — additional to, not a replacement for, each desk's existing click-to-walk-page link.
-
-**B. Function hours.** One panel, all six desks' own declared `hrs/mo` figure (same sourcing Offer Desk's own 95 already uses — `DeskSpec.totalEstimatedSavings`, verbatim), summed and labelled "stated across sittings, not defended." Offer Desk's own Hours page (95 vs 61.8) is untouched; no defended figure is invented for any other desk. No workforce simulator.
-
-**C. Walk.** Keyed: family genome import (still GQS 30/90) → function graph → Employee object card → function hours panel, all real click-throughs. Guest sees the same object cards and hours panel (no tenant data involved) plus unchanged Hours 95/61.8.
-
-Refused, unchanged: WorkOS, Finance, observed packs, Darwinbox APIs, extra edge types, Box 4, buying Render, a real Ontology backend (Box 1 stays later/refuse).
-
----
-
-## FAMILY-GENOME (shipped)
-
-One PR. Fixes the one real, previously-named gap in the VERDICT write path, then builds the one family genome HR-FAMILY's own map implied but never imported.
-
-**VERDICT write fix.** `PUT /api/verdict/{id}` 500 under load — named as a real, unfixed gap in both TIGHT-3D's and HR-FAMILY's own entries — is fixed: `services/work_units.py::apply_verdict`'s check-then-insert race on `verdict_scores.work_unit_id` (UNIQUE) now wraps the speculative insert in a `SAVEPOINT`, falling back to the winner's row on conflict instead of surfacing an `IntegrityError`. A full `db.rollback()` was tried first and reproduced a second, worse failure (stripped RLS tenant scoping, `ObjectDeletedError`) — see `docs/HONESTY.md` for the full trace. `frontend/src/api.ts`'s `put()` now accepts and forwards `specKey`, and `Verdict.tsx` passes it — the save action sends `X-Spec-Key` for the first time.
-
-**One family genome, same client as Offer Desk.** `frontend/src/lib/desks/familyGenome.ts` builds a `POST /genome/import` payload from all six `DeskSpec`s — 95 Work Units, `WU-OD-`/`WU-ONB-`/`WU-OFF-`/`WU-VEN-`/`WU-US-`/`WU-HRBP-` codes (3-digit, disjoint from the pre-existing 2-digit generic HR census seed), every unit `declared`. Edges: sequence within each desk (per step-id cluster, so HRBP's three independent sub-processes don't chain into each other), plus the exact three handoffs already on the function graph, wired as real `sequence` edges — no new edge type. GQS fails honestly (30/90, live) because Observed% is structurally 0 — not padded, no invented `dual_scoring_kappa`. The Offer Desk evidence pack stays the only path that clears GQS for `WU-OD-*` units; this genome's own `WU-OD-001..011` (declared) never collide with or get merged into its `WU-OD-01..11` (observed, 92.73/90).
-
-**Screens.** `pages/HrFamilyGenome.tsx` (new, `/hr/family-genome`) — keyed import action, lists units/edges before and after attempting the real import, shows the real GQS breakdown either way. `HrFunctionGraph.tsx` gains a keyed-only section reading `buildFamilyGenomePayload()` directly (the same object the import screen posts) instead of only the pre-existing static per-sheet schematic; guest view is unchanged.
-
-Refused, unchanged: WorkOS, Finance, Darwinbox/Zwayam/Job Vite APIs, login, extra Work Graph edge types, observed-pack theatre for any desk, merging the evidence pack's 92.73 into the family, backend rewrite beyond the one `apply_verdict` fix.
+| ID | Status | Who |
+|---|---|---|
+| **CENSUS-v0** | **UNLOCKED — do now, one PR** | Claude |
+| 6.2 Render backup | Open → 30 Sep | Founder |
+| 5.0 Finance/Legal | Open → 30 Sep | Founder |
+| 4.0 Login | STOP | Founder |
+| 3.0 Real traces | STOP | Founder |
+| Next after CENSUS-v0 | D INTENT-LITE + E PLAN (not this PR) | — |
 
 ---
 
-## HR-FAMILY (shipped)
+## CENSUS-v0 (only unlocked build)
 
-One PR. VERDICT-CARD (architecture 3d snapshot) + the rest of the real HR family alongside Offer Desk.
+One PR. Three parts, all required. Raja V10: Scope → Capture → Evidence → Gap → **Work Chart** → Plan. This slice ships **shell + Work System + Chart**. Plan/Evidence stay existing pages linked, not rebuilt.
 
-**VERDICT-CARD — Document check.** V E R D I C T's seven scores, readiness (`Verdict.uncapped_level`) / restraint (how far a hard gate held recommended below readiness), recommended level, and applied gates translated to plain language — each with an i-button. Sits alongside the existing TIGHT-3D S1/S2/S3 strip, does not replace it. Not scored → "Not scored", never an invented number. Appetite does not lift the dual-employment stop; no Box 4.
+**Do not delete** Offer Desk routes, 95/61.8, Spec deny, family genome, object cards, function hours, desks/*.xlsx.
 
-**Desk family.** `frontend/src/lib/desks/types.ts` generalizes Offer Desk's own step-list shape (id, name, what happens, system, time, volume, automation tag, SPOC) into `DeskSpec`. Five real sittings — Onboarding, Offboarding, Vendor Mgmt, US HR, HRBP — parsed verbatim from `desks/*.xlsx` (the founder's real Trianz Time & Motion Study, May 2026) into `frontend/src/lib/desks/*.ts`; Offer Desk itself stays untouched (`offerDeskData.ts`), adapted into the same shape via `desks/offerDesk.ts` rather than re-parsed. `desks/README.md` carries the founder's own honesty line: Onboarding + Offboarding finalized, Vendor Mgmt/US HR/HRBP still need follow-up.
+### A — Census shell
+Guest **and** keyed Home (or first click after Enterprise/HR): **six-step path** with position (n of 6).
+1 Scope (today’s blast-radius/HR map — rename copy to Scope; keep data)
+2 Capture (three seats; Offer Desk walk reachable **from here**, not as the product home)
+3 Evidence (link existing upload / document-check evidence; do not invent a new store)
+4 Gap (existing OfferDeskGap + family gaps if keyed)
+5 **Work Chart** (new — part C)
+6 Plan (link Document check VERDICT + Hours 95/61.8 + function hours — do not rebuild Plan this PR)
 
-**Map.** `HrOps.tsx`: Offer Desk (live) + Onboarding + Offboarding + Vendor Mgmt + US HR, all clickable. `HrMap.tsx`: HRBP clickable as its own peer card, not folded under HR operations. TA / branding / workforce planning / total rewards stay grey.
+Copy: blast radius → scope; GQS → quality gate (customer-facing); genome strength → completeness. Keep genome in HONESTY.md.
+V8 progress pills stay gone.
 
-**Function graph** (`HrFunctionGraph.tsx`, new). One node per desk; sequence edges are each desk's own step order; the only cross-desk HANDOFF edges drawn are the three the sheets themselves name (Offer Desk → Onboarding SPOC; Offboarding ↔ HRBP; Vendor Mgmt → Offer Desk for contractor conversion) — no shared-object/shared-resource/reciprocal edge types. US HR is its own parallel cluster (Job Vite, not Zwayam). Rashmi KN is named on both Offer Desk and US HR — one person, two desks, never merged, never drawn as an edge between them. Declared/sitting schematic for every viewer (guest and signed-in see the same page): none of the five new desks has ever been imported as a genome, so there is no observed backend data to gate on.
+### B — One Work System (missing middle)
+Journey: **recruiter asks for offer → offer released → Day-1 ready** (Offer Desk + Onboarding only).
+Record: name, entry, exit, owner (labelled stand-in unless a real name exists), outcome in sheet words, status **candidate** until a **Ratify** click (keyed) sets **ratified** + name + time.
+**Rule in UI (and backend if a column is cheap):** units of this journey stay **candidates** until the Work System is ratified. Do not block viewing. Do not invent a second journey for Offboarding this PR.
+Honor V10: *a candidate Work System MUST NOT be cut into governed units* — show the badge; do not delete the 95 declared units.
 
-**Desk walks.** One shared `DeskWalk.tsx` component (overview + step list + SPOC + hours + link to the function graph) behind five thin pages — not a 12-tab Offer Desk clone per desk.
+### C — Work Chart (hero)
+One screen: purpose strip (function: HR ops; this journey’s target from sheets); **lanes** from desks on this journey (Offer Desk, Onboarding; HRBP only if a named handoff touches it); each Work Unit a card (code + name + owner/SPOC + S1/S2/S3 if scored else not scored).
+Toggle careful / as-calculated / ambitious = existing scenarioStrip, **no new math**.
+Keyed: nodes from family genome payload / import if present; guest: declared schematic from DeskSpec, labelled sitting.
+Click unit → existing Document check or desk walk. Click object → existing Employee/Offer cards.
+Appetite never lifts dual-employment stop. No Box 4. No Palantir. No extra edge types.
 
-Refused, unchanged: WorkOS, Finance, Darwinbox API, extra Work Graph edge types beyond sequence + handoff, observed-pack theatre, backend rewrite, Box 4.
+**Walk done when:** guest Home → 1…6 → Chart shows Offer→Onboarding; Hours 95/61.8 still on Plan/Hours; keyed Ratify Work System; family genome still quality-gate ~30; Spec deny unchanged.
 
----
+Refuse: WorkOS, Finance, Darwinbox, observed-pack theatre, login, buy Render, rewrite backend except a **minimal** work_systems table if required for ratify persist. If persist is too large, ratify in-session + HONESTY that it does not survive refresh — prefer a real table.
 
-## TIGHT-3D (shipped)
-
-One PR. Next tightness on the drawing after TIGHT-WEDGE.
-
-**T3d-S — allocation scenarios (Box 3d artefact)**
-On Document check (and Offer Desk units if cheap): show **S1 floor / S2 derived / S3 ceiling** as a **strip**, from existing VERDICT/readiness if present; if scores missing, show **not scored** — do not invent numbers.
-**Hard rule:** appetite **never** lifts dual-employment stop. S3 cannot make “release offer” allowed without evidence. Helper may not release an offer.
-Do **not** build org-moderation inbox, p*, actor-class runtime, or Box 4.
-
-**T3b-P — field-level provenance (Box 3b contract card)**
-Unit card shows **observed N / declared M** (and designed/inferred if those exist) for the 18 attributes. Matches the architecture snapshot “observed 7 · declared 11” *in kind*, using real field provenance, not a hardcoded 7/11.
-Guest: educational copy, no fake counts from Client A.
-
-**Walk keyed:** Document check → provenance strip + scenario strip → Spec deny still deny without file; dual-employment still stop at S3.
-**Walk guest:** Hours 95/61.8 unchanged.
-
-Refuse: WorkOS, Gate 11, Finance, buy Render, Box 4, ladder, extra edge types, INT-007 schema.
+Slice report CENSUS-v0. PR to main, squash-merge CI green. Stop. Do not start INTENT-LITE or PLAN rebuild.
 
 ---
 
 ## Non-negotiables
 
-Spec layer. Talk-only empty. Fabricated ≠ Rashmi. 95 and 61.8 both visible. Dual employment = stop. Two graphs. Gate 11 not order. `main` only. IoPanes + i-buttons.
+Spec layer. Talk-only empty. Fabricated ≠ Rashmi. 95 and 61.8 both visible. Dual employment = stop. Two graphs. Gate 11 not order. `main` only. IoPanes + i-buttons. Guest Hours still works.
