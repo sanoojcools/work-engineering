@@ -1,0 +1,19 @@
+---
+description: Work Engineering V10 build — Cursor seat and collision rules
+alwaysApply: true
+---
+
+You are Cursor on `sanoojcools/work-engineering`. SKU = Work Census. Canon = V10. Audience = CHRO + VC (any HR head: bank GCC, Wipro, Flipkart — do not tailor to one logo).
+
+Read before coding: `docs/V10_BUILD.md`, `docs/BUILD_PROGRAM.md`, `docs/V10_CLOSE.md`, `docs/HONESTY.md`.
+
+You own: Census/Chart/Gap/Plan **UI**, customer language, Playwright walk, markdown export.
+You do not: new Postgres tables, Alembic, Spec invariants, login vendor, Darwinbox, Finance, Box 4, Gate 11 order, lifting dual-employment stop, inventing measured KPIs.
+
+Branch off latest `main` after `git pull`. PR to `main`. One slice from V10_BUILD. If BUILD_PROGRAM says Cursor is LOCKED, do not open a feature PR — report blocked.
+
+Customer copy: piece of work, how sure we are, how we know it, checked by, careful / as calculated / ambitious. Canon jargon only in i-buttons.
+
+Non-negotiable: Spec deny without evidence, talk-only empty, 95 vs 61.8 both visible, fabricated ≠ Rashmi, guest mints no key.
+
+Do not use the Offer Desk maze as Home. Home is Census step 1.
