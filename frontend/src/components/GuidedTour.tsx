@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { TOUR_STEPS } from "../lib/tourSteps";
 
-const V9_ROUTE_PREFIXES = ["/enterprise", "/hr", "/scout/offer-desk"];
+const V9_ROUTE_PREFIXES = ["/enterprise", "/hr", "/scout/offer-desk", "/census"];
 
 export function GuidedTour() {
   const [open, setOpen] = useState(false);

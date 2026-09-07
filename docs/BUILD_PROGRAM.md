@@ -4,7 +4,7 @@ Engine = V9 joints on `main`. Product SKU from V10 canon = **Work Census** (six 
 
 **Founder 7 Sep:** speed + quality, one meaty PR. **CENSUS-v0** is unlocked (same authorization as HR-FAMILY: no login, no execution, no Finance, no Render purchase). Do not drop Offer Desk; **demote it off Home** — it is Capture depth.
 
-OBJECTS-HOURS, FAMILY-GENOME, HR-FAMILY, TIGHT-3D, TIGHT-WEDGE: **shipped**. Do not reopen.
+OBJECTS-HOURS, FAMILY-GENOME, HR-FAMILY, TIGHT-3D, TIGHT-WEDGE, CENSUS-v0: **shipped**. Do not reopen.
 
 ---
 
@@ -12,7 +12,7 @@ OBJECTS-HOURS, FAMILY-GENOME, HR-FAMILY, TIGHT-3D, TIGHT-WEDGE: **shipped**. Do 
 
 | ID | Status | Who |
 |---|---|---|
-| **CENSUS-v0** | **UNLOCKED — do now, one PR** | Claude |
+| **CENSUS-v0** | **Shipped** | Claude |
 | 6.2 Render backup | Open → 30 Sep | Founder |
 | 5.0 Finance/Legal | Open → 30 Sep | Founder |
 | 4.0 Login | STOP | Founder |

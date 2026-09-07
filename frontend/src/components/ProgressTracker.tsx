@@ -15,8 +15,9 @@ const STEPS = [
 // on V9 routes that have nothing to do with it (V9's own progress lives in
 // SeatStepper). V9_ROUTE_PREFIXES mirrors GuidedTour's list: any route this
 // tracker has no real step for gets no pill bar, rather than defaulting to
-// "1 of 7" on a page it was never about.
-const V9_ROUTE_PREFIXES = ["/enterprise", "/hr", "/scout/offer-desk"];
+// "1 of 7" on a page it was never about. "/census" is CENSUS-v0's own
+// six-step shell (CensusStepper.tsx) -- same reasoning, its own counter.
+const V9_ROUTE_PREFIXES = ["/enterprise", "/hr", "/scout/offer-desk", "/census"];
 
 export function ProgressTracker() {
   const loc = useLocation();

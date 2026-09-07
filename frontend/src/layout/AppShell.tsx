@@ -7,9 +7,19 @@ import { api } from "../api";
 
 const SECTIONS = [
   {
-    label: "V9 path",
+    label: "Work Census",
     links: [
-      ["/", "Home"],
+      ["/", "1. Scope (Home)"],
+      ["/census/capture", "2. Capture"],
+      ["/census/evidence", "3. Evidence"],
+      ["/census/gap", "4. Gap"],
+      ["/census/chart", "5. Work Chart"],
+      ["/census/plan", "6. Plan"],
+    ],
+  },
+  {
+    label: "Offer Desk depth",
+    links: [
       ["/enterprise", "Enterprise"],
       ["/hr", "CHRO map"],
       ["/hr/operations", "HR operations"],

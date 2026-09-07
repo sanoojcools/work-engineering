@@ -1,28 +1,42 @@
 import { Link } from "react-router-dom";
+import { CensusStepper } from "../components/census/CensusStepper";
 import { DemoSetup } from "../components/DemoSetup";
 import { IoPanes } from "../components/IoPanes";
+import { InfoTooltip } from "../components/InfoTooltip";
 
+/** CENSUS-v0 Part A, step 1: Scope. Home IS this step, guest or keyed --
+ * not a separate landing page ahead of the six-step census. Content is the
+ * existing Enterprise -> HR map -> Function Scope pages, relabelled: what
+ * this build used to call "blast radius" is customer-facing "Scope" here
+ * (docs/BUILD_PROGRAM.md CENSUS-v0's own copy rule) -- nothing rebuilt,
+ * nothing new fetched. Offer Desk is deliberately NOT linked from this
+ * page: it is Capture depth, reachable from step 2, not from Home. */
 export default function Start() {
   return (
     <>
-      <h2>How do you want to start?</h2>
+      <CensusStepper />
+      <p className="hint" style={{ marginBottom: 4 }}>Work Census · guest and keyed</p>
+      <h2>
+        Scope <InfoTooltip term="Scope" simple="Which functions and sub-functions are in play, before any work is captured. What this build used to call blast radius." />
+      </h2>
       <p className="lede">
-        You can look without a key — the full 12-minute Offer Desk walk works read-only, no setup, no sign-in.
-        Writes stay denied until you sign in for real.
+        Today's HR map: what's live, what's still on the map, and who owns each sub-function. You can look without
+        a key — every screen on this walk renders read-only. Writes stay denied until you sign in for real.
       </p>
-      <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent-edge)" }}>
-        <h3>Look — no key needed</h3>
-        <p style={{ fontSize: 14, margin: "0 0 10px" }}>
-          Enterprise → HR → HR operations → Offer Desk: three seats, playback, save talk-only (denied, on purpose),
-          the cut, the gap, document check, hours, Spec deny, sitting record. Every screen renders; every write
-          stays denied. Nothing is saved and nothing needs to be.
-        </p>
-        <Link
-          to="/enterprise"
-          className="primary"
-          style={{ display: "inline-block", textDecoration: "none", padding: "7px 14px", background: "var(--accent)", color: "#fff", border: "1px solid var(--accent)", fontWeight: 550 }}
-        >
-          Start the walk →
+
+      <div className="split" style={{ gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+        <Link to="/enterprise" className="card" style={{ textDecoration: "none", color: "inherit" }}>
+          <h3>Enterprise → HR map</h3>
+          <p className="hint" style={{ marginBottom: 0 }}>
+            Which functions are live today (HR) versus still on the map (Finance, Legal, Operations), then the CHRO
+            map of HR operations and HR business partner.
+          </p>
+        </Link>
+        <Link to="/scout/blast-radius" className="card" style={{ textDecoration: "none", color: "inherit" }}>
+          <h3>Function Scope</h3>
+          <p className="hint" style={{ marginBottom: 0 }}>
+            The 44 sub-function HR catalog — check what's in scope for this census, name who owns it.
+          </p>
         </Link>
       </div>
 
@@ -31,8 +45,8 @@ export default function Start() {
           Set up the demo (for people who will save)
         </summary>
         <p className="hint" style={{ marginTop: 8 }}>
-          Mints a real key and signs this browser in, so Save talk-only, Spec deny → upload, and the evidence-pack
-          import actually write. Not needed just to look.
+          Mints a real key and signs this browser in, so Capture, Evidence, and Ratify actually write. Not needed
+          just to look.
         </p>
         <DemoSetup />
       </details>
@@ -40,11 +54,16 @@ export default function Start() {
       <IoPanes
         given="You opened the product."
         understood="Most people want to look first. A key is only for the person who will actually save something."
-        processed="The walk renders fully with no key. Every write on it still asks for one and stays denied without it."
-        output="Enterprise is live, no sign-in required. Set up the demo is one click away when you're ready to save."
+        processed="Scope renders fully with no key — the HR map and Function Scope grid are read-only for a guest. Every write past this step still asks for a key and stays denied without it."
+        output="Enterprise and Function Scope are live, no sign-in required. Capture is next."
       />
+
       <p className="hint" style={{ marginTop: 24 }}>
         V8 Overview, Genome, and VERDICT stay in the nav under Specification / Analysis.
+      </p>
+
+      <p style={{ marginTop: 20 }}>
+        <Link to="/census/capture">Next: Capture →</Link>
       </p>
     </>
   );

@@ -37,7 +37,7 @@ function BlastRadiusMeter({ summary }: { summary: BlastRadiusOut["summary"] }) {
         <span style={{ width: `${summary.selected_pct}%`, background: "var(--accent)" }} />
       </div>
       <div className="hint">
-        {summary.clusters_touched}/{summary.total_clusters} clusters touched — this is the CHRO's blast-radius scoping
+        {summary.clusters_touched}/{summary.total_clusters} clusters touched — this is the CHRO's scoping
         pass: check what's in scope for this census, name who owns it, then start a Sub-function Lead interview for
         each one.
       </div>
@@ -192,7 +192,7 @@ export default function BlastRadius() {
       <h2>Function Scope</h2>
       <p className="lede">
         Work Engineering is function-agnostic — this build is HR detailed. Selecting a sub-function here sets the
-        blast radius for this census and is where a CHRO hands off each area to its Sub-function Lead.
+        scope for this census and is where a CHRO hands off each area to its Sub-function Lead.
       </p>
       <FunctionSelector selected={fn} onSelect={setFn} />
       {active ? (
