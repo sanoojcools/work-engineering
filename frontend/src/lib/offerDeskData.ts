@@ -283,7 +283,7 @@ export function splitOfferDeskDataFields(raw: string): { input: string[]; output
 // source spreadsheet -- each is condensed from that step's own "What
 // happens" / handoff-map / agent-notes text, not invented. Steps with no
 // real quote to ground a pain note keep it empty rather than guess one.
-const STEP_TITLES: Record<number, string> = {
+export const STEP_TITLES: Record<number, string> = {
   1: "Recruiter sends offer request",
   2: "Verify candidate documents",
   3: "Verify salary approval & calculate deviation",

@@ -2,11 +2,17 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { GuidedTour } from "./components/GuidedTour";
 import AppShell from "./layout/AppShell";
 import BlastRadius from "./pages/BlastRadius";
+import DeskHrbp from "./pages/DeskHrbp";
+import DeskOffboarding from "./pages/DeskOffboarding";
+import DeskOnboarding from "./pages/DeskOnboarding";
+import DeskUsHr from "./pages/DeskUsHr";
+import DeskVendorMgmt from "./pages/DeskVendorMgmt";
 import Discovery from "./pages/Discovery";
 import Economics from "./pages/Economics";
 import Enterprise from "./pages/Enterprise";
 import Genome from "./pages/Genome";
 import GenomeVersions from "./pages/GenomeVersions";
+import HrFunctionGraph from "./pages/HrFunctionGraph";
 import HrMap from "./pages/HrMap";
 import HrOps from "./pages/HrOps";
 import NotFound from "./pages/NotFound";
@@ -46,6 +52,12 @@ export default function App() {
           <Route path="/enterprise" element={<Enterprise />} />
           <Route path="/hr" element={<HrMap />} />
           <Route path="/hr/operations" element={<HrOps />} />
+          <Route path="/hr/operations/onboarding" element={<DeskOnboarding />} />
+          <Route path="/hr/operations/offboarding" element={<DeskOffboarding />} />
+          <Route path="/hr/operations/vendor-mgmt" element={<DeskVendorMgmt />} />
+          <Route path="/hr/operations/us-hr" element={<DeskUsHr />} />
+          <Route path="/hr/hrbp" element={<DeskHrbp />} />
+          <Route path="/hr/function-graph" element={<HrFunctionGraph />} />
           <Route path="/overview" element={<Overview />} />
           <Route path="/ontology" element={<Ontology />} />
           <Route path="/work-units" element={<WorkUnits />} />
