@@ -32,6 +32,8 @@ export default function HrOps() {
         <Link to="/hr/function-graph">See how these five desks hand off to each other →</Link>
         {" · "}
         <Link to="/hr/family-genome">Import all six desks as one declared genome →</Link>
+        {" · "}
+        <Link to="/hr/function-hours">Declared hours by desk →</Link>
       </p>
     </>
   );

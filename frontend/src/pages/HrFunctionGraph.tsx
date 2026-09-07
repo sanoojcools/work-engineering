@@ -4,6 +4,7 @@ import { IoPanes } from "../components/IoPanes";
 import { DESKS_BY_ID } from "../lib/desks";
 import { CROSS_DESK_HANDOFFS } from "../lib/desks/functionGraph";
 import { buildFamilyGenomePayload } from "../lib/desks/familyGenome";
+import { DESK_TO_OBJECT, HANDOFF_TO_OBJECT, OBJECTS_BY_ID } from "../lib/desks/objects";
 import type { DeskSpec } from "../lib/desks/types";
 import { useIsGuest } from "../lib/guestMode";
 
@@ -27,24 +28,34 @@ const ROUTE_BY_DESK_ID: Record<string, string> = {
 
 function DeskNode({ spec, note }: { spec: DeskSpec; note?: string }) {
   const chain = spec.steps.map((s) => s.id).join(" → ");
+  const objectId = DESK_TO_OBJECT[spec.id];
   return (
-    <Link to={ROUTE_BY_DESK_ID[spec.id]} className="card" style={{ margin: 0, textDecoration: "none", color: "inherit" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-        <h3 style={{ margin: 0 }}>{spec.name}</h3>
-        <span className={`banner ${spec.status === "finalized" ? "ok" : "warn"}`} style={{ padding: "1px 6px", fontSize: 11 }}>
-          {spec.status === "finalized" ? "finalized" : "needs follow-up"}
-        </span>
-      </div>
-      <p className="hint" style={{ margin: "4px 0" }}>SPOC: {spec.primarySpoc}</p>
-      <p style={{ fontSize: 12, margin: "4px 0", wordBreak: "break-word" }}>
-        <InfoTooltip
-          term="Sequence"
-          simple="B cannot start until A completes, in the order the sitting itself lists the steps."
-        />{" "}
-        {chain}
-      </p>
-      {note && <p className="hint" style={{ margin: "4px 0 0", fontStyle: "italic" }}>{note}</p>}
-    </Link>
+    <div className="card" style={{ margin: 0 }}>
+      <Link to={ROUTE_BY_DESK_ID[spec.id]} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+          <h3 style={{ margin: 0 }}>{spec.name}</h3>
+          <span className={`banner ${spec.status === "finalized" ? "ok" : "warn"}`} style={{ padding: "1px 6px", fontSize: 11 }}>
+            {spec.status === "finalized" ? "finalized" : "needs follow-up"}
+          </span>
+        </div>
+        <p className="hint" style={{ margin: "4px 0" }}>SPOC: {spec.primarySpoc}</p>
+        <p style={{ fontSize: 12, margin: "4px 0", wordBreak: "break-word" }}>
+          <InfoTooltip
+            term="Sequence"
+            simple="B cannot start until A completes, in the order the sitting itself lists the steps."
+          />{" "}
+          {chain}
+        </p>
+        {note && <p className="hint" style={{ margin: "4px 0 0", fontStyle: "italic" }}>{note}</p>}
+      </Link>
+      {objectId ? (
+        <p style={{ fontSize: 12, margin: "6px 0 0" }}>
+          <Link to={`/hr/objects/${objectId}`}>→ {OBJECTS_BY_ID[objectId].name} object card</Link>
+        </p>
+      ) : (
+        <p className="hint" style={{ fontSize: 12, margin: "6px 0 0" }}>Not wired to an object card in this slice.</p>
+      )}
+    </div>
   );
 }
 
@@ -118,6 +129,7 @@ export default function HrFunctionGraph() {
           {CROSS_DESK_HANDOFFS.map((edge, i) => {
             const from = DESKS_BY_ID[edge.fromDeskId];
             const to = DESKS_BY_ID[edge.toDeskId];
+            const objectId = HANDOFF_TO_OBJECT[`${edge.fromDeskId}->${edge.toDeskId}`];
             return (
               <div className="card" key={i} style={{ margin: 0 }}>
                 <strong>
@@ -129,6 +141,11 @@ export default function HrFunctionGraph() {
                 <p className="hint" style={{ margin: 0 }}>
                   Source: {edge.citedFrom} ({edge.handoff.from} → {edge.handoff.to}).
                 </p>
+                {objectId && (
+                  <p style={{ fontSize: 12, margin: "6px 0 0" }}>
+                    <Link to={`/hr/objects/${objectId}`}>→ {OBJECTS_BY_ID[objectId].name} object card</Link>
+                  </p>
+                )}
               </div>
             );
           })}
@@ -189,6 +206,8 @@ export default function HrFunctionGraph() {
         <Link to="/hr/operations">← HR operations</Link>
         {" · "}
         <Link to="/hr/hrbp">HRBP →</Link>
+        {" · "}
+        <Link to="/hr/function-hours">Function hours →</Link>
         {" · "}
         <Link to="/scout/offer-desk/work-graph">Offer Desk's own real Work Graph →</Link>
       </p>
