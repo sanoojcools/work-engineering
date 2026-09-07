@@ -136,6 +136,25 @@ export type Gap = {
   work_unit_id: number | null;
 };
 
+// F1 (docs/BUILD_PROGRAM.md EVIDENCE-GAP). Mirrors
+// backend/app/schemas/files.py::UploadedFileOut/FileBackingOut.
+export type FileBacking = {
+  work_unit_code: string;
+  business_object: string;
+  claim: string;
+};
+
+export type UploadedFileOut = {
+  id: number;
+  file_name: string;
+  sha256: string;
+  content_type: string;
+  size_bytes: number;
+  uploaded_by: string;
+  uploaded_at: string;
+  backs: FileBacking[];
+};
+
 export type VerificationRun = {
   id: number;
   work_unit_id: number;

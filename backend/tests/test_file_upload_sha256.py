@@ -198,3 +198,60 @@ def test_import_citing_known_file_id_matching_hash_not_rejected_for_that_reason(
     # 92.86 since the FIXED fixture's cyclic-dependency cleanup — see the
     # comment in test_org_key_migration.py's equivalent assertion.
     assert r.json()["gqs"] == pytest.approx(92.86, abs=0.01)
+
+
+# F1 (docs/BUILD_PROGRAM.md EVIDENCE-GAP): GET /api/files -- the endpoint
+# this file's own docstring above (test_same_bytes_two_tenants_two_isolated_rows)
+# noted did not exist yet ("No GET /files endpoint in this PR").
+
+def test_list_files_requires_key(real_client):
+    r = real_client.get("/api/files")
+    assert r.status_code == 401
+
+
+def test_list_files_empty_for_fresh_tenant(real_client, two_tenants):
+    r = real_client.get("/api/files", headers={"X-Spec-Key": two_tenants["key_a"]})
+    assert r.status_code == 200, r.text
+    assert r.json() == {"total": 0, "items": []}
+
+
+def test_list_files_shows_only_this_tenants_files(real_client, two_tenants):
+    ra = real_client.post("/api/files/upload", headers={"X-Spec-Key": two_tenants["key_a"]},
+                           files={"file": ("a-only.csv", CSV_BYTES, "text/csv")})
+    assert ra.status_code == 201, ra.text
+
+    r_a = real_client.get("/api/files", headers={"X-Spec-Key": two_tenants["key_a"]})
+    r_b = real_client.get("/api/files", headers={"X-Spec-Key": two_tenants["key_b"]})
+    assert r_a.status_code == 200 and r_b.status_code == 200
+    assert [f["file_name"] for f in r_a.json()["items"]] == ["a-only.csv"]
+    assert r_b.json() == {"total": 0, "items": []}
+
+
+def test_list_files_backs_nothing_when_no_genome_cites_it(real_client, two_tenants):
+    up = real_client.post("/api/files/upload", headers={"X-Spec-Key": two_tenants["key_a"]},
+                           files={"file": ("orphan.csv", CSV_BYTES, "text/csv")})
+    assert up.status_code == 201, up.text
+
+    r = real_client.get("/api/files", headers={"X-Spec-Key": two_tenants["key_a"]})
+    assert r.status_code == 200, r.text
+    orphan = next(f for f in r.json()["items"] if f["file_name"] == "orphan.csv")
+    assert orphan["backs"] == []
+
+
+def test_list_files_reports_what_a_file_backs(real_client, two_tenants):
+    up = real_client.post("/api/files/upload", headers={"X-Spec-Key": two_tenants["key_a"]},
+                           files={"file": ("sample.csv", CSV_BYTES, "text/csv")})
+    file_id, sha = up.json()["file_id"], up.json()["sha256"]
+    genome = _fixed_genome_with_provenance(file_id, sha)
+    imported = real_client.post("/api/genome/import", headers={"X-Spec-Key": two_tenants["key_a"]}, json=genome)
+    assert imported.status_code == 201, imported.text
+
+    r = real_client.get("/api/files", headers={"X-Spec-Key": two_tenants["key_a"]})
+    assert r.status_code == 200, r.text
+    backed = next(f for f in r.json()["items"] if f["file_name"] == "sample.csv")
+    # Every unit in this fixture cites the same file_id (see
+    # _fixed_genome_with_provenance above) -- one backing entry per unit.
+    assert len(backed["backs"]) == len(genome["work_units"])
+    codes = {b["work_unit_code"] for b in backed["backs"]}
+    assert codes == {wu["id"] for wu in genome["work_units"]}
+    assert all(b["claim"].strip() and b["business_object"].strip() for b in backed["backs"])

@@ -13,14 +13,21 @@ type Contradiction = {
   created_at: string;
 };
 
-export function ContradictionResolver({ sessionId, onNeedsKey }: { sessionId: number; onNeedsKey: () => void }) {
+/** sessionId is optional: ScoutInterview.tsx always passes one (one
+ * session's own contradictions). CensusGap.tsx (EVIDENCE-GAP, F2 "head vs
+ * doer") omits it to surface every contradiction on the tenant, journey-wide
+ * -- GET /scout/contradictions already supports this (session_id is an
+ * optional filter server-side, services/scout_contradictions.py is
+ * untouched either way). */
+export function ContradictionResolver({ sessionId, onNeedsKey }: { sessionId?: number; onNeedsKey: () => void }) {
   const [items, setItems] = useState<Contradiction[] | null>(null);
   const [drafts, setDrafts] = useState<Record<number, string>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
 
   async function load() {
     try {
-      const page = await apiFetch.get<{ items: Contradiction[] }>(`/scout/contradictions?session_id=${sessionId}`);
+      const query = sessionId ? `?session_id=${sessionId}` : "";
+      const page = await apiFetch.get<{ items: Contradiction[] }>(`/scout/contradictions${query}`);
       setItems(page.items);
     } catch (err) {
       if (err instanceof NeedsApiKeyError) onNeedsKey();
