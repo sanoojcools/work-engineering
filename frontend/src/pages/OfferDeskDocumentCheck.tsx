@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
+import { VerdictCard } from "../components/VerdictCard";
 import { SeatStepper } from "../components/offerDesk/SeatStepper";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
 import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
@@ -195,6 +196,8 @@ export default function OfferDeskDocumentCheck() {
           {isGuest ? " Guest: educational only, nothing here is ever sent to the server." : ""}
         </p>
       </div>
+
+      <VerdictCard verdict={matchedVerdict} isGuest={isGuest} />
 
       <div className="card" style={{ marginBottom: 16 }}>
         <h3>

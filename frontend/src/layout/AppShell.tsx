@@ -26,6 +26,12 @@ const SECTIONS = [
       ["/scout/offer-desk/hours", "Hours"],
       ["/scout/offer-desk/spec-deny", "Spec deny"],
       ["/scout/offer-desk/sitting-record", "Sitting record"],
+      ["/hr/operations/onboarding", "Onboarding"],
+      ["/hr/operations/offboarding", "Offboarding"],
+      ["/hr/operations/vendor-mgmt", "Vendor Mgmt"],
+      ["/hr/operations/us-hr", "US HR"],
+      ["/hr/hrbp", "HRBP"],
+      ["/hr/function-graph", "HR function graph"],
     ],
   },
   {
