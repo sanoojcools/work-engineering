@@ -25,6 +25,7 @@ from .ontology import (  # noqa: F401
     Provenance,
     RelationKind,
 )
+from .pointers import FieldPointer, PointerStatus  # noqa: F401
 from .regulatory import RegulatoryEntry  # noqa: F401
 from .scout import (  # noqa: F401
     ContradictionStatus,

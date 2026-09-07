@@ -72,7 +72,7 @@ class ClassificationResult:
     raw_header_row_text: str = ""
 
 
-def _rows_from_bytes(content: bytes, file_name: str) -> list[list[str]]:
+def rows_from_bytes(content: bytes, file_name: str) -> list[list[str]]:
     if file_name.lower().endswith(".xlsx"):
         wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
         ws = wb.active
@@ -87,7 +87,7 @@ def classify(content: bytes, file_name: str) -> ClassificationResult:
     file-level note, not a header candidate — playbook: "do not invent WUs
     from them." The header row is the first row with any cell scoring
     >= 0.7. If none is found in the scan window, the whole file queues."""
-    rows = _rows_from_bytes(content, file_name)
+    rows = rows_from_bytes(content, file_name)
     metadata_notes: dict[str, str] = {}
 
     for row_idx, row in enumerate(rows[:MAX_HEADER_SCAN_ROWS]):

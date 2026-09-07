@@ -95,9 +95,9 @@ def map_track_a(content: bytes, file_name: str, *, uploaded_file_id: int, file_s
     if classification.queued:
         return TrackAResult(queued_whole_file=True, reason="unrecognized_step_column")
 
-    from .classifier import _rows_from_bytes  # internal helper, not part of the public classify() API
+    from .classifier import rows_from_bytes
 
-    rows = _rows_from_bytes(content, file_name)
+    rows = rows_from_bytes(content, file_name)
     header_cells = classification.header_cells
     col_map = _resolve_columns(header_cells)
 

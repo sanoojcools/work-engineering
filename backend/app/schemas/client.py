@@ -16,6 +16,10 @@ class ClientOut(BaseModel):
     description: str
     kind: str
     work_unit_count: int = 0
+    # V10-2 (docs/V10_BUILD.md): one honest tenant counter, not a dashboard --
+    # bumped by services/pointers.py whenever a claimed observed/reconstructed
+    # pointer fails to open.
+    fabrication_count: int = 0
 
     model_config = {"from_attributes": True}
 
