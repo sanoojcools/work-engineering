@@ -80,6 +80,11 @@ def _ensure_body(**overrides) -> dict:
         "exit": "New hire fully onboarded",
         "owner": "Head of HR operations (stand-in)",
         "outcome": "Candidate handed over, Day-1 ready",
+        "function_intent_outcome": "Safe offer, two-hour SLA",
+        "function_intent_owner": "Head of HR operations (stand-in)",
+        "function_intent_measure": "SLA: 2 hours from recruiter request to offer letter release",
+        "work_system_intent_purpose": "If Offer Desk stalls, candidates walk to other offers over two weeks.",
+        "work_system_intent_owner": "Head of HR operations (stand-in)",
     }
     body.update(overrides)
     return body
@@ -106,6 +111,18 @@ def test_ensure_creates_candidate_row(real_client, two_tenants):
     assert row["ratified_by"] == ""
     assert row["ratified_at"] is None
 
+    # D -- INTENT-LITE: both intents drafted from the ensure call, neither
+    # confirmed yet -- draft must not look governed.
+    assert row["function_intent"]["label"] == "Safe offer, two-hour SLA"
+    assert row["function_intent"]["owner"] == "Head of HR operations (stand-in)"
+    assert row["function_intent"]["measure"] == "SLA: 2 hours from recruiter request to offer letter release"
+    assert row["function_intent"]["status"] == "draft"
+    assert row["function_intent"]["confirmed_by"] == ""
+    assert row["function_intent"]["confirmed_at"] is None
+    assert row["work_system_intent"]["label"].startswith("If Offer Desk stalls")
+    assert row["work_system_intent"]["status"] == "draft"
+    assert row["work_system_intent"]["measure"] is None
+
     listed = real_client.get("/api/work-systems", headers=headers_a)
     assert listed.json()["total"] == 1
 
@@ -119,11 +136,13 @@ def test_ensure_is_idempotent_and_never_overwrites_existing_row(real_client, two
     # SAME row unchanged, not overwrite it -- otherwise a later guest-shaped
     # default could silently clobber a tenant's already-ratified record.
     second = real_client.post(
-        "/api/work-systems", headers=headers_a, json=_ensure_body(name="a different name entirely"),
+        "/api/work-systems", headers=headers_a,
+        json=_ensure_body(name="a different name entirely", function_intent_outcome="a different outcome entirely"),
     )
     assert second.status_code == 201, second.text
     assert second.json()["id"] == first["id"]
     assert second.json()["name"] == first["name"]
+    assert second.json()["function_intent"]["label"] == first["function_intent"]["label"]
 
     listed = real_client.get("/api/work-systems", headers=headers_a).json()
     assert listed["total"] == 1
@@ -194,3 +213,87 @@ def test_rls_work_systems_isolation_via_http(real_client, two_tenants):
     # A's row is unaffected by B's attempt.
     still_candidate = real_client.get("/api/work-systems", headers=headers_a).json()["items"][0]
     assert still_candidate["status"] == "candidate"
+
+
+@pg_skip
+def test_confirm_function_intent_sets_owner_and_timestamp(real_client, two_tenants):
+    headers_a = two_tenants["headers_a"]
+    ws_id = real_client.post("/api/work-systems", headers=headers_a, json=_ensure_body()).json()["id"]
+
+    confirmed = real_client.post(
+        f"/api/work-systems/{ws_id}/confirm-function-intent", headers=headers_a,
+        json={"confirmed_by": "Sanooj (HR ops)"},
+    )
+    assert confirmed.status_code == 200, confirmed.text
+    intent = confirmed.json()["function_intent"]
+    assert intent["status"] == "confirmed"
+    assert intent["confirmed_by"] == "Sanooj (HR ops)"
+    assert intent["confirmed_at"] is not None
+    # The other intent is untouched by confirming this one.
+    assert confirmed.json()["work_system_intent"]["status"] == "draft"
+
+    reread = real_client.get("/api/work-systems", headers=headers_a).json()["items"][0]
+    assert reread["function_intent"]["status"] == "confirmed"
+    assert reread["function_intent"]["confirmed_by"] == "Sanooj (HR ops)"
+
+
+@pg_skip
+def test_confirm_work_system_intent_sets_owner_and_timestamp(real_client, two_tenants):
+    headers_a = two_tenants["headers_a"]
+    ws_id = real_client.post("/api/work-systems", headers=headers_a, json=_ensure_body()).json()["id"]
+
+    confirmed = real_client.post(
+        f"/api/work-systems/{ws_id}/confirm-work-system-intent", headers=headers_a,
+        json={"confirmed_by": "Sanooj (HR ops)"},
+    )
+    assert confirmed.status_code == 200, confirmed.text
+    intent = confirmed.json()["work_system_intent"]
+    assert intent["status"] == "confirmed"
+    assert intent["confirmed_by"] == "Sanooj (HR ops)"
+    assert intent["confirmed_at"] is not None
+    assert confirmed.json()["function_intent"]["status"] == "draft"
+
+
+@pg_skip
+def test_confirm_function_intent_twice_is_rejected(real_client, two_tenants):
+    headers_a = two_tenants["headers_a"]
+    ws_id = real_client.post("/api/work-systems", headers=headers_a, json=_ensure_body()).json()["id"]
+
+    first = real_client.post(
+        f"/api/work-systems/{ws_id}/confirm-function-intent", headers=headers_a, json={"confirmed_by": "A"},
+    )
+    assert first.status_code == 200, first.text
+
+    again = real_client.post(
+        f"/api/work-systems/{ws_id}/confirm-function-intent", headers=headers_a, json={"confirmed_by": "B"},
+    )
+    assert again.status_code == 409, again.text
+
+
+@pg_skip
+def test_confirm_intent_requires_a_name(real_client, two_tenants):
+    headers_a = two_tenants["headers_a"]
+    ws_id = real_client.post("/api/work-systems", headers=headers_a, json=_ensure_body()).json()["id"]
+
+    empty_function = real_client.post(
+        f"/api/work-systems/{ws_id}/confirm-function-intent", headers=headers_a, json={"confirmed_by": ""},
+    )
+    assert empty_function.status_code == 422, empty_function.text
+
+    empty_ws = real_client.post(
+        f"/api/work-systems/{ws_id}/confirm-work-system-intent", headers=headers_a, json={"confirmed_by": ""},
+    )
+    assert empty_ws.status_code == 422, empty_ws.text
+
+
+@pg_skip
+def test_confirm_intent_cross_tenant_is_404(real_client, two_tenants):
+    headers_a = two_tenants["headers_a"]
+    headers_b = two_tenants["headers_b"]
+    ws_a = real_client.post("/api/work-systems", headers=headers_a, json=_ensure_body()).json()
+
+    cross = real_client.post(
+        f"/api/work-systems/{ws_a['id']}/confirm-function-intent", headers=headers_b,
+        json={"confirmed_by": "intruder"},
+    )
+    assert cross.status_code == 404, cross.text
