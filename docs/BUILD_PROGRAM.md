@@ -1,31 +1,35 @@
 # Build program
 
-**Work order:** [`docs/V10_BUILD.md`](V10_BUILD.md)  
-**Why:** [`docs/V10_CLOSE.md`](V10_CLOSE.md)
+**Work order:** [`docs/V10_BUILD.md`](V10_BUILD.md)
 
-Target **80% platform canon** in 14 fat PRs. Host/Render **ignored until 30 Sep**.
+V10-1 **shipped:** #21 backend + #22 frontend. Next = **V10-2 BACKEND** (Claude). Cursor idle until that merge.
 
 ---
-
-## This week
 
 | Who | Slice | Status |
 |---|---|---|
-| **Claude Code** | **V10-1 BACKEND** (censuses table + API) | **UNLOCKED** |
-| **Cursor** | V10-1 UI + language | **LOCKED until Claude V10-1 merged** |
-| Grok | Review / next unlock | — |
-| Founder | Walk hosted; do not pay Render until Oct | — |
+| **Claude Code** | **V10-2 pointers + resolver + 5 statuses (API only)** | **UNLOCKED** |
+| Cursor | V10-2 Evidence UI (click claim) | LOCKED until this PR merges |
+| V10-3 … 14 | — | locked |
 
-All later slices (V10-2 … 14): **locked**.
+Host/Render ignored until 30 Sep.
 
 ---
 
-## Claude prompt (paste in a NEW chat after `git pull origin main`)
+## V10-2 Claude (only unlocked)
 
-See `docs/V10_BUILD.md` § This week. Execute **only** V10-1 backend. Stop.
+One PR. Backend only. Do not edit Census Chart Plan UI (Cursor after).
+
+- Pointer: file_id + page/line/cell on provenance (CSV/XLSX cell required; PDF = file-only honesty if no parser this PR)
+- Resolver on write: open pointer; fail → field is not a fact, ConformanceGap + increment fabrication_count (tenant counter is enough; not a 12-metric dashboard)
+- Five statuses: observed, declared, reconstructed, composed, predicted. Binding fields (authority, acceptance, constraints) remain declared+quote only — composed/predicted cannot bind.
+- Reuse existing UploadedFile / provenance tables. No Darwinbox. No V10-3 verify-design.
+
+Playwright: not required this PR (no UI). Backend tests: broken pointer cannot stay observed; binding field rejects predicted; RLS; guest/API 401.
+HONESTY.md. Branch claude/v10-2 off latest main. PR → main. Squash-merge CI green. Stop. Do not start V10-3.
 
 ---
 
 ## Non-negotiables
 
-Spec deny without evidence. Talk-only empty. 95 and 61.8 both visible. Dual employment = stop. Fabricated ≠ Rashmi. Guest mints no key. `main` only. No V10-2 in this PR.
+Spec deny without evidence. Talk-only empty. 95 vs 61.8. Dual employment = stop. Fabricated ≠ Rashmi. Guest mints no key. `main` only.
