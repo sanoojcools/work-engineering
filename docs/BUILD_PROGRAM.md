@@ -3,7 +3,7 @@
 Architecture map = WEP System Architecture (boxes 1–6).
 **Bet:** tighten 3a–3e on Offer Desk. Do not fill Box 1/2/4/6 with theatre.
 
-**Founder 6 Sep:** 6.2 (Render backup) and 5.0 (Finance/Legal) **deferred to 2026-09-30**. Keep both **open**. Do not pay, do not invent catalogs. Next unlocked build = **TIGHT-3D**.
+**Founder 6 Sep:** 6.2 (Render backup) and 5.0 (Finance/Legal) **deferred to 2026-09-30**. Keep both **open**. Do not pay, do not invent catalogs. **TIGHT-3D shipped 7 Sep.** Next unlocked build = none until 6.2 / 4.0 / 3.0 / 5.0 are answered.
 
 ---
 
@@ -11,7 +11,7 @@ Architecture map = WEP System Architecture (boxes 1–6).
 
 | ID | Box / joint | Status | Who | Done when |
 |---|---|---|---|---|
-| **TIGHT-3D** | **3d scenarios + 3b field provenance** | **UNLOCKED** | Claude, one PR | See below |
+| **TIGHT-3D** | **3d scenarios + 3b field provenance** | **SHIPPED** | Claude, one PR | See below |
 | **6.2** | Postgres backup | **OPEN until 2026-09-30** | Founder | Free DB, no backup, expires ~2026-10-05 |
 | **5.0** | Finance/Legal | **OPEN until 2026-09-30** | Founder + reviewer | No catalogs until markup |
 | **4.0** | Login | STOP — wait | Founder | Named CHRO |
@@ -23,11 +23,11 @@ Architecture map = WEP System Architecture (boxes 1–6).
 
 ### Shipped (do not reopen)
 
-Guest Hours · Gap live · Gates 6/9/10 · HR pack · consent UI · health 503 · **TIGHT-WEDGE** (unit card, 11 sequence edges, verification spec, cannot-see, INTENT_CONTRACT.md, 95/61.8)
+Guest Hours · Gap live · Gates 6/9/10 · HR pack · consent UI · health 503 · **TIGHT-WEDGE** (unit card, 11 sequence edges, verification spec, cannot-see, INTENT_CONTRACT.md, 95/61.8) · **TIGHT-3D** (S1/S2/S3 scenario strip + field-provenance strip on Document check, gate-capped, not-scored honestly)
 
 ---
 
-## TIGHT-3D (only unlocked build)
+## TIGHT-3D (shipped)
 
 One PR. Next tightness on the drawing after TIGHT-WEDGE.
 

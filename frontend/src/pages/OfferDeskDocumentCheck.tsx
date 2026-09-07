@@ -6,15 +6,39 @@ import { SeatStepper } from "../components/offerDesk/SeatStepper";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
 import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
 import { useIsGuest } from "../lib/guestMode";
+import { useCompany } from "../company";
+import { useApi } from "../hooks";
+import { withClient } from "../lib/withClient";
 import { DOCUMENT_CHECK_RECORD, MISSING_DOC_STARTER, desiredConditionCheckability, step2 } from "../lib/offerDeskWorkRecord";
+import { fieldProvenance, scenarioStrip } from "../lib/offerDeskScenarios";
+import type { Page, Verdict, WorkUnit } from "../types";
 
 type UploadedEvidence = { file_id: string; sha256: string; file_name: string; size: number };
+
+// The evidence-pack genome's own code for this exact record (lib/offerDeskData.ts
+// step 2 -> lib/offerDeskEvidencePack.json's WU-OD-02, "Verify candidate
+// documents") -- the one real Work Unit code that IS Document check, once a
+// genome has been imported for this tenant.
+const DOCUMENT_CHECK_CODE = "WU-OD-02";
 
 export default function OfferDeskDocumentCheck() {
   const rec = DOCUMENT_CHECK_RECORD;
   const sheet = step2();
   const isGuest = useIsGuest();
+  const { keyClientId } = useCompany();
   const checkability = desiredConditionCheckability(rec);
+
+  // T3d-S / T3b-P: real VERDICT + real Work Unit data for WU-OD-02, if this
+  // tenant has imported one. Guest never attempts the call, same idiom as
+  // every other live read on this walk (OfferDeskWorkGraph.tsx).
+  const unitsApi = useApi<Page<WorkUnit>>(isGuest ? null : withClient("/work-units/", keyClientId));
+  const verdictsApi = useApi<Page<Verdict>>(isGuest ? null : withClient("/verdict/", keyClientId));
+  const matchedUnit = (unitsApi.data?.items ?? []).find((u) => u.code === DOCUMENT_CHECK_CODE) ?? null;
+  const matchedVerdict = matchedUnit
+    ? (verdictsApi.data?.items ?? []).find((v) => v.work_unit_id === matchedUnit.id) ?? null
+    : null;
+  const scenario = scenarioStrip(matchedVerdict);
+  const provenance = fieldProvenance(matchedUnit);
   const [items, setItems] = useState<string[]>(MISSING_DOC_STARTER);
   const [draft, setDraft] = useState("");
   const [dualEmployment, setDualEmployment] = useState(true);
@@ -174,6 +198,60 @@ export default function OfferDeskDocumentCheck() {
 
       <div className="card" style={{ marginBottom: 16 }}>
         <h3>
+          Allocation scenarios{" "}
+          <InfoTooltip
+            term="S1 / S2 / S3"
+            simple="Three what-ifs on one real VERDICT score: S1 is the floor if this record's weakest scored property dominated, S2 is what VERDICT derives today, S3 is the ceiling if its strongest property dominated. All three still obey the same hard gates — a ceiling cannot outrun evidence or compliance."
+            technical="Replays verdict.py's base_level()/apply_hard_gates() against min/mean/max of the same seven real property scores (frontend/src/lib/offerDeskScenarios.ts) — not a second scoring engine, and not a fabricated number."
+          />
+        </h3>
+        {isGuest ? (
+          <p className="hint" style={{ marginBottom: 0 }}>
+            Guest: this reads a real, signed-in tenant's VERDICT score — not fabricated for guest viewing.
+          </p>
+        ) : !scenario.scored ? (
+          <p className="hint" style={{ marginBottom: 0 }}>
+            {matchedUnit ? (
+              <>
+                Not scored — {DOCUMENT_CHECK_CODE} exists but no VERDICT score has been recorded for it yet.{" "}
+                <Link to="/verdict">Score it on the Verdict page →</Link>
+              </>
+            ) : (
+              <>
+                Not scored — no real Work Unit exists for this record yet.{" "}
+                <Link to="/scout/offer-desk/evidence-pack">Import the evidence pack →</Link> to create {DOCUMENT_CHECK_CODE}.
+              </>
+            )}
+          </p>
+        ) : (
+          <>
+            <div className="metrics" style={{ marginBottom: 12 }}>
+              <div className="metric">
+                <div className="n">L{scenario.s1Floor.level}</div>
+                <div className="l">S1 floor — {scenario.s1Floor.allocation}</div>
+              </div>
+              <div className="metric">
+                <div className="n">L{scenario.s2Derived.level}</div>
+                <div className="l">S2 derived — {scenario.s2Derived.allocation}</div>
+              </div>
+              <div className="metric">
+                <div className="n">L{scenario.s3Ceiling.level}</div>
+                <div className="l">S3 ceiling — {scenario.s3Ceiling.allocation}</div>
+              </div>
+            </div>
+            <p className="hint" style={{ marginBottom: 0 }}>
+              {scenario.appliedGates.length > 0
+                ? `Hard gates hold at every scenario (${scenario.appliedGates.join(", ")}) — S3 cannot rise past what they allow.`
+                : "No VERDICT hard gate caps this unit today."}{" "}
+              Appetite never lifts the dual-employment stop above, at any of the three — that stop is not part of
+              VERDICT's own gates and nothing here wires around it. Release offer stays disabled regardless of S3.
+            </p>
+          </>
+        )}
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3>
           Verification spec{" "}
           <InfoTooltip
             term="Verification spec"
@@ -246,6 +324,56 @@ export default function OfferDeskDocumentCheck() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
+        <h3>
+          Field provenance{" "}
+          <InfoTooltip
+            term="Field provenance"
+            simple="How many of this record's contract attributes are actually filled in, and what real source they're attributed to — observed, declared, inferred, or designed. Not a hardcoded example count."
+            technical="services/contract.py::missing_attributes' complement (16 of the 18 contract attributes — #15 dependencies and #17 regulatory register link are tracked separately, not scalar-checked there), attributed to this unit's own real WorkUnit.provenance value. One provenance value per unit today, not per field, so every other source-type bucket is a real, not padded, zero."
+          />
+        </h3>
+        {isGuest ? (
+          <p className="hint" style={{ marginBottom: 0 }}>
+            Guest: educational copy only — no fake counts from Client A. A signed-in tenant's real Work Unit is what
+            this would count.
+          </p>
+        ) : !provenance.scored ? (
+          <p className="hint" style={{ marginBottom: 0 }}>
+            Not scored — no real Work Unit exists for this record yet.{" "}
+            <Link to="/scout/offer-desk/evidence-pack">Import the evidence pack →</Link> to create {DOCUMENT_CHECK_CODE}.
+          </p>
+        ) : (
+          <>
+            <div className="metrics" style={{ marginBottom: 12 }}>
+              <div className="metric">
+                <div className="n">{provenance.counts.observed}</div>
+                <div className="l">Observed</div>
+              </div>
+              <div className="metric">
+                <div className="n">{provenance.counts.declared}</div>
+                <div className="l">Declared</div>
+              </div>
+              <div className="metric">
+                <div className="n">{provenance.counts.inferred}</div>
+                <div className="l">Inferred</div>
+              </div>
+              <div className="metric">
+                <div className="n">{provenance.counts.designed}</div>
+                <div className="l">Designed</div>
+              </div>
+            </div>
+            <p className="hint" style={{ marginBottom: 0 }}>
+              {provenance.notYetProvided.length === 0
+                ? `All ${provenance.checkedAttributeCount} checked attributes are provided.`
+                : `${provenance.notYetProvided.length} of ${provenance.checkedAttributeCount} checked attributes not yet provided: ${provenance.notYetProvided.join(", ")}.`}{" "}
+              #15 dependencies and #17 regulatory register link are tracked separately (Work Graph, regulatory entry),
+              not counted here.
+            </p>
+          </>
+        )}
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
         <h3>What would clear this</h3>
         <p style={{ fontSize: 13, marginBottom: 0 }}>
           Nothing, on purpose — this screen has no evidence-upload button for the dual-employment stop itself, unlike
@@ -257,10 +385,10 @@ export default function OfferDeskDocumentCheck() {
       </div>
 
       <IoPanes
-        given={`Sheet step ${rec.sheetStep} and the hire-type checklist language.`}
-        understood="Missing documents are a list. Dual employment is a veto. Those are different."
-        processed="Helper may draft the list in the browser. Release is not wired. No agent autonomy."
-        output="A list you can edit. A disabled release. A stop that appetite does not lift."
+        given={`Sheet step ${rec.sheetStep}, the hire-type checklist language, and — once imported — ${DOCUMENT_CHECK_CODE}'s real VERDICT score and contract fields.`}
+        understood="Missing documents are a list. Dual employment is a veto. Those are different. Scenarios and provenance describe the record; neither one is a release switch."
+        processed="Helper may draft the list in the browser. Release is not wired. No agent autonomy. S1/S2/S3 replay VERDICT's own gate math; field provenance reads real contract completeness — both read-only, both 'not scored' when no real data exists."
+        output="A list you can edit. A disabled release. A stop that appetite does not lift, at any scenario."
       />
 
       <p style={{ marginTop: 20 }}>

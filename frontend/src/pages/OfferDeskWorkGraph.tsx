@@ -7,7 +7,8 @@ import { useCompany } from "../company";
 import { useIsGuest } from "../lib/guestMode";
 import { withClient } from "../lib/withClient";
 import { OFFER_DESK_SAMPLE_ROWS } from "../lib/offerDeskData";
-import type { GraphProjection } from "../types";
+import { scenarioStrip } from "../lib/offerDeskScenarios";
+import type { GraphProjection, Page, Verdict } from "../types";
 
 /** WU-OD- is the evidence-pack genome's own code prefix (lib/offerDeskEvidencePack.json,
  * the only place it's used in this codebase) -- filters a tenant's whole Work
@@ -23,6 +24,10 @@ export default function OfferDeskWorkGraph() {
   const { data, loading, error } = useApi<GraphProjection>(
     isGuest ? null : withClient("/projections/work-graph", keyClientId),
   );
+  // T3d-S "(Offer Desk units if cheap)": reuses the same real fetch idiom
+  // as the strip on Document check, one line per unit, "not scored" when
+  // no VerdictScore row exists rather than a fabricated allocation.
+  const verdicts = useApi<Page<Verdict>>(isGuest ? null : withClient("/verdict/", keyClientId));
 
   const nodes = (data?.nodes ?? []).filter((n) => isOfferDeskCode(n.code));
   const nodeIds = new Set(nodes.map((n) => n.id));
@@ -106,7 +111,15 @@ export default function OfferDeskWorkGraph() {
                     <div>
                       <strong>{n.code}</strong> · {n.name}
                     </div>
-                    <span className="hint">{n.business_object ?? "—"}</span>
+                    <span className="hint">
+                      {n.business_object ?? "—"}
+                      {" · "}
+                      {(() => {
+                        const v = (verdicts.data?.items ?? []).find((row) => row.work_unit_id === n.id);
+                        const s = scenarioStrip(v ?? null);
+                        return s.scored ? `VERDICT L${s.s2Derived.level} (${s.s2Derived.allocation})` : "VERDICT not scored";
+                      })()}
+                    </span>
                   </div>
                   {next && (
                     <div
