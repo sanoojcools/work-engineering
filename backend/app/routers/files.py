@@ -13,7 +13,11 @@ from pathlib import PurePosixPath
 from fastapi import APIRouter, HTTPException, UploadFile, status
 
 from ..dependencies import OrgKeyDep, TenantDbDep
-from ..models.security import ReviewQueueItem, ReviewQueueStatus, UploadedFile
+from ..models.ontology import EntityType
+from ..models.security import ReviewQueueItem, ReviewQueueStatus, UploadedFile, WorkUnitProvenanceDetail
+from ..models.workunit import WorkUnit
+from ..schemas.common import Page
+from ..schemas.files import FileBackingOut, UploadedFileOut
 from ..services.classifier import classify
 from ..services.genome_import import import_genome
 from ..services.lookup import get_or_404
@@ -24,6 +28,57 @@ router = APIRouter()
 # Explicit, documented, tested cap (playbook E.1.1) — not a silent drop.
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MiB
 ALLOWED_EXTENSIONS = {".csv", ".xlsx"}
+
+
+@router.get("", response_model=Page[UploadedFileOut])
+def list_files(db: TenantDbDep, key: OrgKeyDep) -> Page[UploadedFileOut]:
+    """F1: "files this tenant actually has," plus what each one backs (unit
+    code + a plain-language claim) -- or an explicit empty list when nothing
+    cites it. Two reads over existing tables, no new store, no new upload
+    path."""
+    files = (
+        db.query(UploadedFile)
+        .filter(UploadedFile.client_id == key.client_id)
+        .order_by(UploadedFile.id)
+        .all()
+    )
+    if not files:
+        return Page(total=0, items=[])
+
+    backing_rows = (
+        db.query(WorkUnitProvenanceDetail, WorkUnit, EntityType)
+        .join(WorkUnit, WorkUnitProvenanceDetail.work_unit_id == WorkUnit.id)
+        .join(EntityType, WorkUnit.business_object_type_id == EntityType.id)
+        .filter(WorkUnitProvenanceDetail.file_id.in_([f.id for f in files]))
+        .all()
+    )
+    backs_by_file: dict[int, list[FileBackingOut]] = {}
+    for prov, wu, entity_type in backing_rows:
+        backs_by_file.setdefault(prov.file_id, []).append(
+            FileBackingOut(
+                work_unit_code=wu.code,
+                business_object=entity_type.name,
+                claim=(
+                    f"{wu.name} — moves '{entity_type.name}' from "
+                    f"'{wu.current_condition}' to '{wu.desired_condition}'."
+                ),
+            )
+        )
+
+    items = [
+        UploadedFileOut(
+            id=f.id,
+            file_name=f.file_name,
+            sha256=f.sha256,
+            content_type=f.content_type,
+            size_bytes=f.size_bytes,
+            uploaded_by=f.uploaded_by,
+            uploaded_at=f.uploaded_at,
+            backs=backs_by_file.get(f.id, []),
+        )
+        for f in files
+    ]
+    return Page(total=len(items), items=items)
 
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)

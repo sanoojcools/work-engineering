@@ -36,12 +36,25 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows Offer 
   await page.getByRole("link", { name: "Next: Evidence →" }).click();
   await expect(page).toHaveURL(/\/census\/evidence$/);
   await expect(stepCount(page)).toContainText("3 of 6");
+  // F1: a real screen, not a link farm -- files this tenant actually has
+  // (empty, honestly, for a guest) and three registers with counts, all
+  // rendered with no key ever minted just by looking.
+  await expect(page.getByText("No files in this walk")).toBeVisible();
+  await expect(page.getByText("Missing").first()).toBeVisible();
+  await expect(page.getByText("Uncertain").first()).toBeVisible();
+  await expect(page.getByText("Contradictory").first()).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 
   await page.getByRole("link", { name: "Next: Gap →" }).click();
   await expect(page).toHaveURL(/\/census\/gap$/);
   await expect(stepCount(page)).toContainText("4 of 6");
   // Guest sees the four illustrative gap rows, not a live fetch.
   await expect(page.getByText("What the work is")).toBeVisible();
+  // F2: journey-wide additions -- Head vs doer schematic, and an explicit
+  // no-coverage-percentage statement (never a fake measured-vs-declared KPI).
+  await expect(page.getByText("Head vs doer")).toBeVisible();
+  await expect(page.getByText(/There is no "coverage" number on this page/)).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 
   await page.getByRole("link", { name: "Next: Work Chart →" }).click();
   await expect(page).toHaveURL(/\/census\/chart$/);
@@ -188,4 +201,49 @@ test("Spec deny without a file still denies", async ({ page, request }) => {
 
   await expect(page.getByText(/HTTP 200 · denied/)).toBeVisible();
   await expect(page.getByText("evidence_ref required by contract").first()).toBeVisible();
+});
+
+test("keyed Evidence lists this tenant's real uploaded files and what each one backs", async ({ page, request }) => {
+  // 7 sequential real file uploads + a genome import comfortably exceed the
+  // suite's default 30s per-test budget.
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+
+  // Real upload + real genome import -- the one path in this walk that
+  // clears the quality gate (see OfferDeskEvidencePack.tsx). 9 of its 11
+  // Work Units cite one of the 7 uploaded files; uan-service-history-sample.csv
+  // is uploaded but cited by none, on purpose (offerDeskEvidencePack.json).
+  await page.goto("/scout/offer-desk/evidence-pack");
+  await page.getByRole("button", { name: "Load the evidence pack & import" }).click();
+  const importBanner = page.locator(".banner").first();
+  await expect(importBanner).toBeVisible({ timeout: 30_000 });
+  // Client A is the same singleton tenant every demo bootstrap reuses (see
+  // the Ratify test's own comment above) -- against a Postgres that already
+  // ran this exact test, WU-OD-01..11 already exist and POST /genome/import
+  // correctly refuses to re-import them (work_unit_id_already_exists), same
+  // as test_genome_import_conflicts.py proves at the API level. Either
+  // outcome still uploads these 7 files for real this run; only a fresh
+  // "Accepted." also writes brand-new provenance rows for them.
+  const bannerText = await importBanner.innerText();
+  expect(bannerText, bannerText).toMatch(/Accepted\.|Not accepted\./);
+
+  await page.goto("/census/evidence");
+  await expect(page.getByRole("heading", { name: "Evidence", exact: false }).first()).toBeVisible();
+
+  const filesTable = page.locator(".table-wrap").first();
+  // This run's own 7 uploads are real either way.
+  await expect(filesTable.getByText("zwayam-candidate-export.csv").first()).toBeVisible();
+  // Some file on this tenant backs a real Offer Desk unit with a real code +
+  // plain-word claim -- from this run if the import was freshly accepted,
+  // or from whichever earlier run first seeded this tenant otherwise.
+  await expect(filesTable.getByText(/WU-OD-\d+/).first()).toBeVisible();
+  // uan-service-history-sample.csv is never cited by this fixture's own
+  // provenance map, on every run -- says so, honestly, instead of a blank
+  // cell (.first() only guards against a warm tenant holding one such row
+  // per earlier run; the property being checked is the same on all of them).
+  const orphanRow = filesTable.locator("tr", { has: page.getByText("uan-service-history-sample.csv") }).first();
+  await expect(orphanRow.getByText("Backs nothing yet.")).toBeVisible();
+
+  // Real conformance-gap counts, not the guest's illustrative four rows.
+  await expect(page.getByText(/Read from this tenant's own conformance gaps/)).toBeVisible();
 });
