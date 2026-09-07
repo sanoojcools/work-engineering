@@ -3,7 +3,7 @@
 Architecture map = WEP System Architecture (boxes 1–6).
 **Bet:** tighten 3a–3e on Offer Desk. Do not fill Box 1/2/4/6 with theatre.
 
-**Founder 6 Sep:** 6.2 (Render backup) and 5.0 (Finance/Legal) **deferred to 2026-09-30**. Keep both **open**. Do not pay, do not invent catalogs. **TIGHT-3D shipped 7 Sep. HR-FAMILY (VERDICT-CARD + 5-desk HR family) shipped 7 Sep, founder-authorized directly, not blocked on 6.2/4.0/3.0/5.0** — it adds no login, no execution, no new backend surface, so it does not touch what those four are gating. **FAMILY-GENOME (VERDICT write fix + one declared family genome across all six desks) shipped 7 Sep**, same authorization — one backend service function fixed (a real 500-under-load bug, plus the frontend key bug HR-FAMILY's own entry already named), no new endpoint, no login, no execution. Next unlocked build = none until 6.2 / 4.0 / 3.0 / 5.0 are answered.
+**Founder 6 Sep:** 6.2 (Render backup) and 5.0 (Finance/Legal) **deferred to 2026-09-30**. Keep both **open**. Do not pay, do not invent catalogs. **TIGHT-3D shipped 7 Sep. HR-FAMILY (VERDICT-CARD + 5-desk HR family) shipped 7 Sep, founder-authorized directly, not blocked on 6.2/4.0/3.0/5.0** — it adds no login, no execution, no new backend surface, so it does not touch what those four are gating. **FAMILY-GENOME (VERDICT write fix + one declared family genome across all six desks) shipped 7 Sep**, same authorization — one backend service function fixed (a real 500-under-load bug, plus the frontend key bug HR-FAMILY's own entry already named), no new endpoint, no login, no execution. **OBJECTS-HOURS (Box-1-lite object cards + declared hours-by-desk panel) shipped 7 Sep**, same authorization, frontend only — zero backend files touched. Next unlocked build = none until 6.2 / 4.0 / 3.0 / 5.0 are answered.
 
 ---
 
@@ -11,6 +11,7 @@ Architecture map = WEP System Architecture (boxes 1–6).
 
 | ID | Box / joint | Status | Who | Done when |
 |---|---|---|---|---|
+| **OBJECTS-HOURS** | **Box 1 lite object cards + 3e hours honesty** | **SHIPPED** | Claude, one PR | See below |
 | **FAMILY-GENOME** | **VERDICT write fix + one declared family genome (3b/3d)** | **SHIPPED** | Claude, one PR | See below |
 | **HR-FAMILY** | **VERDICT-CARD (3d) + 5-desk HR family** | **SHIPPED** | Claude, one PR | See below |
 | **TIGHT-3D** | **3d scenarios + 3b field provenance** | **SHIPPED** | Claude, one PR | See below |
@@ -25,7 +26,21 @@ Architecture map = WEP System Architecture (boxes 1–6).
 
 ### Shipped (do not reopen)
 
-Guest Hours · Gap live · Gates 6/9/10 · HR pack · consent UI · health 503 · **TIGHT-WEDGE** (unit card, 11 sequence edges, verification spec, cannot-see, INTENT_CONTRACT.md, 95/61.8) · **TIGHT-3D** (S1/S2/S3 scenario strip + field-provenance strip on Document check, gate-capped, not-scored honestly) · **HR-FAMILY** (VERDICT-CARD on Document check; Onboarding/Offboarding/Vendor Mgmt/US HR/HRBP desks from the real May 2026 T&M sittings; HR function graph with the 3 sheet-named cross-desk handoffs) · **FAMILY-GENOME** (VERDICT write 500-under-load fix + `api.ts` missing `X-Spec-Key` fix; one 95-unit declared family genome across all six desks, GQS-gate-honest at 30/90; keyed function graph reads the genome payload)
+Guest Hours · Gap live · Gates 6/9/10 · HR pack · consent UI · health 503 · **TIGHT-WEDGE** (unit card, 11 sequence edges, verification spec, cannot-see, INTENT_CONTRACT.md, 95/61.8) · **TIGHT-3D** (S1/S2/S3 scenario strip + field-provenance strip on Document check, gate-capped, not-scored honestly) · **HR-FAMILY** (VERDICT-CARD on Document check; Onboarding/Offboarding/Vendor Mgmt/US HR/HRBP desks from the real May 2026 T&M sittings; HR function graph with the 3 sheet-named cross-desk handoffs) · **FAMILY-GENOME** (VERDICT write 500-under-load fix + `api.ts` missing `X-Spec-Key` fix; one 95-unit declared family genome across all six desks, GQS-gate-honest at 30/90; keyed function graph reads the genome payload) · **OBJECTS-HOURS** (three Box-1-lite object cards — Employee/Offer/Contractor — wired to real desks/units and clickable from the function graph; declared hours-by-desk panel summing all six sheets' own stated figures, labelled stated not defended; Offer Desk's own 95/61.8 untouched)
+
+---
+
+## OBJECTS-HOURS (shipped)
+
+One PR, frontend only. Box 1 lite (reference cards, not the real Ontology backend) plus 3e hours honesty across the whole family. FAMILY-GENOME not reopened.
+
+**A. Object cards.** Three cards — Employee, Offer, Contractor — each with name, type, current condition in everyday words (paraphrased from the contributing desks' own `outcome` fields), which desks/units reference it (real `WU-*` codes read from `familyGenome.ts`), and as-of sitting date(s), all declared. Wiring is exactly the brief's: Offer Desk → Offer; Onboarding/Offboarding/HRBP → Employee; Vendor Mgmt + Offer Desk's own contractor-labeled steps (`WU-OD-002/004/005`, found by scanning real step text for the sheet's own `CONTRACTOR:` branches) → Contractor. US HR is deliberately left unwired. Function graph: every desk node and every one of the three handoff cards gets an added "→ object card" link — additional to, not a replacement for, each desk's existing click-to-walk-page link.
+
+**B. Function hours.** One panel, all six desks' own declared `hrs/mo` figure (same sourcing Offer Desk's own 95 already uses — `DeskSpec.totalEstimatedSavings`, verbatim), summed and labelled "stated across sittings, not defended." Offer Desk's own Hours page (95 vs 61.8) is untouched; no defended figure is invented for any other desk. No workforce simulator.
+
+**C. Walk.** Keyed: family genome import (still GQS 30/90) → function graph → Employee object card → function hours panel, all real click-throughs. Guest sees the same object cards and hours panel (no tenant data involved) plus unchanged Hours 95/61.8.
+
+Refused, unchanged: WorkOS, Finance, observed packs, Darwinbox APIs, extra edge types, Box 4, buying Render, a real Ontology backend (Box 1 stays later/refuse).
 
 ---
 

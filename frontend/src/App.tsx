@@ -14,7 +14,9 @@ import Genome from "./pages/Genome";
 import GenomeVersions from "./pages/GenomeVersions";
 import HrFamilyGenome from "./pages/HrFamilyGenome";
 import HrFunctionGraph from "./pages/HrFunctionGraph";
+import HrFunctionHours from "./pages/HrFunctionHours";
 import HrMap from "./pages/HrMap";
+import HrObjectCard from "./pages/HrObjectCard";
 import HrOps from "./pages/HrOps";
 import NotFound from "./pages/NotFound";
 import OfferDesk from "./pages/OfferDesk";
@@ -60,6 +62,8 @@ export default function App() {
           <Route path="/hr/hrbp" element={<DeskHrbp />} />
           <Route path="/hr/function-graph" element={<HrFunctionGraph />} />
           <Route path="/hr/family-genome" element={<HrFamilyGenome />} />
+          <Route path="/hr/objects/:objectId" element={<HrObjectCard />} />
+          <Route path="/hr/function-hours" element={<HrFunctionHours />} />
           <Route path="/overview" element={<Overview />} />
           <Route path="/ontology" element={<Ontology />} />
           <Route path="/work-units" element={<WorkUnits />} />
