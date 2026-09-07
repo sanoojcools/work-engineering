@@ -480,6 +480,18 @@ export type ModerationEntry = {
   created_at: string;
 };
 
+// P2 (docs/BUILD_PROGRAM.md CENSUS-PACK), GET /api/spec/handoff/{code}.
+// Mirrors backend/app/schemas/handoff.py::HandoffOut.
+export type HandoffOut = {
+  work_unit_code: string;
+  ready: boolean;
+  reasons: string[];
+  verification_method: string | null;
+  gates: string[] | null;
+  dual_employment_stop_required: boolean;
+  bundle: WorkUnit | null;
+};
+
 // Slice 2.1: consent receipts, POST /api/consent/receipts. Mirrors
 // backend/app/schemas/consent.py::ConsentReceiptOut.
 export type ConsentReceipt = {

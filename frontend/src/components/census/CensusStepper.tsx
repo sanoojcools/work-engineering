@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { DownloadCensusButton } from "./DownloadCensusButton";
 
 /** The Work Census shell's own six steps (docs/BUILD_PROGRAM.md CENSUS-v0
  * Part A) -- Home IS step 1, not a separate landing page ahead of it. Reuses
@@ -44,6 +45,7 @@ export function CensusStepper() {
       <div className="progress-count">
         Work Census · {current < 0 ? "?" : current + 1} of {CENSUS_STEPS.length}
       </div>
+      <DownloadCensusButton compact />
     </div>
   );
 }

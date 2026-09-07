@@ -3,22 +3,12 @@ import { CensusStepper } from "../components/census/CensusStepper";
 import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
 import { DOCUMENT_CHECK_RECORD } from "../lib/offerDeskWorkRecord";
-import { REGISTERS, REGISTER_COPY, countRegisters, type GapRegister } from "../lib/gapRegisters";
+import { GUEST_REGISTER_COUNTS, REGISTERS, REGISTER_COPY, countRegisters } from "../lib/gapRegisters";
 import { useApi } from "../hooks";
 import { useIsGuest } from "../lib/guestMode";
 import { withClient } from "../lib/withClient";
 import { useCompany } from "../company";
 import type { Gap, Page, UploadedFileOut } from "../types";
-
-/** Guest has no tenant, so these three counts replay the same four
- * illustrative declared-vs-sitting rows already used on Gap (GAP_ROWS in
- * offerDeskWorkRecord.ts) -- not a live query, not a second illustrative
- * set invented for this page. "What the work is" and "Document check" both
- * describe detail the sitting holds that the declared/upstairs sentence
- * never named (missing); "System of record" is a direct disagreement about
- * which system holds truth (contradictory); "Hours saved" is two numbers
- * for the same month with no single settled figure (uncertain). */
-const GUEST_REGISTER_COUNTS: Record<GapRegister, number> = { missing: 2, uncertain: 1, contradictory: 1 };
 
 function FilesSection() {
   const isGuest = useIsGuest();

@@ -16,7 +16,10 @@ import type { ScenarioStrip } from "../lib/offerDeskScenarios";
 import { DOCUMENT_CHECK_RECORD } from "../lib/offerDeskWorkRecord";
 import { LANE_DESK_IDS, buildRows, type ChartRow, type LaneDeskId } from "../lib/workSystemUnits";
 import { createModerationEntry, listModerationEntries } from "../lib/moderation";
-import type { ModerationEntry, Page, Verdict, WorkUnit } from "../types";
+import { fetchHandoffBundle, unitReadiness, type Readiness } from "../lib/handoffReadiness";
+import { GQS_REMINDER_BOLD, GQS_REMINDER_POST, GQS_REMINDER_PRE } from "../lib/censusExport";
+import { DownloadCensusButton } from "../components/census/DownloadCensusButton";
+import type { HandoffOut, ModerationEntry, Page, Verdict, WorkUnit } from "../types";
 
 // The Document check unit's own real code (OfferDeskDocumentCheck.tsx's
 // DOCUMENT_CHECK_CODE, offerDeskEvidencePack.json's WU-OD-02) -- reused here
@@ -38,6 +41,18 @@ function scenarioCell(strip: ScenarioStrip) {
   );
 }
 
+function handoffCell(readiness: Readiness) {
+  if (readiness.ready) {
+    return <span className="badge ok">Ready</span>;
+  }
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <span className="badge">Not ready</span>
+      <InfoTooltip term="Not ready" simple={readiness.reasons.join(" ")} />
+    </span>
+  );
+}
+
 function UnitsLane({ deskId, units, verdicts }: { deskId: LaneDeskId; units: WorkUnit[]; verdicts: Verdict[] }) {
   const desk = DESKS_BY_ID[deskId];
   const rows: ChartRow[] = useMemo(() => buildRows(deskId, desk, units, verdicts), [deskId, desk, units, verdicts]);
@@ -50,8 +65,98 @@ function UnitsLane({ deskId, units, verdicts }: { deskId: LaneDeskId; units: Wor
           { key: "code", header: "Code", render: (r) => <code style={{ fontSize: 12 }}>{r.displayCode}</code> },
           { key: "name", header: "Name" },
           { key: "scenarios", header: "VERDICT · S1 / S2 / S3", render: (r) => scenarioCell(r.strip) },
+          { key: "handoff", header: "Handoff", render: (r) => handoffCell(unitReadiness(r.matched, r.verdict)) },
         ]}
       />
+    </div>
+  );
+}
+
+/** P2 (docs/BUILD_PROGRAM.md CENSUS-PACK): the one explicit "check the real
+ * bundle" action -- unitReadiness() above replays services/handoff.py so
+ * every row can show Ready/Not-ready without a round trip, but this button
+ * hits the real GET /spec/handoff/{code} so a visitor can see the server's
+ * own refusal, not just this replay. Guest: explain, never fake allow --
+ * no button, no live check, just the rule. */
+function HandoffBundleCheck({ units, verdicts }: { units: WorkUnit[]; verdicts: Verdict[] }) {
+  const isGuest = useIsGuest();
+  const matchedRows = useMemo(
+    () => LANE_DESK_IDS.flatMap((id) => buildRows(id, DESKS_BY_ID[id], units, verdicts)).filter((r) => r.matched),
+    [units, verdicts],
+  );
+  const options = matchedRows.length > 0 ? matchedRows.map((r) => r.displayCode) : [FALLBACK_UNIT_CODE];
+  const [code, setCode] = useState(options[0]);
+  const [checking, setChecking] = useState(false);
+  const [needsKey, setNeedsKey] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<HandoffOut | null>(null);
+
+  useEffect(() => {
+    if (!options.includes(code)) setCode(options[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options.join("|")]);
+
+  async function check() {
+    setChecking(true);
+    setError(null);
+    setResult(null);
+    try {
+      setResult(await fetchHandoffBundle(code.trim()));
+    } catch (err) {
+      if (err instanceof NeedsApiKeyError) setNeedsKey(true);
+      else setError(err instanceof Error ? err.message : "Could not reach the handoff endpoint");
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <h3 style={{ marginTop: 0 }}>
+        Handoff completeness{" "}
+        <InfoTooltip
+          term="Handoff"
+          simple="A unit is ready to hand off only if a real record exists, it names a verification method, VERDICT has scored it (so its hard gates are known -- an empty list is fine, no score is not), and, where the sheet requires it, the dual-employment stop is still stated on the record. This does not execute the unit or send it to an agent -- it only answers whether the record is complete enough to."
+          technical="GET /spec/handoff/{code}. Same 200-with-a-verdict-in-the-body idiom as POST /spec/check's own allow/deny -- a not-ready unit is refused (bundle: null, a stated reason), not silently allowed."
+        />
+      </h3>
+      {isGuest ? (
+        <p className="hint" style={{ marginBottom: 0 }}>
+          Guest: the rule above is real, but there is nothing real to check it against — a guest sitting has no
+          tenant, so every unit on this walk reads Not ready by construction, never a fake allow. Sign in to check a
+          real unit's bundle.
+        </p>
+      ) : (
+        <>
+          {needsKey && <ApiKeyBanner onSaved={() => setNeedsKey(false)} />}
+          {error && <div className="banner error">{error}</div>}
+          <div className="toolbar" style={{ marginBottom: 10 }}>
+            <select value={code} onChange={(e) => setCode(e.target.value)} aria-label="Handoff — Work Unit code">
+              {options.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <button type="button" disabled={checking} onClick={() => void check()}>
+              {checking ? "Checking…" : "Check handoff bundle"}
+            </button>
+          </div>
+          {result && (
+            <>
+              <p style={{ fontSize: 13, margin: "0 0 8px" }}>
+                <span className={`badge ${result.ready ? "ok" : ""}`}>{result.ready ? "Ready" : "Not ready"}</span>{" "}
+                {result.ready
+                  ? "-- JSON bundle below."
+                  : `-- refused: ${result.reasons.join(" ")}`}
+              </p>
+              <pre style={{ fontSize: 12, overflowX: "auto", background: "var(--panel)", padding: 10, margin: 0 }}>
+                {JSON.stringify(result, null, 2)}
+              </pre>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -330,6 +435,8 @@ export default function CensusPlan() {
 
       <ModerationSection units={units} verdicts={verdicts} />
 
+      <HandoffBundleCheck units={units} verdicts={verdicts} />
+
       <div className="card" style={{ marginBottom: 16, borderColor: "#b8860b" }}>
         <h3 style={{ marginTop: 0 }}>
           Quality gate reminder{" "}
@@ -339,11 +446,25 @@ export default function CensusPlan() {
           />
         </h3>
         <p style={{ fontSize: 13, margin: 0 }}>
-          The family genome (all six desks, declared) is expected to fail GQS — around 30 of the 90-point gate,
-          because Observed% is structurally 0 with no system-of-record connector behind it.{" "}
-          <strong>~30/90 is not a pass.</strong> Planning against it as if it were governed would misrepresent what
-          the gate actually found. <Link to="/hr/family-genome">See the live GQS score →</Link>
+          {GQS_REMINDER_PRE} <strong>{GQS_REMINDER_BOLD}</strong> {GQS_REMINDER_POST}{" "}
+          <Link to="/hr/family-genome">See the live GQS score →</Link>
         </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3 style={{ marginTop: 0 }}>
+          Download census{" "}
+          <InfoTooltip
+            term="Census export"
+            simple="One markdown file: scope, intent, evidence health, gap, chart snapshot, plan, and open questions/repair list -- assembled from exactly what this screen (and Evidence, Gap, Work Chart) already show, live. No invented numbers; a guest gets the same declared-schematic this walk already shows a guest."
+          />
+        </h3>
+        <p style={{ fontSize: 13 }}>
+          The thing a CHRO forwards: {DOCUMENT_CHECK_RECORD.declaredHours} and {DOCUMENT_CHECK_RECORD.defendedHours}{" "}
+          both stated, the dual-employment stop restated, the family GQS reminder above, and — where a unit is not
+          ready to hand off — the reason, not a fake allow.
+        </p>
+        <DownloadCensusButton />
       </div>
 
       <IoPanes
