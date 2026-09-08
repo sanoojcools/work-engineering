@@ -1,5 +1,6 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 /** CENSUS-v0's five required scenarios (docs/BUILD_PROGRAM.md, "Playwright
@@ -25,7 +26,10 @@ function stepCount(page: Page) {
   return page.locator(".progress-count");
 }
 
-const CLAIMS_XLSX = join(process.cwd(), "e2e", "fixtures", "offer-pack-claims.xlsx");
+const CLAIMS_XLSX = join(fileURLToPath(new URL(".", import.meta.url)), "fixtures", "offer-pack-claims.xlsx");
+/** Vite preview's /api proxy can drop Playwright multipart bodies; seed
+ * against uvicorn directly. JSON walks still use the page's /api proxy. */
+const BACKEND = process.env.PLAYWRIGHT_API_ORIGIN || "http://127.0.0.1:8000";
 
 /** Seed one Work Unit + an XLSX pointer (and a broken / composed / binding
  * sibling) through the real API so Evidence can click them. Unique code so
@@ -36,13 +40,16 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
   fileName: string;
   cell: string;
 }> {
+  expect(existsSync(CLAIMS_XLSX), CLAIMS_XLSX).toBe(true);
+  expect(statSync(CLAIMS_XLSX).size, CLAIMS_XLSX).toBeGreaterThan(1000);
+
   const headers = { "X-Spec-Key": apiKey };
-  const typesRes = await request.get("/api/ontology/types", { headers });
+  const typesRes = await request.get(`${BACKEND}/api/ontology/types`, { headers });
   expect(typesRes.ok(), await typesRes.text()).toBeTruthy();
   const types = (await typesRes.json()) as { items: { id: number; name: string; kind: string }[] };
   let typeId = types.items.find((t) => t.kind === "business_object")?.id;
   if (!typeId) {
-    const created = await request.post("/api/ontology/types", {
+    const created = await request.post(`${BACKEND}/api/ontology/types`, {
       headers,
       data: {
         name: "V10-2 Evidence UI Object",
@@ -55,7 +62,7 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
     if (created.status() === 201) {
       typeId = ((await created.json()) as { id: number }).id;
     } else {
-      const again = await request.get("/api/ontology/types", { headers });
+      const again = await request.get(`${BACKEND}/api/ontology/types`, { headers });
       const page = (await again.json()) as { items: { id: number; name: string }[] };
       typeId = page.items.find((t) => t.name === "V10-2 Evidence UI Object")?.id;
     }
@@ -63,7 +70,7 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
   expect(typeId).toBeTruthy();
 
   const code = `WU-V102-${Date.now().toString(36)}${Math.floor(Math.random() * 46656).toString(36)}`.slice(0, 40);
-  const wuRes = await request.post("/api/work-units/", {
+  const wuRes = await request.post(`${BACKEND}/api/work-units/`, {
     headers,
     data: {
       code,
@@ -88,7 +95,7 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
   const wuId = ((await wuRes.json()) as { id: number }).id;
 
   const fileName = "offer-pack-claims.xlsx";
-  const up = await request.post("/api/files/upload", {
+  const up = await request.post(`${BACKEND}/api/files/upload`, {
     headers,
     multipart: {
       file: {
@@ -103,16 +110,16 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
   const cell = "B2";
   const quote = "Offer pack waiting";
 
-  const observed = await request.post(`/api/work-units/${wuId}/pointers`, {
+  const observed = await request.post(`${BACKEND}/api/work-units/${wuId}/pointers`, {
     headers,
     data: { field_name: "trigger", status: "observed", file_id: fileId, cell },
   });
   expect(observed.ok(), await observed.text()).toBeTruthy();
-  const observedBody = (await observed.json()) as { status: string; resolved: boolean };
-  expect(observedBody.status).toBe("observed");
+  const observedBody = (await observed.json()) as { status: string; resolved: boolean; resolution_note?: string };
+  expect(observedBody.status, JSON.stringify(observedBody)).toBe("observed");
   expect(observedBody.resolved).toBe(true);
 
-  const broken = await request.post(`/api/work-units/${wuId}/pointers`, {
+  const broken = await request.post(`${BACKEND}/api/work-units/${wuId}/pointers`, {
     headers,
     data: { field_name: "inputs", status: "observed", file_id: fileId, cell: "Z99" },
   });
@@ -121,13 +128,13 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
   expect(brokenBody.status).toBe("predicted");
   expect(brokenBody.resolved).toBe(false);
 
-  const composed = await request.post(`/api/work-units/${wuId}/pointers`, {
+  const composed = await request.post(`${BACKEND}/api/work-units/${wuId}/pointers`, {
     headers,
     data: { field_name: "context", status: "composed" },
   });
   expect(composed.ok(), await composed.text()).toBeTruthy();
 
-  const binding = await request.post(`/api/work-units/${wuId}/pointers`, {
+  const binding = await request.post(`${BACKEND}/api/work-units/${wuId}/pointers`, {
     headers,
     data: { field_name: "authority", status: "declared", file_id: fileId, cell, quote },
   });
