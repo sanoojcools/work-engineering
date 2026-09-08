@@ -12,13 +12,20 @@ import { useApi } from "../hooks";
 import { withClient } from "../lib/withClient";
 import { DESKS_BY_ID } from "../lib/desks";
 import { deskHoursSummary } from "../lib/desks/functionHours";
-import type { ScenarioStrip } from "../lib/offerDeskScenarios";
 import { DOCUMENT_CHECK_RECORD } from "../lib/offerDeskWorkRecord";
 import { LANE_DESK_IDS, buildRows, type ChartRow, type LaneDeskId } from "../lib/workSystemUnits";
 import { createModerationEntry, listModerationEntries } from "../lib/moderation";
-import { fetchHandoffBundle, unitReadiness, type Readiness } from "../lib/handoffReadiness";
+import { fetchHandoffBundle } from "../lib/handoffReadiness";
 import { GQS_REMINDER_BOLD, GQS_REMINDER_POST, GQS_REMINDER_PRE } from "../lib/censusExport";
 import { DownloadCensusButton } from "../components/census/DownloadCensusButton";
+import { useWorkSystem } from "../lib/workSystem";
+import {
+  DUAL_TRACK_COPY,
+  measuredLabel,
+  usePlanOutcome,
+  usePlanVerify,
+  type PlanVerifyRow,
+} from "../lib/planVerify";
 import type { HandoffOut, ModerationEntry, Page, Verdict, WorkUnit } from "../types";
 
 // The Document check unit's own real code (OfferDeskDocumentCheck.tsx's
@@ -30,30 +37,25 @@ import type { HandoffOut, ModerationEntry, Page, Verdict, WorkUnit } from "../ty
 // same as every other "ask the API without a pass" moment on this walk.
 const FALLBACK_UNIT_CODE = "WU-OD-02";
 
-function scenarioCell(strip: ScenarioStrip) {
-  if (!strip.scored) return <span className="hint">not scored</span>;
+function verifyCell(text: string, testId: string) {
   return (
-    <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}>
-      <span className="badge">S1 L{strip.s1Floor.level}</span>
-      <span className="badge ok">S2 L{strip.s2Derived.level} (VERDICT)</span>
-      <span className="badge">S3 L{strip.s3Ceiling.level}</span>
+    <span className="hint" data-testid={testId} style={{ color: "var(--ink)" }}>
+      {text}
     </span>
   );
 }
 
-function handoffCell(readiness: Readiness) {
-  if (readiness.ready) {
-    return <span className="badge ok">Ready</span>;
-  }
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-      <span className="badge">Not ready</span>
-      <InfoTooltip term="Not ready" simple={readiness.reasons.join(" ")} />
-    </span>
-  );
-}
-
-function UnitsLane({ deskId, units, verdicts }: { deskId: LaneDeskId; units: WorkUnit[]; verdicts: Verdict[] }) {
+function UnitsLane({
+  deskId,
+  units,
+  verdicts,
+  verifyFor,
+}: {
+  deskId: LaneDeskId;
+  units: WorkUnit[];
+  verdicts: Verdict[];
+  verifyFor: (unit: WorkUnit | null) => PlanVerifyRow;
+}) {
   const desk = DESKS_BY_ID[deskId];
   const rows: ChartRow[] = useMemo(() => buildRows(deskId, desk, units, verdicts), [deskId, desk, units, verdicts]);
   return (
@@ -65,31 +67,49 @@ function UnitsLane({ deskId, units, verdicts }: { deskId: LaneDeskId; units: Wor
           { key: "code", header: "Code", render: (r) => <code style={{ fontSize: 12 }}>{r.displayCode}</code> },
           { key: "name", header: "Piece of work" },
           {
-            key: "scenarios",
+            key: "howSure",
             header: (
               <>
                 How sure we are{" "}
                 <InfoTooltip
-                  term="VERDICT"
-                  simple="Careful / as calculated / ambitious: floor, derived, ceiling — the same three numbers Document check already shows. Not scored means no real score exists yet."
-                  technical="scenarioStrip() S1 / S2 / S3. No new arithmetic on this page."
+                  term="Certification"
+                  simple="A person's stated confidence in this piece — sure, mostly sure, reported but not seen, or cannot define. A model guess cannot display as sure."
+                  technical="GET /work-units/{id}/certification. class=sure is hidden when any field pointer stands at predicted or composed — the same rule that 422s a sure write."
                 />
               </>
             ),
-            render: (r) => scenarioCell(r.strip),
+            render: (r) => {
+              const v = verifyFor(r.matched);
+              return verifyCell(v.howSure, `plan-how-sure-${r.displayCode}`);
+            },
           },
           {
-            key: "handoff",
+            key: "checkedBy",
             header: (
               <>
                 Checked by{" "}
                 <InfoTooltip
-                  term="Handoff"
-                  simple="Ready only if a real record exists, it names how it is checked, and VERDICT has scored it. Not ready is a missing check, not a pass."
+                  term="Verification design"
+                  simple="How this piece is supposed to be checked, when someone has said so. Not stated means no check is recorded yet — not a pass."
+                  technical="GET /work-units/{id}/verification-design · method."
                 />
               </>
             ),
-            render: (r) => handoffCell(unitReadiness(r.matched, r.verdict)),
+            render: (r) => verifyCell(verifyFor(r.matched).checkedBy, `plan-checked-by-${r.displayCode}`),
+          },
+          {
+            key: "independent",
+            header: (
+              <>
+                Independent?{" "}
+                <InfoTooltip
+                  term="Independence"
+                  simple="Whether the check is independent of the person who did the work. Not stated until someone records it. Offer-release and dual-employment pieces need a real independent check before handoff can be ready."
+                  technical="GET /work-units/{id}/verification-design · independent. Offer-release and dual-employment units are not ready when independent is no or not_stated."
+                />
+              </>
+            ),
+            render: (r) => verifyCell(verifyFor(r.matched).independent, `plan-independent-${r.displayCode}`),
           },
         ]}
       />
@@ -351,22 +371,24 @@ function ModerationSection({ units, verdicts }: { units: WorkUnit[]; verdicts: V
   );
 }
 
-/** CENSUS-v0 Part A, step 6, rebuilt for INTENT-PLAN (E -- PLAN): a real
- * screen, not a link farm. This journey's own units (VERDICT/S1-S2-S3),
- * the dual-employment stop restated, Spec deny still a link that still
- * denies without a file, Hours (95/61.8 both visible, other desks stated
- * only), a real logged Moderation control, and a quality-gate reminder. No
- * new arithmetic: every number here replays an existing module
- * (scenarioStrip, deskHoursSummary) or reads a real backend row. */
+/** CENSUS-v0 Part A, step 6, rebuilt for V10-3: live how-sure / checked-by /
+ * independent columns from verification_design + certification, plus one
+ * Outcome line (promised sitting sentence, measured = not measured). Hours
+ * 95/61.8 stay. No new arithmetic. */
 export default function CensusPlan() {
   const isGuest = useIsGuest();
   const { keyClientId } = useCompany();
+  const { workSystem, journey, loading: wsLoading, needsKey: wsNeedsKey, setNeedsKey: setWsNeedsKey } = useWorkSystem();
   const unitsApi = useApi<Page<WorkUnit>>(isGuest ? null : withClient("/work-units/", keyClientId));
   const verdictsApi = useApi<Page<Verdict>>(isGuest ? null : withClient("/verdict/", keyClientId));
   const units = unitsApi.data?.items ?? [];
   const verdicts = verdictsApi.data?.items ?? [];
+  const verify = usePlanVerify(units);
+  const { outcome, loading: outcomeLoading, needsKey: outcomeNeedsKey, setNeedsKey: setOutcomeNeedsKey } =
+    usePlanOutcome(workSystem?.id ?? null);
 
   const hoursRows = useMemo(() => deskHoursSummary().filter((r) => r.desk.id !== "offer-desk"), []);
+  const needsKey = wsNeedsKey || verify.needsKey || outcomeNeedsKey;
 
   return (
     <>
@@ -376,7 +398,7 @@ export default function CensusPlan() {
         Plan{" "}
         <InfoTooltip
           term="Plan"
-          simple="This journey's units with their real (or, for a guest, declared-schematic) VERDICT and S1/S2/S3, the dual-employment stop restated, Hours, a logged Moderation control, and the family-genome quality-gate reminder. No new scoring engine, no new hours math."
+          simple="This journey's pieces with how sure we are, who checks them, and whether that check is independent — plus the sitting outcome, Hours, a logged Moderation control, and the family-genome quality-gate reminder. No invented measured KPI."
         />
       </h2>
       <p className="lede">
@@ -384,18 +406,54 @@ export default function CensusPlan() {
         real row — nothing here is computed fresh for this screen.
       </p>
 
+      {needsKey && (
+        <ApiKeyBanner
+          onSaved={() => {
+            setWsNeedsKey(false);
+            verify.setNeedsKey(false);
+            setOutcomeNeedsKey(false);
+          }}
+        />
+      )}
+
+      <div className="card" style={{ marginBottom: 16 }} data-testid="plan-outcome">
+        <h3 style={{ marginTop: 0 }}>
+          Outcome{" "}
+          <InfoTooltip
+            term="Outcome record"
+            simple="What this journey promised, from the sitting, and what has actually been measured. Not measured means nobody has recorded a real number with a source — we do not invent one."
+            technical="GET /work-systems/{id}/outcome. Default status=not_measured, measured=null. Guest sees the sitting sentence and not measured; no 401 is faked into a KPI."
+          />
+        </h3>
+        {outcomeLoading && <p className="hint">Loading this journey's outcome record…</p>}
+        <p style={{ fontSize: 15, margin: "0 0 8px" }} data-testid="plan-outcome-promised">
+          <strong>Promised</strong> — {outcome.promised || journey.outcome}
+        </p>
+        <p style={{ fontSize: 15, margin: 0 }} data-testid="plan-outcome-measured">
+          <strong>Measured</strong> — {measuredLabel(outcome)}
+        </p>
+      </div>
+
       <h3 style={{ marginBottom: 4 }}>
         Pieces of work in this journey{" "}
         <InfoTooltip
           term="Work Unit"
-          simple="Each row is one piece of work. How sure we are, how we know it, and checked by are the customer labels; coined terms stay in the i-buttons."
+          simple="Each row is one piece of work. How sure we are, checked by, and independent? are the customer labels; coined terms stay in the i-buttons."
         />
       </h3>
-      {!isGuest && (unitsApi.loading || verdictsApi.loading) && (
-        <p className="hint">Loading this tenant's real Work Units and VERDICT scores…</p>
+      <p className="hint" style={{ marginTop: 0 }} data-testid="plan-dual-track">
+        {DUAL_TRACK_COPY}{" "}
+        <InfoTooltip
+          term="Dual-track"
+          simple="Someone else may do the work. A person still checks it. This never starts an agent."
+          technical="verification_designs.dual_track is structural and always true — not caller-set."
+        />
+      </p>
+      {!isGuest && (unitsApi.loading || verdictsApi.loading || wsLoading || verify.loading) && (
+        <p className="hint">Loading this tenant's real Work Units, checks, and how sure we are…</p>
       )}
       {LANE_DESK_IDS.map((deskId) => (
-        <UnitsLane key={deskId} deskId={deskId} units={units} verdicts={verdicts} />
+        <UnitsLane key={deskId} deskId={deskId} units={units} verdicts={verdicts} verifyFor={verify.forUnit} />
       ))}
 
       <div className="card" style={{ marginBottom: 16, borderColor: "var(--danger)" }}>
@@ -499,10 +557,10 @@ export default function CensusPlan() {
       </div>
 
       <IoPanes
-        given="Work Chart: the journey's two lanes, real or declared-schematic; this tenant's real Work Units and VERDICT scores."
-        understood="A plan restates real numbers, it does not invent a fourth one. Moderation logs an opinion about a scenario replay — it is not the VERDICT promotion ladder, and it cannot lift a hard gate."
-        processed="Same scenarioStrip() replay as Work Chart and Document check. Same deskHoursSummary() as the function-hours panel. Moderation is real: GET/POST /moderation, reason + name required server-side."
-        output={`${LANE_DESK_IDS.reduce((n, d) => n + DESKS_BY_ID[d].steps.length, 0)} units listed. ${DOCUMENT_CHECK_RECORD.declaredHours}/${DOCUMENT_CHECK_RECORD.defendedHours} hrs. Family genome ~30/90 — not a pass.`}
+        given="Work Chart: the journey's two lanes, real or declared-schematic; this tenant's real verification designs, certifications, and outcome record."
+        understood="How sure we are cannot read as sure while a claim is still predicted. Measured stays not measured until a real number and a source exist — never an invented KPI."
+        processed="GET /work-units/{id}/verification-design, GET /work-units/{id}/certification, GET /work-systems/{id}/outcome. Same deskHoursSummary() as the function-hours panel. Moderation is real: GET/POST /moderation, reason + name required server-side."
+        output={`${LANE_DESK_IDS.reduce((n, d) => n + DESKS_BY_ID[d].steps.length, 0)} units listed. Outcome not measured. ${DOCUMENT_CHECK_RECORD.declaredHours}/${DOCUMENT_CHECK_RECORD.defendedHours} hrs. Family genome ~30/90 — not a pass.`}
       />
 
       <p style={{ marginTop: 20 }}>

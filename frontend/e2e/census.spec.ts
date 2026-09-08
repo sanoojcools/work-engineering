@@ -166,6 +166,7 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await expect(page.getByTestId("census-copy-headings").getByText("How sure we are")).toBeVisible();
   await expect(page.getByTestId("census-copy-headings").getByText("How we know it")).toBeVisible();
   await expect(page.getByTestId("census-copy-headings").getByText("Checked by")).toBeVisible();
+  await expect(page.getByTestId("census-copy-headings").getByText("Independent?")).toBeVisible();
   await expect(page.getByTestId("census-copy-headings").getByText(/Careful \/ as calculated \/ ambitious/)).toBeVisible();
 
   // Guest Start does not mint a key and does not leave Scope.
@@ -235,9 +236,13 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await expect(page).toHaveURL(/\/census\/plan$/);
   await expect(stepCount(page)).toContainText("6 of 6");
   // E -- PLAN: 95/61.8 visible directly on Plan itself, not just behind a
-  // click through to the Hours page.
+  // click through to the Hours page. Outcome stays not measured — never 62%.
   await expect(page.getByText("95", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("61.8", { exact: true }).first()).toBeVisible();
+  await expect(page.getByTestId("plan-outcome-measured")).toHaveText(/not measured/);
+  await expect(page.getByTestId("plan-outcome")).not.toContainText("62%");
+  await expect(page.getByText("Independent?").first()).toBeVisible();
+  await expect(page.getByTestId("plan-how-sure-(step 1 — not imported)").first()).toHaveText("not stated");
   await expect(page.getByText(/~30\/90 is not a pass/)).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 });
@@ -272,6 +277,17 @@ test("Hours 95 declared / 61.8 defended still visible from Plan", async ({ page 
   await expect(page).toHaveURL(/\/scout\/offer-desk\/hours$/);
   await expect(page.getByText("95", { exact: true })).toBeVisible();
   await expect(page.getByText("61.8", { exact: true })).toBeVisible();
+});
+
+test("Plan shows not measured plus 95 and 61.8", async ({ page }) => {
+  await page.goto("/census/plan");
+  await expect(page.getByTestId("plan-outcome-measured")).toHaveText(/not measured/);
+  await expect(page.getByText("95", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("61.8", { exact: true }).first()).toBeVisible();
+  await expect(page.getByTestId("plan-outcome")).not.toContainText("62%");
+  await expect(page.getByTestId("plan-outcome-measured")).not.toContainText("62");
+  await expect(page.getByText("Independent?").first()).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 });
 
 test("Chart purpose strip shows draft intent", async ({ page }) => {
