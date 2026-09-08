@@ -1,0 +1,41 @@
+# Offer → Day-1 — 18 leaves. Declared from Rashmi sitting (offerDeskData.ts) + Raja v8.1 doc splits.
+# Cursor: render Chart from THIS file. Do not add a 19th leaf. Do not invent defended hours.
+# Hours: parent shares of Offer Desk stated 95 hrs/mo. 61.8 remains Offer Desk defended total on Plan, not per leaf.
+
+composite:
+  id: HIRE-COMPLETE
+  name: The hire is complete
+  work_system: offer-day1
+
+bands: [automate, augment, human, external]
+
+leaves:
+  - { id: WU-HIRE-01, name: Recruiter request received, parent: request, band: external, step: 1, note: Recruiter/Zwayam — outside the desk }
+  - { id: WU-HIRE-02, name: Documents present, parent: docs, band: automate, step: 2, raja: present }
+  - { id: WU-HIRE-03, name: Documents consistent, parent: docs, band: augment, step: 2, raja: consistent }
+  - { id: WU-HIRE-04, name: Identity matches, parent: docs, band: augment, step: 2, raja: identity }
+  - { id: WU-HIRE-05, name: Dual employment / integrity, parent: docs, band: human, step: 2, raja: integrity, stop: dual_employment }
+  - { id: WU-HIRE-06, name: Salary vs grid, parent: fitment, band: automate, step: 3 }
+  - { id: WU-HIRE-07, name: Variable-pay rule, parent: fitment, band: automate, step: 3 }
+  - { id: WU-HIRE-08, name: Master joining sheet, parent: trackers, band: automate, step: 4 }
+  - { id: WU-HIRE-09, name: Contractor PR sheet, parent: trackers, band: augment, step: 4 }
+  - { id: WU-HIRE-10, name: Offer clauses, parent: offer, band: augment, step: 5, raja: clauses }
+  - { id: WU-HIRE-11, name: Offer signed in window, parent: offer, band: augment, step: 5, raja: signed_in_window }
+  - { id: WU-HIRE-12, name: Vendor letter released, parent: offer, band: external, step: 5, raja: vendor_release }
+  - { id: WU-HIRE-13, name: Candidate signs, parent: offer, band: external, step: 5 }
+  - { id: WU-HIRE-14, name: Onboarding acknowledgement, parent: post_offer, band: automate, step: 6 }
+  - { id: WU-HIRE-15, name: Welcome mail, parent: post_offer, band: automate, step: 7 }
+  - { id: WU-HIRE-16, name: Email ID (max 18 chars), parent: post_offer, band: automate, step: 8 }
+  - { id: WU-HIRE-17, name: Files placed + SPOC notified, parent: handoff, band: augment, step: 9 }
+  - { id: WU-HIRE-18, name: Exceptions / deviation, parent: exceptions, band: human, step: 2, raja: exceptions }
+
+parents_stated_hrs_mo:
+  docs: 38          # ~40% of 95 — sitting
+  fitment: 14
+  trackers: 19      # ~20%
+  offer: 14         # ~15%
+  post_offer: 10    # welcome + email ~10%
+  handoff: 5
+  request: 0        # external
+  exceptions: 0     # inside docs judgment; do not double-count 95
+  note: Sum of non-zero parents = 100 of sitting mix; Plan still shows 95 stated / 61.8 defended as Offer Desk totals. Do not print 61.8 on a leaf.
