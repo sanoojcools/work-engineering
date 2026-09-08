@@ -15,6 +15,7 @@ import {
   KIND_COPY,
   type GateKind,
 } from "../lib/gapGateKinds";
+import { GAP_TIERS, TIER_COPY, gapsInTier, type GapTier } from "../lib/gapTiers";
 import { useApi } from "../hooks";
 import { useCompany } from "../company";
 import { useIsGuest } from "../lib/guestMode";
@@ -51,13 +52,121 @@ function HeadVsDoer() {
   );
 }
 
-/** CENSUS-v0 Part A, step 4, rebuilt for EVIDENCE-GAP (F2): journey-wide,
- * not a thin link-out. Offer Desk Gap (OfferDeskGap.tsx) stays reachable
- * and unmodified; this screen adds what's genuinely wider than one desk's
- * sitting -- every gate-kind row on the tenant, the Contradiction Resolver
- * across every Scout session (not one), and "what this sitting cannot see"
- * restated for both desks in this journey. No new detector, no fake
- * measured-vs-declared KPI. */
+function LiveGapTable({ gaps }: { gaps: Gap[] }) {
+  return (
+    <div className="table-wrap" style={{ marginBottom: 0 }}>
+      <table>
+        <thead>
+          <tr>
+            <th>What we found</th>
+            <th>Why</th>
+            <th>Reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          {gaps.map((g) => {
+            const copy = KIND_COPY[g.kind as GateKind];
+            return (
+              <tr key={g.id}>
+                <td>
+                  {copy.label} <span className="hint">[{g.kind}]</span>{" "}
+                  <InfoTooltip term={g.kind} simple={copy.simple} technical={copy.technical} />
+                </td>
+                <td>{g.description}</td>
+                <td>{g.declared_ref || "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function GuestWalkTable() {
+  return (
+    <div className="table-wrap" style={{ marginBottom: 8 }}>
+      <table>
+        <thead>
+          <tr>
+            <th>Topic</th>
+            <th>Declared</th>
+            <th>Sitting</th>
+            <th>Gap</th>
+          </tr>
+        </thead>
+        <tbody>
+          {GAP_ROWS.map((row) => (
+            <tr key={row.topic}>
+              <td>{row.topic}</td>
+              <td>{row.declared}</td>
+              <td>{row.sitting}</td>
+              <td>{row.gap}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TierBucket({
+  tier,
+  gaps,
+  isGuest,
+  loading,
+}: {
+  tier: GapTier;
+  gaps: Gap[];
+  isGuest: boolean;
+  loading: boolean;
+}) {
+  const copy = TIER_COPY[tier];
+  return (
+    <div className="card" style={{ marginBottom: 16 }} data-testid={`gap-tier-${tier}`}>
+      <h3 style={{ marginTop: 0 }} data-testid={`gap-tier-heading-${tier}`}>
+        {copy.heading}{" "}
+        <InfoTooltip term={copy.term} simple={copy.simple} technical={copy.technical} />
+      </h3>
+      {isGuest && tier === "process" ? (
+        <>
+          <GuestWalkTable />
+          <p className="hint" style={{ marginBottom: 0 }}>
+            {copy.emptyGuest}
+          </p>
+        </>
+      ) : isGuest ? (
+        <p className="hint" style={{ marginBottom: 0 }}>
+          {copy.emptyGuest}
+        </p>
+      ) : loading ? (
+        <p className="hint" style={{ marginBottom: 0 }}>
+          Loading this tenant’s real rows for this bucket…
+        </p>
+      ) : gaps.length === 0 ? (
+        <p style={{ fontSize: 13, marginBottom: 0 }}>
+          {copy.emptyKeyed}
+          {tier === "process" && (
+            <>
+              {" "}
+              Try <Link to="/scout/offer-desk/evidence-pack">With evidence (sample)</Link> to import a real
+              genome and come back — this page never invents a row to fill the space while you wait.
+            </>
+          )}
+        </p>
+      ) : (
+        <LiveGapTable gaps={gaps} />
+      )}
+    </div>
+  );
+}
+
+/** CENSUS-v0 Part A, step 4, rebuilt for V10-5b: three buckets from the
+ * live `conformance_gaps.tier` column (this desk / handoff to the next
+ * desk / promised vs not measured). Offer Desk Gap (OfferDeskGap.tsx)
+ * stays reachable and unmodified. No new detector, no fake
+ * measured-vs-declared KPI. Guest never calls the API and never mints
+ * `we-spec-key`. */
 export default function CensusGap() {
   const isGuest = useIsGuest();
   const { keyClientId } = useCompany();
@@ -74,77 +183,22 @@ export default function CensusGap() {
         Gap <InfoTooltip term="Gap" simple="What upstairs named versus what the sitting described. The disagreement is the finding, not a defect to hide." />
       </h2>
       <p className="lede">
-        Playback keeps three columns. This step names the disagreement between them, journey-wide — it does not vote
-        them into one story, and it does not compute a new score to paper over it.
+        Playback keeps three columns. This step names the disagreement between them in three places — this desk,
+        the handoff to the next desk, and the promise versus what has been measured. It does not vote them into
+        one story, and it does not compute a new score to paper over it.
       </p>
 
-      {isGuest ? (
-        <div className="table-wrap" style={{ marginBottom: 16 }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Topic</th>
-                <th>Declared</th>
-                <th>Sitting</th>
-                <th>Gap</th>
-              </tr>
-            </thead>
-            <tbody>
-              {GAP_ROWS.map((row) => (
-                <tr key={row.topic}>
-                  <td>{row.topic}</td>
-                  <td>{row.declared}</td>
-                  <td>{row.sitting}</td>
-                  <td>{row.gap}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="hint" style={{ padding: "0 12px 12px", margin: 0 }}>
-            Guest: the same four illustrative rows shown throughout this walk — not a live query, no Client A data.
-          </p>
-        </div>
-      ) : loading ? (
-        <p className="hint">Loading this tenant's real conformance gaps…</p>
-      ) : error ? (
-        <div className="banner error">{error}</div>
-      ) : realGaps.length === 0 ? (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <strong>Nothing flagged for this tenant — a true empty state, not a clean bill of health.</strong>
-          <p style={{ fontSize: 13, marginTop: 6, marginBottom: 0 }}>
-            No genome import on this tenant has tripped an "undeclared," "reads like more than one job," or "no clear
-            finish line" check yet. Try <Link to="/scout/offer-desk/evidence-pack">With evidence (sample)</Link> to
-            import a real genome and come back — this page never invents a row to fill the space while you wait.
-          </p>
-        </div>
-      ) : (
-        <div className="table-wrap" style={{ marginBottom: 16 }}>
-          <table>
-            <thead>
-              <tr>
-                <th>What we found</th>
-                <th>Why</th>
-                <th>Reference</th>
-              </tr>
-            </thead>
-            <tbody>
-              {realGaps.map((g) => {
-                const copy = KIND_COPY[g.kind as GateKind];
-                return (
-                  <tr key={g.id}>
-                    <td>
-                      {copy.label} <span className="hint">[{g.kind}]</span>{" "}
-                      <InfoTooltip term={g.kind} simple={copy.simple} technical={copy.technical} />
-                    </td>
-                    <td>{g.description}</td>
-                    <td>{g.declared_ref || "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {!isGuest && error && <div className="banner error">{error}</div>}
+
+      {GAP_TIERS.map((tier) => (
+        <TierBucket
+          key={tier}
+          tier={tier}
+          gaps={gapsInTier(realGaps, tier)}
+          isGuest={isGuest}
+          loading={!isGuest && loading}
+        />
+      ))}
 
       <HeadVsDoer />
 
@@ -184,11 +238,11 @@ export default function CensusGap() {
       <IoPanes
         given="Evidence: what's been uploaded or checked so far, journey-wide."
         understood="Declared upstairs is not the same record as declared at the desk — on either desk, and not the same as what one interview session says versus another."
-        processed="GET /discovery/gaps (Gates 6/9/10, unfiltered by desk) and GET /scout/contradictions (no session filter) -- the same two engines OfferDeskGap and ScoutInterview already use, read journey-wide instead of one sitting at a time."
+        processed="GET /discovery/gaps, grouped by the live three-bucket column, and GET /scout/contradictions (no session filter). Guest never calls these."
         output={
           isGuest
-            ? "Four named gaps (guest, illustrative)."
-            : `${realGaps.length} real gate-kind gap(s) for this tenant, plus whatever the Contradiction Resolver above found.`
+            ? "Three buckets (this desk walk-only; handoff and promised-vs-not-measured honestly empty). No key minted."
+            : `${realGaps.length} real genome-import gap(s) for this tenant in three buckets, plus whatever the Contradiction Resolver above found.`
         }
       />
 

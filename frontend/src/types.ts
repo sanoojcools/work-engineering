@@ -127,9 +127,15 @@ export type Candidate = {
   work_unit_id: number | null;
 };
 
+export const GAP_TIERS = ["process", "journey", "outcome"] as const;
+export type GapTier = (typeof GAP_TIERS)[number];
+
 export type Gap = {
   id: number;
   kind: string;
+  // V10-5b. Mirrors backend/app/schemas/discovery.py::GapOut.tier —
+  // derived from kind at write time; GET always sends it.
+  tier: GapTier;
   description: string;
   discovered_ref: string;
   declared_ref: string;
@@ -252,6 +258,11 @@ export const GAP_KINDS = [
   "workaround",
   "undeclared",
   "unimplemented",
+  "split_recommended",
+  "missing_terminal_state",
+  "broken_pointer",
+  "missing_handoff",
+  "outcome_not_measured",
 ] as const;
 export const OUTCOMES = ["passed", "failed", "inconclusive"] as const;
 export const CHECK_TYPES = ["authority", "evidence", "condition", "acceptance"] as const;

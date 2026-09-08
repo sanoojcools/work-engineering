@@ -200,8 +200,15 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await page.getByRole("link", { name: "Next: Gap →" }).click();
   await expect(page).toHaveURL(/\/census\/gap$/);
   await expect(stepCount(page)).toContainText("4 of 6");
-  // Guest sees the four illustrative gap rows, not a live fetch.
-  await expect(page.getByText("What the work is")).toBeVisible();
+  // V10-5b: three customer headings from real conformance_gaps.tier.
+  // Guest: walk-only this-desk rows; handoff and promised-vs-not-measured
+  // stay honestly empty. Never mints a key.
+  await expect(page.getByTestId("gap-tier-process")).toContainText("This desk");
+  await expect(page.getByTestId("gap-tier-journey")).toContainText("Handoff to the next desk");
+  await expect(page.getByTestId("gap-tier-outcome")).toContainText("Promised vs not measured");
+  await expect(page.getByTestId("gap-tier-process")).toContainText("What the work is");
+  await expect(page.getByTestId("gap-tier-journey")).toContainText(/looking only/);
+  await expect(page.getByTestId("gap-tier-outcome")).toContainText(/does not invent a measured number/);
   // F2: journey-wide additions -- Head vs doer schematic, and an explicit
   // no-coverage-percentage statement (never a fake measured-vs-declared KPI).
   await expect(page.getByText("Head vs doer")).toBeVisible();
@@ -542,6 +549,10 @@ test("guest census download contains 95, 61.8, and 'not a pass'", async ({ page 
   expect(content).toContain("The hire is complete");
   expect(content).toContain("Outside this desk");
   expect(content).not.toMatch(/WU-HIRE-19/);
+  // V10-5b Gap buckets in the export, same headings as census step 4.
+  expect(content).toContain("### This desk");
+  expect(content).toContain("### Handoff to the next desk");
+  expect(content).toContain("### Promised vs not measured");
   // Guest banner (P1: "talk-only empty").
   expect(content).toMatch(/Guest \/ talk-only/);
 });
