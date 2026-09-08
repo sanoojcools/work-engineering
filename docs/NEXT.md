@@ -7,9 +7,9 @@ Factory: **LOCKED** (founder pastes locally on Sonnet). Cloud Claude must not sp
 
 ## Claude
 
-**LOCKED.** Stop. No feature PR. Founder is running V10-8 in a local session from `docs/contracts/v10-8-field-ratify.md`.
+Execute `docs/contracts/v10-8-field-ratify.md`. Backend only, exactly that file. No frontend, no Chart, no Plan, no Gap UI, no `CensusPlan.tsx`. One PR to `main`, do not merge, stop. Do not start V10-9.
 
-If you are a cloud run from this push: print BLOCKED and exit 0. Do not open a PR.
+(Founder confirmed no concurrent local session is running this slice — cloud Claude is doing this one.)
 
 ---
 
