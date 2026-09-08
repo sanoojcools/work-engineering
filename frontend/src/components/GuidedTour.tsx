@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { TOUR_STEPS } from "../lib/tourSteps";
 
-const V9_ROUTE_PREFIXES = ["/enterprise", "/hr", "/scout/offer-desk", "/census"];
+const HIDE_PREFIXES = ["/", "/enterprise", "/hr", "/scout", "/census"];
 
 export function GuidedTour() {
   const [open, setOpen] = useState(false);
@@ -14,13 +14,9 @@ export function GuidedTour() {
     if (!localStorage.getItem("tour_dismissed")) setOpen(true);
   }, []);
 
-  // This tour's own steps target the pre-V9 walk (Overview -> Work Units ->
-  // Discovery -> Projections), one page at a time with a "Step X of Y"
-  // counter -- exactly the progress-pill confusion the V9 walk (its own
-  // SeatStepper) must not carry. Home ("/") is V9's front door now too, not
-  // this tour's step 1, so it's covered by the prefix list, not a bare "/".
-  const onV9Route = location.pathname === "/" || V9_ROUTE_PREFIXES.some((p) => location.pathname.startsWith(p));
-  if (onV9Route) return null;
+  const hide =
+    location.pathname === "/" || HIDE_PREFIXES.some((p) => p !== "/" && location.pathname.startsWith(p));
+  if (hide) return null;
 
   if (!open) {
     return (
