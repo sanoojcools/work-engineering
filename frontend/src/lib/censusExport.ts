@@ -153,8 +153,6 @@ function gapSection(isGuest: boolean, gaps: Gap[] | null): string {
     lines.push(`### ${copy.heading}`);
     lines.push("");
     if (isGuest && tier === "process") {
-      lines.push("Guest — the same four illustrative declared-vs-sitting rows shown throughout this walk:");
-      lines.push("");
       lines.push("| Topic | Declared | Sitting | Gap |");
       lines.push("|---|---|---|---|");
       for (const row of GAP_ROWS) {
@@ -176,7 +174,7 @@ function gapSection(isGuest: boolean, gaps: Gap[] | null): string {
         for (const g of bucket) {
           const kindCopy = KIND_COPY[g.kind as (typeof GATE_KINDS)[number]];
           lines.push(
-            `| ${kindCopy.label} [\`${g.kind}\`] | ${escapeCell(g.description)} | ${escapeCell(g.declared_ref || "—")} |`,
+            `| ${kindCopy.label} | ${escapeCell(g.description)} | ${escapeCell(g.declared_ref || "—")} |`,
           );
         }
       }

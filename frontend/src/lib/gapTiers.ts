@@ -29,7 +29,7 @@ export const TIER_COPY: Record<
     technical:
       "conformance_gaps.tier = process. Genome-import Gates 10 / 6 / 9 (undeclared, split_recommended, missing_terminal_state). Advisory only.",
     emptyGuest:
-      "Guest: the four walk-only rows below are the same illustrative declared-vs-sitting examples shown throughout this walk — not a live query. Looking does not mint a key.",
+      "Guest: the same four walk-only declared-vs-sitting rows shown throughout this walk — not a live query. Looking does not mint a key.",
     emptyKeyed:
       "Nothing flagged for this desk — a true empty state, not a clean bill of health. No genome import on this tenant has tripped a \"said, but not backed up,\" \"reads like more than one job,\" or \"no clear finish line\" check yet.",
   },

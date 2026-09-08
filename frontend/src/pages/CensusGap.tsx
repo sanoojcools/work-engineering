@@ -69,7 +69,7 @@ function LiveGapTable({ gaps }: { gaps: Gap[] }) {
             return (
               <tr key={g.id}>
                 <td>
-                  {copy.label} <span className="hint">[{g.kind}]</span>{" "}
+                  {copy.label}{" "}
                   <InfoTooltip term={g.kind} simple={copy.simple} technical={copy.technical} />
                 </td>
                 <td>{g.description}</td>
@@ -115,11 +115,13 @@ function TierBucket({
   gaps,
   isGuest,
   loading,
+  error,
 }: {
   tier: GapTier;
   gaps: Gap[];
   isGuest: boolean;
   loading: boolean;
+  error: boolean;
 }) {
   const copy = TIER_COPY[tier];
   return (
@@ -138,6 +140,10 @@ function TierBucket({
       ) : isGuest ? (
         <p className="hint" style={{ marginBottom: 0 }}>
           {copy.emptyGuest}
+        </p>
+      ) : error ? (
+        <p className="hint" style={{ marginBottom: 0 }}>
+          Could not load this tenant’s rows — not a clean bill of health.
         </p>
       ) : loading ? (
         <p className="hint" style={{ marginBottom: 0 }}>
@@ -197,6 +203,7 @@ export default function CensusGap() {
           gaps={gapsInTier(realGaps, tier)}
           isGuest={isGuest}
           loading={!isGuest && loading}
+          error={!isGuest && Boolean(error)}
         />
       ))}
 
