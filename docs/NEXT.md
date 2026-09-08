@@ -1,23 +1,22 @@
 # NEXT — agents read this and execute their section
 
-Factory repair 2026-09-08T13:00Z. V10-6 Plan economics is on main. Do not rebuild Chart, Plan columns, or 95/61.8.
+V10-5b gap-tiers is on main (#32). Do not rebuild Chart, Plan, 95/61.8, or the tier column.
 
 ---
 
 ## Claude
 
-**V10-5b BACKEND** — three-tier gaps (process / journey / outcome).
-
-Reuse `conformance_gaps`. Additive column `tier` (default `process`). On import:
-- undeclared / split-recommended / missing terminal → `process`
-- missing handoff to the next desk in the Work System → `journey`
-- Work System `outcome_records.status=not_measured` → one `outcome` gap (warn, never reject)
-Never invent measured KPIs. No frontend. No NEXT.md edit.
-Tests: three tiers on a real import; outcome gap while not_measured; RLS; GQS still the reject.
-Branch `claude/v10-5b-gap-tiers`. PR → main as Ready (never Draft). Stop.
+**LOCKED.** V10-5b shipped. Stop. No feature PR.
 
 ---
 
 ## Cursor
 
-**LOCKED.** V10-6 shipped. If you are a cloud run from this push: stop. No feature PR.
+**V10-5b UI** — Gap screen (census step 4) shows three buckets from real `conformance_gaps.tier`:
+- process = this desk
+- journey = handoff to the next desk
+- outcome = promised vs not measured
+
+Customer words only. Canon terms in i-buttons. Guest: honest empty / walk-only, never mint `we-spec-key`. Do not invent a measured KPI. Do not change Chart 18-leaf or Plan 95 / 61.8.
+Playwright: guest 1→6; Gap shows the three headings; Plan still 95 and 61.8.
+Branch `cursor/v10-5b-gap-ui`. PR → main as **Ready** (never Draft). Stop. Do not merge.
