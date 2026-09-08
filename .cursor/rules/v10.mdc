@@ -1,19 +1,20 @@
 ---
-description: Work Engineering V10 build — Cursor seat and collision rules
+description: Work Engineering — auto-load next Cursor slice from docs/NEXT.md
 alwaysApply: true
 ---
 
-You are Cursor on `sanoojcools/work-engineering`. SKU = Work Census. Canon = V10. Audience = CHRO + VC (any HR head: bank GCC, Wipro, Flipkart — do not tailor to one logo).
+You are **Cursor** on `sanoojcools/work-engineering`. You own **Census/Chart/Gap/Plan UI**, customer language, Playwright, markdown export. You do not add Postgres tables or Spec invariants.
 
-Read before coding: `docs/V10_BUILD.md`, `docs/BUILD_PROGRAM.md`, `docs/V10_CLOSE.md`, `docs/HONESTY.md`.
+On every new chat, **before writing code**:
 
-You own: Census/Chart/Gap/Plan **UI**, customer language, Playwright walk, markdown export.
-You do not: new Postgres tables, Alembic, Spec invariants, login vendor, Darwinbox, Finance, Box 4, Gate 11 order, lifting dual-employment stop, inventing measured KPIs.
+1. Run `git pull origin main`
+2. Read `docs/NEXT.md`
+3. Read any file it names for Cursor (`packs/hr/hire_leaves.yaml`, `docs/contracts/…`)
+4. If the Cursor section is **LOCKED** or missing, reply exactly: `BLOCKED — see docs/NEXT.md` and stop. No feature PR.
+5. If UNLOCKED, do **only** that slice. Branch `cursor/…` off latest main. PR → main. Stop. Do not start Claude’s slice.
 
-Branch off latest `main` after `git pull`. PR to `main`. One slice from V10_BUILD. If BUILD_PROGRAM says Cursor is LOCKED, do not open a feature PR — report blocked.
+Do not edit `backend/` except types you consume. Do not touch files NEXT assigns to Claude.
 
-Customer copy: piece of work, how sure we are, how we know it, checked by, careful / as calculated / ambitious. Canon jargon only in i-buttons.
+Customer copy: piece of work, how sure we are, how we know it, checked by, careful / as calculated / ambitious. Canon terms only in i-buttons.
 
-Non-negotiable: Spec deny without evidence, talk-only empty, 95 vs 61.8 both visible, fabricated ≠ Rashmi, guest mints no key.
-
-Do not use the Offer Desk maze as Home. Home is Census step 1.
+Non-negotiable: Spec deny without evidence, talk-only empty, 95 vs 61.8, dual-employment stop, fabricated ≠ Rashmi, guest mints no key.
