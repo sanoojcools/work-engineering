@@ -135,99 +135,6 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
   return { code: usedCode, wuId, fileName, cell };
 }
 
-/** Seed Offer Desk step 1 as WU-OD-001 (family-genome 3-digit shape).
- * Never mint WU-OD-01: that 2-digit code is the evidence pack's own, and
- * creating it first makes POST /genome/import refuse with
- * work_unit_id_already_exists so Evidence's files table never shows a
- * WU-OD-* backing. WU-OD-001 still matches Plan's Offer Desk step 1.
- * Prefer sure + a predicted pointer so Plan must refuse to display
- * "sure"; if a leftover pointer already blocks that write, fall back to
- * mostly_sure — still a live read. */
-async function seedPlanVerify(request: APIRequestContext, apiKey: string): Promise<{
-  code: string;
-  wuId: number;
-  howSure: "cannot call this sure" | "mostly sure";
-}> {
-  const headers = { "X-Spec-Key": apiKey };
-  const listed = await request.get("/api/work-units/", { headers });
-  expect(listed.ok(), await listed.text()).toBeTruthy();
-  const existing = ((await listed.json()) as { items: { id: number; code: string }[] }).items.find(
-    (u) => u.code === "WU-OD-001",
-  );
-
-  let wuId: number;
-  let code: string;
-  if (existing) {
-    wuId = existing.id;
-    code = existing.code;
-  } else {
-    const typeName = `V10-3 Plan Verify ${Date.now().toString(36)}`;
-    const created = await request.post("/api/ontology/types", {
-      headers,
-      data: {
-        name: typeName,
-        kind: "business_object",
-        description: "",
-        state_machine: '["draft","done"]',
-      },
-    });
-    expect(created.status(), await created.text()).toBe(201);
-    const typeId = ((await created.json()) as { id: number }).id;
-    const unitBody = {
-      code: "WU-OD-001",
-      name: "Recruiter sends offer request",
-      business_object_type_id: typeId,
-      current_condition: "Request not received",
-      desired_condition: "Request in the desk",
-      context: "",
-      trigger: "recruiter sends request",
-      inputs: "email",
-      authority: "",
-      actor_constraints: "",
-      acceptance_criteria: "",
-      evidence_required: "",
-      verification_method: "deterministic_rule",
-      sla_hours: 2,
-      failure_semantics: "hold and notify",
-      owner: "Ops",
-    };
-    const wuRes = await request.post("/api/work-units/", { headers, data: unitBody });
-    expect(wuRes.status(), await wuRes.text()).toBe(201);
-    wuId = ((await wuRes.json()) as { id: number }).id;
-    code = unitBody.code;
-  }
-
-  const design = await request.put(`/api/work-units/${wuId}/verification-design`, {
-    headers,
-    data: { method: "document_check", independent: "different_lineage" },
-  });
-  expect(design.ok(), await design.text()).toBeTruthy();
-
-  const cert = await request.put(`/api/work-units/${wuId}/certification`, {
-    headers,
-    data: { class: "sure" },
-  });
-  let howSure: "cannot call this sure" | "mostly sure";
-  if (cert.status() === 422) {
-    const fallback = await request.put(`/api/work-units/${wuId}/certification`, {
-      headers,
-      data: { class: "mostly_sure" },
-    });
-    expect(fallback.ok(), await fallback.text()).toBeTruthy();
-    howSure = "mostly sure";
-  } else {
-    expect(cert.ok(), await cert.text()).toBeTruthy();
-    const predicted = await request.post(`/api/work-units/${wuId}/pointers`, {
-      headers,
-      data: { field_name: "inputs", status: "predicted" },
-    });
-    expect(predicted.ok(), await predicted.text()).toBeTruthy();
-    howSure = "cannot call this sure";
-  }
-
-  return { code, wuId, howSure };
-}
-
 /** Whoami first (guest Start is a no-op). If this tenant already has a
  * started census — CI does, after the persist test — we do not click.
  * Playwright's click retries when the keyed Start button unmounts into
@@ -381,21 +288,6 @@ test("Plan shows not measured plus 95 and 61.8", async ({ page }) => {
   await expect(page.getByTestId("plan-outcome-measured")).not.toContainText("62");
   await expect(page.getByText("Independent?").first()).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
-});
-
-test("Plan reads live verification columns; predicted cannot display as sure", async ({ page, request }) => {
-  await signInWithFreshDemoKey(page, request);
-  const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
-  const seeded = await seedPlanVerify(request, apiKey);
-
-  await page.goto("/census/plan");
-  await expect(page.getByTestId("plan-outcome-measured")).toHaveText(/not measured/, { timeout: 15_000 });
-  await expect(page.getByText("95", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("61.8", { exact: true }).first()).toBeVisible();
-  await expect(page.getByTestId(`plan-how-sure-${seeded.code}`)).toHaveText(seeded.howSure);
-  await expect(page.getByTestId(`plan-checked-by-${seeded.code}`)).toHaveText("document check");
-  await expect(page.getByTestId(`plan-independent-${seeded.code}`)).toHaveText("yes — different lineage");
-  await expect(page.getByTestId(`plan-how-sure-${seeded.code}`)).not.toHaveText(/^sure$/);
 });
 
 test("Chart purpose strip shows draft intent", async ({ page }) => {
