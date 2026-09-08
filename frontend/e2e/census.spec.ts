@@ -29,7 +29,8 @@ const CLAIMS_XLSX = join(process.cwd(), "e2e", "fixtures", "offer-pack-claims.xl
 
 /** Seed one Work Unit + an XLSX pointer (and a broken / composed / binding
  * sibling) through the real API so Evidence can click them. Unique code so
- * a warm Client A tenant from an earlier run does not 409. */
+ * a warm Client A tenant from an earlier run does not 409. Unique type so
+ * we do not reuse types.items[0] after a V10-2 evidence-pack genome import. */
 async function seedEvidencePointers(request: APIRequestContext, apiKey: string): Promise<{
   code: string;
   wuId: number;
@@ -37,55 +38,50 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
   cell: string;
 }> {
   const headers = { "X-Spec-Key": apiKey };
-  const typesRes = await request.get("/api/ontology/types", { headers });
-  expect(typesRes.ok(), await typesRes.text()).toBeTruthy();
-  const types = (await typesRes.json()) as { items: { id: number; name: string; kind: string }[] };
-  let typeId = types.items.find((t) => t.kind === "business_object")?.id;
-  if (!typeId) {
-    const created = await request.post("/api/ontology/types", {
-      headers,
-      data: {
-        name: "V10-2 Evidence UI Object",
-        kind: "business_object",
-        description: "",
-        state_machine: '["draft","done"]',
-      },
-    });
-    expect([201, 409]).toContain(created.status());
-    if (created.status() === 201) {
-      typeId = ((await created.json()) as { id: number }).id;
-    } else {
-      const again = await request.get("/api/ontology/types", { headers });
-      const page = (await again.json()) as { items: { id: number; name: string }[] };
-      typeId = page.items.find((t) => t.name === "V10-2 Evidence UI Object")?.id;
-    }
-  }
+  const typeName = `V10-2 Evidence UI Object ${Date.now().toString(36)}`;
+  const created = await request.post("/api/ontology/types", {
+    headers,
+    data: {
+      name: typeName,
+      kind: "business_object",
+      description: "",
+      state_machine: '["draft","done"]',
+    },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const typeId = ((await created.json()) as { id: number }).id;
   expect(typeId).toBeTruthy();
 
   const code = `WU-V102-${Date.now().toString(36)}${Math.floor(Math.random() * 46656).toString(36)}`.slice(0, 40);
-  const wuRes = await request.post("/api/work-units/", {
-    headers,
-    data: {
-      code,
-      name: "Check candidate documents before offer release",
-      business_object_type_id: typeId,
-      current_condition: "Documents unchecked",
-      desired_condition: "Accepted or blocked",
-      context: "",
-      trigger: "request arrives",
-      inputs: "form",
-      authority: "",
-      actor_constraints: "",
-      acceptance_criteria: "",
-      evidence_required: "",
-      verification_method: "deterministic_rule",
-      sla_hours: 4,
-      failure_semantics: "hold and notify",
-      owner: "Ops",
-    },
-  });
+  const unitBody = {
+    code,
+    name: "Check candidate documents before offer release",
+    business_object_type_id: typeId,
+    current_condition: "Documents unchecked",
+    desired_condition: "Accepted or blocked",
+    context: "",
+    trigger: "request arrives",
+    inputs: "form",
+    authority: "",
+    actor_constraints: "",
+    acceptance_criteria: "",
+    evidence_required: "",
+    verification_method: "deterministic_rule",
+    sla_hours: 4,
+    failure_semantics: "hold and notify",
+    owner: "Ops",
+  };
+  // After the evidence-pack import, POST /work-units can 500 once on
+  // db.refresh under RLS ("Could not refresh instance"). One retry on a
+  // fresh code is enough; do not treat that as a Chart failure.
+  let wuRes = await request.post("/api/work-units/", { headers, data: unitBody });
+  if (wuRes.status() === 500) {
+    unitBody.code = `${code}R`.slice(0, 40);
+    wuRes = await request.post("/api/work-units/", { headers, data: unitBody });
+  }
   expect(wuRes.status(), await wuRes.text()).toBe(201);
   const wuId = ((await wuRes.json()) as { id: number }).id;
+  const usedCode = unitBody.code;
 
   const fileName = "offer-pack-claims.xlsx";
   const up = await request.post("/api/files/upload", {
@@ -136,7 +132,7 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
   expect(bindingBody.status).toBe("declared");
   expect(bindingBody.resolved).toBe(true);
 
-  return { code, wuId, fileName, cell };
+  return { code: usedCode, wuId, fileName, cell };
 }
 
 /** Whoami first (guest Start is a no-op). If this tenant already has a
@@ -399,6 +395,8 @@ test("Spec deny without a file still denies", async ({ page, request }) => {
 });
 
 test("keyed Evidence lists this tenant's real uploaded files and what each one backs", async ({ page, request }) => {
+  // V10-2 Evidence file-list walk — kept alongside the pointer test below
+  // and the V10-4 Chart 18-leaf / external-band assertions.
   // 7 sequential real file uploads + a genome import comfortably exceed the
   // suite's default 30s per-test budget.
   test.setTimeout(60_000);
@@ -444,8 +442,10 @@ test("keyed Evidence lists this tenant's real uploaded files and what each one b
 });
 
 test("keyed Evidence click shows a real XLSX cell; a broken pointer is not a fact", async ({ page, request }) => {
-  // Fresh CI Postgres still shares Client A across this file: Start census,
-  // GET /pointers (N units), and the click must all finish inside one job.
+  // V10-2 pointer walk (kept with V10-4 Chart 18-leaf / external-band).
+  // Fresh CI Postgres still shares Client A: Start census, GET /pointers,
+  // and the click must all finish inside one job. Unique type + one 500
+  // retry above so a prior evidence-pack import does not fail this seed.
   test.setTimeout(90_000);
   await signInWithFreshDemoKey(page, request);
   await startKeyedCensus(page);
