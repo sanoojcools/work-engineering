@@ -1,20 +1,22 @@
-/** The only three GapKind values a genome import can produce (Gates 10, 6, 9
- * -- docs/BUILD_PROGRAM.md Track 1 slices 1.1-1.3), duplicated from
- * OfferDeskGap.tsx rather than imported from it: OfferDeskGap "stays
- * reachable" unmodified (F2), so CensusGap.tsx reads the exact same live
- * data through its own small copy instead of refactoring a shipped, tested
- * page to share it.
+/** Genome-import GapKind values the census Gap screen will show
+ * (Gates 10 / 6 / 9 plus V10-5b journey and outcome). Other kinds exist
+ * in the schema (shadow_process, unimplemented, …) but come from a
+ * different mechanism (/discovery/gaps/scan, the census SOP comparison)
+ * and must not appear here as if they were this sitting's finding.
  *
- * Lives in lib/, not on CensusGap.tsx itself, so lib/censusExport.ts
- * (CENSUS-PACK P1) can cite the exact same three kinds, labels, and
- * "cannot see" findings its markdown export quotes -- one classification
- * read by two renderers, not a second copy invented for the download, and
- * without a page-to-page import cycle (censusExport.ts is also reached
- * from the census shell, which every census page renders). */
+ * OfferDeskGap.tsx keeps its own three-kind copy and stays unmodified.
+ * Lives in lib/ so CensusGap.tsx and censusExport.ts share one
+ * classification — no page-to-page import cycle. */
 import { OFFER_DESK_META } from "./offerDeskData";
 import { ONBOARDING_SPEC } from "./desks/onboarding";
 
-export const GATE_KINDS = ["undeclared", "split_recommended", "missing_terminal_state"] as const;
+export const GATE_KINDS = [
+  "undeclared",
+  "split_recommended",
+  "missing_terminal_state",
+  "missing_handoff",
+  "outcome_not_measured",
+] as const;
 export type GateKind = (typeof GATE_KINDS)[number];
 
 export function isGateKind(kind: string): kind is GateKind {
@@ -39,6 +41,20 @@ export const KIND_COPY: Record<GateKind, { label: string; simple: string; techni
     simple:
       "We looked at every before/after state this business object moves through across all its Work Units and never found one that nothing else builds on next — so the process doesn't obviously end anywhere. Needs 3+ Work Units on the same object before we even check.",
     technical: "Gate 9 — GapKind.missing_terminal_state. Flagged at genome import, severity P2, advisory only. No state machine is written.",
+  },
+  missing_handoff: {
+    label: "No handoff to the next desk yet",
+    simple:
+      "This desk has work, but nothing connects it to the next desk in the journey. A warning, not a rejection — the import still went through. Nobody was invented as the owner of the seam.",
+    technical:
+      "V10-5b — GapKind.missing_handoff, conformance_gaps.tier=journey. Flagged at genome import, severity P2, advisory only.",
+  },
+  outcome_not_measured: {
+    label: "Promised, not measured",
+    simple:
+      "The journey named a promise and nothing measured backs it yet. This is a warning, not a score — we do not invent a number to close it.",
+    technical:
+      "V10-5b — GapKind.outcome_not_measured, conformance_gaps.tier=outcome. Flagged when outcome_records.status is not_measured. Warn, never reject, never a KPI.",
   },
 };
 

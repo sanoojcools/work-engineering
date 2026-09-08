@@ -1,5 +1,5 @@
-/** F1/F2 (docs/BUILD_PROGRAM.md EVIDENCE-GAP): buckets the eight real
- * GapKind values (backend/app/models/discovery.py::GapKind) into three
+/** F1/F2 (docs/BUILD_PROGRAM.md EVIDENCE-GAP): buckets real GapKind
+ * values (backend/app/models/discovery.py::GapKind) into three
  * plain-language registers -- missing / uncertain / contradictory -- so
  * Evidence (step 3) can show counts without inventing a coverage %.
  *
@@ -8,11 +8,14 @@
  * SOP scan already write (services/genome_import.py, services/census.py,
  * services/discovery.py). This module only groups kinds that already exist.
  *
- *  - undeclared / missing_acceptance / unimplemented: a claim with nothing
- *    behind it yet -- no file, no corroborating unit, no matching record.
- *  - split_recommended / missing_terminal_state: nothing is wrong or
- *    absent, the shape just isn't resolved -- reads like more than one job,
- *    or never reaches a finish line.
+ *  - undeclared / missing_acceptance / unimplemented / missing_handoff /
+ *    outcome_not_measured: a claim with nothing behind it yet -- no file,
+ *    no corroborating unit, no matching record, no handoff, or a promise
+ *    that has not been measured.
+ *  - split_recommended / missing_terminal_state / broken_pointer: nothing
+ *    is wrong or absent, the shape just isn't resolved -- reads like more
+ *    than one job, never reaches a finish line, or a pointer that would
+ *    not open.
  *  - policy_violation / workaround / shadow_process: two records disagree
  *    about the same thing.
  * An unmapped future GapKind defaults to "uncertain" rather than crashing
@@ -24,8 +27,11 @@ const REGISTER_BY_KIND: Record<string, GapRegister> = {
   undeclared: "missing",
   missing_acceptance: "missing",
   unimplemented: "missing",
+  missing_handoff: "missing",
+  outcome_not_measured: "missing",
   split_recommended: "uncertain",
   missing_terminal_state: "uncertain",
+  broken_pointer: "uncertain",
   policy_violation: "contradictory",
   workaround: "contradictory",
   shadow_process: "contradictory",

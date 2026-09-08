@@ -19,6 +19,7 @@ import { HIRE_BANDS, HIRE_BAND_LABEL, HIRE_COMPOSITE, PARENT_HOURS_NOTE, buildHi
 import { DOCUMENT_CHECK_RECORD, GAP_ROWS } from "./offerDeskWorkRecord";
 import { GUEST_REGISTER_COUNTS, REGISTERS, REGISTER_COPY, countRegisters } from "./gapRegisters";
 import { CANNOT_SEE_CONNECTOR_NOTE, CANNOT_SEE_JUDGMENT_NOTE, GATE_KINDS, isGateKind, KIND_COPY } from "./gapGateKinds";
+import { GAP_TIERS, TIER_COPY, gapsInTier } from "./gapTiers";
 import { unitReadiness } from "./handoffReadiness";
 import { ensureOfferToOnboardingWorkSystem, GUEST_JOURNEY } from "./workSystem";
 import type { Gap, Page, UploadedFileOut, Verdict, WorkSystem, WorkUnit } from "../types";
@@ -145,32 +146,41 @@ function evidenceSection(
 }
 
 function gapSection(isGuest: boolean, gaps: Gap[] | null): string {
+  const realGaps = (gaps ?? []).filter((g) => isGateKind(g.kind));
   const lines: string[] = [];
-  if (isGuest) {
-    lines.push("Guest — the same four illustrative declared-vs-sitting rows shown throughout this walk:");
+  for (const tier of GAP_TIERS) {
+    const copy = TIER_COPY[tier];
+    lines.push(`### ${copy.heading}`);
     lines.push("");
-    lines.push("| Topic | Declared | Sitting | Gap |");
-    lines.push("|---|---|---|---|");
-    for (const row of GAP_ROWS) {
-      lines.push(`| ${escapeCell(row.topic)} | ${escapeCell(row.declared)} | ${escapeCell(row.sitting)} | ${escapeCell(row.gap)} |`);
-    }
-  } else {
-    const realGaps = (gaps ?? []).filter((g) => isGateKind(g.kind));
-    if (realGaps.length === 0) {
-      lines.push(
-        "Nothing flagged for this tenant — a true empty state, not a clean bill of health. No genome import has " +
-          "tripped an undeclared / split-recommended / missing-terminal-state check yet.",
-      );
+    if (isGuest && tier === "process") {
+      lines.push("| Topic | Declared | Sitting | Gap |");
+      lines.push("|---|---|---|---|");
+      for (const row of GAP_ROWS) {
+        lines.push(
+          `| ${escapeCell(row.topic)} | ${escapeCell(row.declared)} | ${escapeCell(row.sitting)} | ${escapeCell(row.gap)} |`,
+        );
+      }
+      lines.push("");
+      lines.push(copy.emptyGuest);
+    } else if (isGuest) {
+      lines.push(copy.emptyGuest);
     } else {
-      lines.push("| Kind | Why | Reference |");
-      lines.push("|---|---|---|");
-      for (const g of realGaps) {
-        const copy = KIND_COPY[g.kind as (typeof GATE_KINDS)[number]];
-        lines.push(`| ${copy.label} [\`${g.kind}\`] | ${escapeCell(g.description)} | ${escapeCell(g.declared_ref || "—")} |`);
+      const bucket = gapsInTier(realGaps, tier);
+      if (bucket.length === 0) {
+        lines.push(copy.emptyKeyed);
+      } else {
+        lines.push("| Kind | Why | Reference |");
+        lines.push("|---|---|---|");
+        for (const g of bucket) {
+          const kindCopy = KIND_COPY[g.kind as (typeof GATE_KINDS)[number]];
+          lines.push(
+            `| ${kindCopy.label} | ${escapeCell(g.description)} | ${escapeCell(g.declared_ref || "—")} |`,
+          );
+        }
       }
     }
+    lines.push("");
   }
-  lines.push("");
   lines.push(`- ${CANNOT_SEE_CONNECTOR_NOTE}`);
   lines.push(`- ${CANNOT_SEE_JUDGMENT_NOTE}`);
   lines.push("");
