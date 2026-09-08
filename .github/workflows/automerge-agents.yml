@@ -1,0 +1,41 @@
+name: Automerge agent PRs
+
+# Founder is out of the merge click. Held only if labeled needs-founder
+# or the PR touches the starter pistol / contracts / workflows.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, unlabeled, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    if: >-
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.draft == false &&
+      (startsWith(github.head_ref, 'claude/') || startsWith(github.head_ref, 'cursor/')) &&
+      !contains(join(github.event.pull_request.labels.*.name, ','), 'needs-founder')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Hold if exception files or STOP-GATE
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          FILES=$(gh pr diff ${{ github.event.pull_request.number }} --name-only)
+          echo "$FILES"
+          HOLD=0
+          echo "$FILES" | grep -Eq '^(docs/NEXT\.md|docs/HOW_WE_WORK\.md|docs/V10_BUILD\.md|docs/V10_CLOSE\.md|docs/contracts/|CLAUDE\.md|\.cursor/rules/|\.github/workflows/|packs/hr/hire_leaves\.yaml)$' && HOLD=1 || true
+          if echo "${{ github.event.pull_request.title }} ${{ github.event.pull_request.body }}" | grep -Eiq 'STOP-GATE|needs.founder|clerk|workos|auth0|login vendor'; then HOLD=1; fi
+          if [ "$HOLD" = 1 ]; then
+            gh pr edit ${{ github.event.pull_request.number }} --add-label needs-founder || gh label create needs-founder --color B60205 --description "Founder must merge" && gh pr edit ${{ github.event.pull_request.number }} --add-label needs-founder
+            gh pr comment ${{ github.event.pull_request.number }} --body "Held for founder (\`needs-founder\`): contract/workflow/NEXT.md change, or login/vendor. Unlabel after you read it — automerge will resume."
+            exit 0
+          fi
+          gh pr merge ${{ github.event.pull_request.number }} --squash --auto --delete-branch
