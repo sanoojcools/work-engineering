@@ -7,6 +7,8 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  checks: read
+  statuses: read
 
 jobs:
   automerge:
@@ -21,13 +23,13 @@ jobs:
       PR: ${{ github.event.pull_request.number }}
       TITLE: ${{ github.event.pull_request.title }}
     steps:
-      - name: Hold on contract files or STOP-GATE title; else auto-squash
+      - name: Hold on contracts; else squash when backend+frontend pass
         run: |
           set -euo pipefail
-          FILES=$(gh pr diff "$PR" --name-only)
+          FILES=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" --paginate --jq '.[].filename')
           echo "$FILES"
           HOLD=0
-          if echo "$FILES" | grep -Eq '^(docs/NEXT\.md|docs/HOW_WE_WORK\.md|docs/V10_BUILD\.md|docs/V10_CLOSE\.md|docs/contracts/|CLAUDE\.md|\.cursor/rules/|\.github/workflows/|packs/hr/hire_leaves\.yaml)'; then
+          if echo "$FILES" | grep -Eq '(^|/)(docs/NEXT\.md|docs/HOW_WE_WORK\.md|docs/V10_BUILD\.md|docs/V10_CLOSE\.md|docs/contracts/|CLAUDE\.md|\.cursor/rules/|\.github/workflows/|packs/hr/hire_leaves\.yaml)'; then
             HOLD=1
           fi
           if printf '%s' "$TITLE" | grep -Eiq 'STOP-GATE|needs-founder|WorkOS|Auth0|Clerk'; then
@@ -36,7 +38,23 @@ jobs:
           if [ "$HOLD" = 1 ]; then
             gh label create needs-founder --color B60205 --description "Founder must merge" -f
             gh pr edit "$PR" --add-label needs-founder
-            gh pr comment "$PR" --body "Held for founder (needs-founder). Unlabel after you read it."
+            gh pr comment "$PR" --body "Held for founder (needs-founder)."
             exit 0
           fi
-          gh pr merge "$PR" --squash --auto --delete-branch
+          for i in $(seq 1 60); do
+            CHECKS=$(gh pr checks "$PR" 2>/dev/null || true)
+            echo "$CHECKS"
+            BACK=$(echo "$CHECKS" | awk '/^backend/{print $2; exit}')
+            FRONT=$(echo "$CHECKS" | awk '/^frontend/{print $2; exit}')
+            if [ "$BACK" = pass ] && [ "$FRONT" = pass ]; then
+              gh pr merge "$PR" --squash --delete-branch
+              exit 0
+            fi
+            if [ "$BACK" = fail ] || [ "$FRONT" = fail ]; then
+              echo "backend or frontend failed"
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "timed out waiting for backend+frontend"
+          exit 1
