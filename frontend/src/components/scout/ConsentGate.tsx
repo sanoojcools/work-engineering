@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { errorMessage } from "../../api";
 import { apiFetch, NeedsApiKeyError } from "../../lib/apiFetch";
+import { V10 } from "../../lib/v10Terms";
 import type { ConsentReceipt, Page, ScoutSession } from "../../types";
 import { Banner } from "../../ui";
 import { InfoTooltip } from "../InfoTooltip";
 import { IoPanes } from "../IoPanes";
 
-/** Slice 2.1: gates "Generate V8 Work Units" (see FuturePreview.tsx) behind
+/** Gates "Save as a draft of the work record" (FuturePreview.tsx) behind
  * a real consent record. The API already 4xx's a generate-genome call with
  * no receipt attached (routers/scout.py) -- this screen exists so an
  * interviewer never has to hit that error to find out, and never has to
@@ -23,12 +24,14 @@ export function ConsentGate({
   const [receipts, setReceipts] = useState<ConsentReceipt[] | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [subjectId, setSubjectId] = useState(session.interviewee_name);
-  const [purpose, setPurpose] = useState("Scout discovery interview — understanding day-to-day work for the Work Genome.");
+  const [purpose, setPurpose] = useState("Scout discovery interview — understanding day-to-day work for the work record.");
   const [initials, setInitials] = useState("");
   const [retentionDays, setRetentionDays] = useState(90);
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const save = V10.saveDraft;
+  const rec = V10.workRecord;
 
   async function load() {
     try {
@@ -83,16 +86,18 @@ export function ConsentGate({
   return (
     <div>
       <h3 style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 0 }}>
-        Before we turn this into work units
+        Before we {save.label.toLowerCase()}
         <InfoTooltip
           term="Consent record"
-          simple="A short record that the person you interviewed agreed their answers could be used — who agreed, what for, and how long we keep it. Nothing is generated from a live interview without one."
+          simple="A short record that the person you interviewed agreed their answers could be used — who agreed, what for, and how long we keep it. Nothing is saved as a draft of the work record from a live sitting without one."
           technical="consent_receipt_id, required on every genome generated from a Scout session (POST /api/consent/receipts)."
         />
       </h3>
       <p className="lede" style={{ marginTop: 0 }}>
-        {session.interviewee_name} needs to have agreed to this before their answers can become part of the
-        genome. Pick a record already on file, or create one now — it takes under a minute.
+        {session.interviewee_name} needs to have agreed to this before their answers can become part of the{" "}
+        {rec.label.toLowerCase()}.{" "}
+        <InfoTooltip term={rec.term} simple={rec.simple} technical={rec.technical} />{" "}
+        Pick a record already on file, or create one now — it takes under a minute.
       </p>
 
       {error && <Banner kind="error">{error}</Banner>}
@@ -169,9 +174,9 @@ export function ConsentGate({
 
       <IoPanes
         given="An interviewee who has agreed, in plain words, that their answers can be used — confirmed before this screen, not assumed."
-        understood="A consent record: who agreed, what we told them it was for, and how long we keep it. The same record the server checks for every genome built from a live interview."
-        processed="We save that record (or reuse one already on file) and attach it to this session. Nothing else about what was captured changes."
-        output="A genome can now be generated from this session. Without this step, the server refuses the request outright."
+        understood="A consent record: who agreed, what we told them it was for, and how long we keep it. The same record the server checks before a draft of the work record is saved from a live sitting."
+        processed="We save that record (or reuse one already on file) and attach it to this sitting. Nothing else about what was captured changes."
+        output="A draft of the work record can now be saved from this sitting. Without this step, the server refuses the request outright."
       />
     </div>
   );

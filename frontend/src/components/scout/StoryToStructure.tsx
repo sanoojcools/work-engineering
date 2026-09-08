@@ -22,7 +22,7 @@ const SAMPLE_STORY =
   "which is the painful part because there's no tracker. " +
   "Once it's verified I create the employee master record in Workday and hand off to IT for access provisioning.";
 
-/** `onAdd` lets an extracted chunk become a Work Capture Grid row directly.
+/** `onAdd` lets an extracted chunk become a pieces-captured row directly.
  * Without it the panel could only ever *show* structure the interviewer then
  * retyped by hand, which is the opposite of the point. */
 export function StoryToStructure({
@@ -92,7 +92,7 @@ export function StoryToStructure({
       />
       <div className="toolbar" style={{ marginBottom: 0 }}>
         <button type="button" className="primary" disabled={busy || !story.trim()} onClick={extract}>
-          {busy ? "Extracting…" : "Extract work units"}
+          {busy ? "Turning story into rows…" : "Turn this story into rows"}
         </button>
         <button type="button" onClick={() => setStory(SAMPLE_STORY)} disabled={busy}>
           Use sample story
@@ -112,7 +112,7 @@ export function StoryToStructure({
           {onAdd && result.chunks.length > 0 && remaining > 0 && (
             <div className="toolbar">
               <button type="button" className="primary" disabled={addingAll} onClick={() => void addAll()}>
-                {addingAll ? "Adding…" : `Add all ${remaining} to the grid`}
+                {addingAll ? "Adding…" : `Add all ${remaining} to pieces captured`}
               </button>
             </div>
           )}
@@ -142,7 +142,7 @@ export function StoryToStructure({
                       onClick={() => void addOne(c, i)}
                       style={{ marginTop: 8 }}
                     >
-                      {added.has(i) ? "Added ✓" : "Add to grid"}
+                      {added.has(i) ? "Added ✓" : "Add to pieces captured"}
                     </button>
                   )}
                 </div>

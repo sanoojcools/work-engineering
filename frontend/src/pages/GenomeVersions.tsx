@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
+import { InfoTooltip } from "../components/InfoTooltip";
 import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
+import { V10 } from "../lib/v10Terms";
 import { Banner, Empty, Loading } from "../ui";
 
 type VersionRow = {
@@ -24,6 +26,9 @@ export default function GenomeVersions() {
   const [rows, setRows] = useState<VersionRow[] | null>(null);
   const [needsKey, setNeedsKey] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const rec = V10.workRecord;
+  const save = V10.saveDraft;
+  const prev = V10.draftPreview;
 
   async function load() {
     setError(null);
@@ -44,7 +49,9 @@ export default function GenomeVersions() {
   if (needsKey) {
     return (
       <div>
-        <h2>Genome</h2>
+        <h2>
+          {rec.label} <InfoTooltip term={rec.term} simple={rec.simple} technical={rec.technical} />
+        </h2>
         <ApiKeyBanner onSaved={load} />
       </div>
     );
@@ -52,23 +59,25 @@ export default function GenomeVersions() {
 
   return (
     <div>
-      <h2>Genome</h2>
+      <h2>
+        {rec.label} <InfoTooltip term={rec.term} simple={rec.simple} technical={rec.technical} />
+      </h2>
       <p className="lede">
-        Every import of the 18-attribute Work Unit contract, scored by GQS before anything is written.
+        Every import of the 18-attribute piece of work, scored before anything is written.{" "}
+        <InfoTooltip term={V10.filesNotEnough.term} simple={V10.filesNotEnough.simple} technical={V10.filesNotEnough.technical} />
         A version below the gate is kept and shown, not discarded — the score is the record of why it
         was blocked.
       </p>
 
       {error && <Banner kind="error">{error}</Banner>}
-      {!rows && !error && <Loading label="Loading genome versions…" />}
+      {!rows && !error && <Loading label="Loading work record drafts…" />}
 
       {rows && rows.length === 0 && (
         <Empty
-          title="No genome versions yet"
+          title="No work record drafts yet"
           hint={
             <>
-              Generate one from a Scout interview (Scout Interview → Future Preview → Generate V8 Work
-              Units), or import a genome directly via <code>POST /api/genome/import</code>.
+              {save.label} from a sitting ({prev.label}), or import via <code>POST /api/genome/import</code>.
             </>
           }
         />
@@ -81,7 +90,7 @@ export default function GenomeVersions() {
               <tr>
                 <th>Version</th>
                 <th>GQS</th>
-                <th>Work units</th>
+                <th>Pieces</th>
                 <th>Gate</th>
                 <th>Ratified</th>
                 <th>Created</th>
