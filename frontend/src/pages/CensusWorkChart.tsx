@@ -1,19 +1,16 @@
-import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { CensusStepper } from "../components/census/CensusStepper";
+import { HireLeavesChart } from "../components/census/HireLeavesChart";
 import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
-import { DataTable } from "../ui";
 import { NeedsApiKeyError } from "../lib/apiFetch";
 import { useCompany } from "../company";
 import { useApi } from "../hooks";
 import { withClient } from "../lib/withClient";
-import { DESKS_BY_ID } from "../lib/desks";
-import { DESK_TO_OBJECT, OBJECTS_BY_ID } from "../lib/desks/objects";
-import type { ScenarioStrip } from "../lib/offerDeskScenarios";
 import { DOCUMENT_CHECK_RECORD } from "../lib/offerDeskWorkRecord";
-import { LANE_DESK_IDS, buildRows, type ChartRow, type LaneDeskId } from "../lib/workSystemUnits";
+import { HIRE_LEAVES } from "../lib/hireLeaves";
 import { confirmFunctionIntent, confirmWorkSystemIntent, ratifyWorkSystem, useWorkSystem } from "../lib/workSystem";
 import type { IntentOut, Page, Verdict, WorkUnit } from "../types";
 
@@ -23,69 +20,6 @@ const SCENARIOS: { key: ScenarioKey; label: string }[] = [
   { key: "as-calculated", label: "As calculated" },
   { key: "ambitious", label: "Ambitious" },
 ];
-
-function levelBadge(strip: ScenarioStrip, scenario: ScenarioKey): string {
-  if (!strip.scored) return "not scored";
-  const point = scenario === "careful" ? strip.s1Floor : scenario === "ambitious" ? strip.s3Ceiling : strip.s2Derived;
-  return `L${point.level} · ${point.allocation}`;
-}
-
-function Lane({
-  deskId, units, verdicts, scenario, workSystemStatus,
-}: {
-  deskId: LaneDeskId;
-  units: WorkUnit[];
-  verdicts: Verdict[];
-  scenario: ScenarioKey;
-  workSystemStatus: "candidate" | "ratified";
-}) {
-  const nav = useNavigate();
-  const desk = DESKS_BY_ID[deskId];
-  const rows: ChartRow[] = useMemo(() => buildRows(deskId, desk, units, verdicts), [deskId, desk, units, verdicts]);
-  const objectId = DESK_TO_OBJECT[deskId];
-
-  return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
-        <h3 style={{ margin: 0 }}>{desk.name}</h3>
-        <span className={`badge ${workSystemStatus === "ratified" ? "ok" : ""}`}>
-          {workSystemStatus === "ratified" ? "ratified" : "candidate · not governed"}
-        </span>
-      </div>
-      <p className="hint" style={{ marginTop: 0 }}>
-        SPOC: {desk.primarySpoc}
-        {objectId && (
-          <>
-            {" · "}
-            <Link to={`/hr/objects/${objectId}`}>Object: {OBJECTS_BY_ID[objectId].name} →</Link>
-          </>
-        )}
-      </p>
-      <DataTable
-        rows={rows}
-        onRowClick={(row) => nav(row.clickTo)}
-        columns={[
-          { key: "code", header: "Code", render: (r) => <code style={{ fontSize: 12 }}>{r.displayCode}</code> },
-          { key: "name", header: "Piece of work" },
-          { key: "spoc", header: "SPOC", render: (r) => <span className="hint">{r.spoc}</span> },
-          {
-            key: "level",
-            header: (
-              <>
-                How sure we are{" "}
-                <InfoTooltip
-                  term="VERDICT"
-                  simple="Careful / as calculated / ambitious replay the same score Document check already uses. 'Not scored' means no real VERDICT exists yet for this piece on this tenant."
-                />
-              </>
-            ),
-            render: (r) => levelBadge(r.strip, scenario),
-          },
-        ]}
-      />
-    </div>
-  );
-}
 
 /** D -- INTENT-LITE. One intent's card: label (outcome or purpose) + owner +
  * (Function intent only) measure, a draft/confirmed badge that never looks
@@ -144,17 +78,12 @@ function IntentCard({
   );
 }
 
-/** CENSUS-v0 Part C: Work Chart (hero). Purpose strip + the Offer Desk /
- * Onboarding lanes of the one Work System this slice ships. No new math:
- * S1/S2/S3 replays the existing scenarioStrip() exactly as Document check
- * already does. Guest sees the static DeskSpec schematic only (labelled
- * "not imported" where no real code matches); keyed additionally reads
- * real WorkUnit/VerdictScore rows and the real work_systems Ratify state.
- *
- * INTENT-PLAN adds the purpose strip: D -- INTENT-LITE's two intents,
- * drafted from sheet/sitting text (lib/intent.ts), draft until a keyed
- * "Confirm as owner" click -- unconfirmed never carries the "ok"/governed
- * badge style Ratify uses once actually ratified. */
+/** Work Chart (hero). Purpose strip + V10-4's 18-leaf seed in four bands
+ * including external, under the composite “the hire is complete”. No new
+ * math: careful / as calculated / ambitious still replay scenarioStrip()
+ * when a real WU-HIRE-* VERDICT exists; otherwise every leaf reads not
+ * scored. Guest sees the declared seed with stand-in names — never Rashmi
+ * or Zwayam. Plan (CensusPlan.tsx) is untouched this slice. */
 export default function CensusWorkChart() {
   const { isGuest, workSystem, journey, loading: wsLoading, error: wsError, needsKey, setNeedsKey, setWorkSystem, setError: setWsError } =
     useWorkSystem();
@@ -221,7 +150,7 @@ export default function CensusWorkChart() {
         Work Chart{" "}
         <InfoTooltip
           term="Work Chart"
-          simple="One journey, drawn as lanes of real (or, for a guest, declared-schematic) units. Toggling careful/as-calculated/ambitious replays the same VERDICT scenario math Document check already uses — no new arithmetic."
+          simple="One journey, drawn as 18 pieces of work in four bands — including work outside this desk. Toggling careful / as calculated / ambitious replays the same score Document check already uses — no new arithmetic."
         />
       </h2>
       <p className="lede">
@@ -311,9 +240,9 @@ export default function CensusWorkChart() {
           </>
         )}
         <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
-          Units of this journey stay labelled candidate / not governed until this Work System is ratified. Viewing
-          is never blocked either way — the 95 declared / 61.8 defended units below are not deleted for being a
-          candidate.
+          Pieces of this journey stay labelled candidate / not governed until this Work System is ratified. Viewing
+          is never blocked either way — the 18 leaves below are not deleted for being a candidate. {DOCUMENT_CHECK_RECORD.declaredHours}{" "}
+          declared / {DOCUMENT_CHECK_RECORD.defendedHours} defended stay the Offer Desk totals, not numbers on a leaf.
         </p>
       </div>
 
@@ -338,18 +267,7 @@ export default function CensusWorkChart() {
         <p className="hint">Loading this tenant's real Work Units and VERDICT scores…</p>
       )}
 
-      {LANE_DESK_IDS.map((deskId) => (
-        <Lane key={deskId} deskId={deskId} units={units} verdicts={verdicts} scenario={scenario} workSystemStatus={status} />
-      ))}
-
-      <div className="card" style={{ marginBottom: 16 }}>
-        <p style={{ fontSize: 13, margin: 0 }}>
-          <strong>HRBP is not a lane here.</strong> No named handoff in the sheets connects HRBP to this
-          Offer→Onboarding journey — the three named handoffs (
-          <Link to="/hr/function-graph">HR function graph →</Link>) run Offer Desk↔Onboarding and
-          Offboarding↔HRBP only. Appetite does not invent a fourth edge to include it.
-        </p>
-      </div>
+      <HireLeavesChart units={units} verdicts={verdicts} scenario={scenario} />
 
       <div className="card" style={{ marginBottom: 16, borderColor: "var(--danger)" }}>
         <p style={{ fontSize: 13, margin: 0 }}>
@@ -360,13 +278,13 @@ export default function CensusWorkChart() {
 
       <IoPanes
         given="Gap: the declared-vs-sitting disagreement, already named."
-        understood="A chart is a journey, not a desk. Lanes come from the desks this journey actually touches; a unit's level is a scenario replay, not a fresh score. Purpose is two sentences, not a strategy document."
+        understood="A chart is the hire, drawn as 18 pieces in four bands including work outside this desk. Careful / as calculated / ambitious replay the same score Document check already uses — not a fresh number. Purpose is two sentences, not a strategy document."
         processed={
           isGuest
-            ? "Guest schematic: desk steps and SPOCs from lib/desks/*.ts, no backend call. Every unit reads not scored. Purpose shown as drafted, unconfirmed."
-            : "Real GET /work-units/ + GET /verdict/, matched by this app's own two real code shapes. Work System (incl. both intents) read/created via GET+POST /work-systems; Confirm as owner via POST /work-systems/{id}/confirm-*-intent."
+            ? "Guest schematic: 18 leaves from the declared hire-leaves seed, stand-in names, no backend call. Every piece reads not scored. Purpose shown as drafted, unconfirmed."
+            : "18 leaves from the same declared seed. Real GET /work-units/ + GET /verdict/ matched only when a WU-HIRE-* row exists; otherwise not scored. Work System (incl. both intents) via GET+POST /work-systems; Confirm as owner via POST /work-systems/{id}/confirm-*-intent."
         }
-        output={`${LANE_DESK_IDS.length} lanes, ${LANE_DESK_IDS.reduce((n, d) => n + DESKS_BY_ID[d].steps.length, 0)} units, journey ${status}, intents ${journey.function_intent.status}/${journey.work_system_intent.status}.`}
+        output={`${HIRE_LEAVES.length} leaves, 4 bands including external, composite “the hire is complete”, journey ${status}, intents ${journey.function_intent.status}/${journey.work_system_intent.status}.`}
       />
 
       <p style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>

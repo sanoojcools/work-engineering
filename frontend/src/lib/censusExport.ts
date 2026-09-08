@@ -15,6 +15,7 @@ import { apiFetch } from "./apiFetch";
 import { withClient } from "./withClient";
 import { DESKS_BY_ID } from "./desks";
 import { LANE_DESK_IDS, buildRows } from "./workSystemUnits";
+import { HIRE_BANDS, HIRE_BAND_LABEL, HIRE_COMPOSITE, PARENT_HOURS_NOTE, buildHireLeafRows } from "./hireLeaves";
 import { DOCUMENT_CHECK_RECORD, GAP_ROWS } from "./offerDeskWorkRecord";
 import { GUEST_REGISTER_COUNTS, REGISTERS, REGISTER_COPY, countRegisters } from "./gapRegisters";
 import { CANNOT_SEE_CONNECTOR_NOTE, CANNOT_SEE_JUDGMENT_NOTE, GATE_KINDS, isGateKind, KIND_COPY } from "./gapGateKinds";
@@ -178,22 +179,30 @@ function gapSection(isGuest: boolean, gaps: Gap[] | null): string {
 }
 
 function chartSection(units: WorkUnit[], verdicts: Verdict[]): string {
-  const blocks: string[] = [];
-  for (const deskId of LANE_DESK_IDS) {
-    const desk = DESKS_BY_ID[deskId];
-    const rows = buildRows(deskId, desk, units, verdicts);
-    blocks.push(`**${desk.name}**`);
+  const rows = buildHireLeafRows(units, verdicts);
+  const blocks: string[] = [
+    `**Composite:** ${HIRE_COMPOSITE.name}`,
+    "",
+    "18 pieces of work. Four bands, including work outside this desk. Names below are stand-ins.",
+    "",
+  ];
+  for (const band of HIRE_BANDS) {
+    const inBand = rows.filter((r) => r.leaf.band === band);
+    blocks.push(`**${HIRE_BAND_LABEL[band]}** (\`${band}\`)`);
     blocks.push("");
-    blocks.push("| Code | Name | S1 (floor) | S2 (derived) | S3 (ceiling) |");
+    blocks.push("| Code | Piece of work | Checked by | How sure we are | How we know it |");
     blocks.push("|---|---|---|---|---|");
-    for (const row of rows) {
-      const cells = row.strip.scored
-        ? [`L${row.strip.s1Floor.level} ${row.strip.s1Floor.allocation}`, `L${row.strip.s2Derived.level} ${row.strip.s2Derived.allocation}`, `L${row.strip.s3Ceiling.level} ${row.strip.s3Ceiling.allocation}`]
-        : ["not scored", "not scored", "not scored"];
-      blocks.push(`| \`${row.displayCode}\` | ${escapeCell(row.name)} | ${cells[0]} | ${cells[1]} | ${cells[2]} |`);
+    for (const row of inBand) {
+      const sure = row.strip.scored
+        ? `L${row.strip.s2Derived.level} ${row.strip.s2Derived.allocation}`
+        : "not scored";
+      blocks.push(
+        `| \`${row.displayCode}\` | ${escapeCell(row.leaf.name)} | ${escapeCell(row.checkedBy)} | ${sure} | ${escapeCell(row.howWeKnow)} |`,
+      );
     }
     blocks.push("");
   }
+  blocks.push(PARENT_HOURS_NOTE);
   return blocks.join("\n").trim();
 }
 

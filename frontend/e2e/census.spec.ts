@@ -138,7 +138,7 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
   return { code, fileName, cell };
 }
 
-test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows Offer Desk and Onboarding lanes", async ({ page }) => {
+test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 leaves and an external band", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Scope", exact: false }).first()).toBeVisible();
   await expect(stepCount(page)).toContainText("1 of 6");
@@ -194,9 +194,24 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows Offer 
   await page.getByRole("link", { name: "Next: Work Chart →" }).click();
   await expect(page).toHaveURL(/\/census\/chart$/);
   await expect(stepCount(page)).toContainText("5 of 6");
-  await expect(page.getByRole("heading", { name: "Offer Desk", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Onboarding", exact: true })).toBeVisible();
-  // Guest: declared DeskSpec schematic only, every unit reads not scored.
+  await expect(page.getByRole("heading", { name: /The hire is complete/ })).toBeVisible();
+  await expect(page.getByTestId("hire-leaf")).toHaveCount(18);
+  await expect(page.getByTestId("hire-band-external")).toBeVisible();
+  await expect(page.getByTestId("hire-band-external")).toContainText("Outside this desk");
+  await expect(page.getByTestId("hire-band-external").getByTestId("hire-leaf")).toHaveCount(3);
+  const yaml = readFileSync(join(process.cwd(), "..", "packs", "hr", "hire_leaves.yaml"), "utf-8");
+  const yamlLeaves = [...yaml.matchAll(/id: (WU-HIRE-\d+), name: ([^,]+)/g)].map((m) => ({
+    id: m[1],
+    name: m[2],
+  }));
+  expect(yamlLeaves, "packs/hr/hire_leaves.yaml must declare exactly 18 leaves").toHaveLength(18);
+  for (const leaf of yamlLeaves) {
+    await expect(page.getByTestId("hire-leaf").filter({ hasText: leaf.name })).toHaveCount(1);
+  }
+  const chart = page.getByTestId("hire-leaves");
+  await expect(chart).not.toContainText("Rashmi");
+  await expect(chart).not.toContainText("Zwayam");
+  // Guest: declared seed only, every piece reads not scored.
   await expect(page.getByText("not scored").first()).toBeVisible();
   await expect(page.getByText("Guest: shown as candidate")).toBeVisible();
 
@@ -462,6 +477,9 @@ test("guest census download contains 95, 61.8, and 'not a pass'", async ({ page 
   expect(content).toContain("95");
   expect(content).toContain("61.8");
   expect(content).toMatch(/not a pass/);
+  expect(content).toContain("The hire is complete");
+  expect(content).toContain("Outside this desk");
+  expect(content).not.toMatch(/WU-HIRE-19/);
   // Guest banner (P1: "talk-only empty").
   expect(content).toMatch(/Guest \/ talk-only/);
 });
