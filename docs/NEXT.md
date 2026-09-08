@@ -1,23 +1,15 @@
 # NEXT — agents read this and execute their section
 
 Phase A walk (minus login) is on main. Do not rebuild Chart, Plan 95/61.8, or Gap buckets.
-Factory model: **Sonnet** (`claude-sonnet-4-5`). Never Opus.
+Factory: **LOCKED** (founder pastes locally on Sonnet). Cloud Claude must not spend credits.
 
 ---
 
 ## Claude
 
-**UNLOCKED — V10-8 BACKEND only.**
+**LOCKED.** Stop. No feature PR. Founder is running V10-8 in a local session from `docs/contracts/v10-8-field-ratify.md`.
 
-Read `docs/contracts/v10-8-field-ratify.md` and implement **exactly** that file.
-
-- Table `field_ratifications` + RLS. Binding fields: `desired_condition` (goal), `authority`, `acceptance_criteria`.
-- GET/POST drafts beside a sitting quote; POST confirm/correct writes the Work Unit column.
-- GET decision-cards from **existing** `conformance_gaps` + `work_units.owner`. Empty is honest.
-- Tests on real Postgres (list in the contract). `docs/HONESTY.md` paragraph.
-- Branch `claude/v10-8`. One PR → `main`. **Do not merge. Do not start V10-9.**
-
-If you are a cloud run and this section still said LOCKED, that was the previous commit — this commit unlocks you. Proceed.
+If you are a cloud run from this push: print BLOCKED and exit 0. Do not open a PR.
 
 ---
 
