@@ -2,7 +2,14 @@ from fastapi import APIRouter, Query, status
 
 from ..config import settings
 from ..dependencies import OptionalTenantDbDep
-from ..models.discovery import ConformanceGap, DiscoveryCandidate, IntentSource, TraceEvent
+from ..models.discovery import (
+    ConformanceGap,
+    DiscoveryCandidate,
+    GapTier,
+    IntentSource,
+    TraceEvent,
+    tier_for_kind,
+)
 from ..schemas.common import Page
 from ..schemas.discovery import (
     CandidateCreate,
@@ -102,17 +109,29 @@ def merge_candidate(candidate_id: int, payload: MergeIn, db: OptionalTenantDbDep
 
 
 @router.get("/gaps", response_model=Page[GapOut])
-def list_gaps(db: OptionalTenantDbDep, client_id: int | None = Query(default=None)) -> Page[GapOut]:
+def list_gaps(
+    db: OptionalTenantDbDep,
+    client_id: int | None = Query(default=None),
+    # V10-5b (docs/NEXT.md): read one tier at a time. Optional -- omitted
+    # still returns all three, so no existing caller changes.
+    tier: GapTier | None = Query(default=None),
+) -> Page[GapOut]:
     q = db.query(ConformanceGap)
     if client_id is not None:
         q = q.filter(ConformanceGap.client_id == client_id)
+    if tier is not None:
+        q = q.filter(ConformanceGap.tier == tier)
     rows = q.order_by(ConformanceGap.id).all()
     return Page(total=len(rows), items=rows)
 
 
 @router.post("/gaps", response_model=GapOut, status_code=status.HTTP_201_CREATED)
 def create_gap(payload: GapCreate, db: OptionalTenantDbDep) -> ConformanceGap:
-    row = ConformanceGap(**payload.model_dump())
+    # tier is derived from kind, never taken from the caller (GapCreate has
+    # no tier field): a journey- or outcome-tier gap means something
+    # specific about a Work System, and letting a POST label an arbitrary
+    # kind with an arbitrary tier would make the tier unreadable.
+    row = ConformanceGap(**payload.model_dump(), tier=tier_for_kind(payload.kind))
     db.add(row)
     db.commit()
     db.refresh(row)

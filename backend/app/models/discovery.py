@@ -108,6 +108,55 @@ class GapKind(str, enum.Enum):
     # predicted and this gap records why, same warn-not-reject shape as
     # every other GapKind here.
     broken_pointer = "broken_pointer"
+    # V10-5b (docs/NEXT.md, docs/V10_BUILD.md V10-5 "Gap 3 tiers"): the two
+    # gaps that are NOT about one desk's own process. missing_handoff is the
+    # journey tier -- the Work System's upstream desk never hands off to the
+    # next desk (services/genome_import.py::_flag_missing_handoff).
+    # outcome_not_measured is the outcome tier -- the Work System promises an
+    # outcome and its outcome_records row still says not_measured
+    # (::_flag_outcome_not_measured). Both warn, neither ever rejects, and
+    # neither ever states a measured number.
+    missing_handoff = "missing_handoff"
+    outcome_not_measured = "outcome_not_measured"
+
+
+class GapTier(str, enum.Enum):
+    """V10-5b (docs/NEXT.md): which of the three layers a gap is about.
+
+    Unlike ConformanceGap.severity -- deliberately a plain string so future
+    manual triage isn't blocked on a migration -- this IS a real enum: the
+    three tiers are canon (docs/V10_BUILD.md V10-5: "Tier 1 swimlane ... vs
+    owned pieces. Tier 2 journey owner. Tier 3 promised vs not measured"),
+    a closed set, and a fourth tier would be a change to the canon rather
+    than a triage decision.
+
+    `process`  -- Tier 1: one desk's own declared-vs-owned work (undeclared,
+                  split_recommended, missing_terminal_state, and every
+                  pre-V10-5b kind). The default, so nothing that already
+                  writes a gap has to change to keep telling the truth.
+    `journey`  -- Tier 2: the cross-desk seam inside a Work System, which no
+                  single desk owns.
+    `outcome`  -- Tier 3: the Work System's promise vs what was measured.
+    """
+    process = "process"
+    journey = "journey"
+    outcome = "outcome"
+
+
+# A gap's tier is a property of its kind, not an independent judgement, so
+# this mapping is the single place the two can be kept from drifting apart
+# (tests/test_v10_5b_gap_tiers.py asserts every GapKind is covered). Only
+# the two V10-5b kinds are non-`process`: everything else -- discovery's
+# scan, pointers' broken_pointer, Gates 6/9/10 -- is about one desk's own
+# process, which is exactly why `process` is the column default.
+TIER_BY_KIND: dict[GapKind, GapTier] = {
+    GapKind.missing_handoff: GapTier.journey,
+    GapKind.outcome_not_measured: GapTier.outcome,
+}
+
+
+def tier_for_kind(kind: GapKind) -> GapTier:
+    return TIER_BY_KIND.get(kind, GapTier.process)
 
 
 class ConformanceGap(Base):
@@ -122,6 +171,11 @@ class ConformanceGap(Base):
     # guessed at here. The column stays a plain string (not an enum) so that
     # future manual triage isn't blocked on a migration.
     severity: Mapped[str] = mapped_column(String(4), default="P2")
+    # V10-5b (docs/NEXT.md): additive, defaults to `process` -- every gap
+    # written before this column existed is a Tier 1 process gap, and every
+    # writer that doesn't name a tier still is one. Set from tier_for_kind()
+    # at the write sites so it can never disagree with `kind`.
+    tier: Mapped[GapTier] = mapped_column(Enum(GapTier), default=GapTier.process)
     description: Mapped[str] = mapped_column(Text, default="")
     discovered_ref: Mapped[str] = mapped_column(String(200), default="")
     declared_ref: Mapped[str] = mapped_column(String(200), default="")
