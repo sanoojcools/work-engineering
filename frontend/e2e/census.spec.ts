@@ -135,10 +135,14 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
   return { code: usedCode, wuId, fileName, cell };
 }
 
-/** Seed Offer Desk step 1 (WU-OD-01) with a live verification design and
- * certification. Prefer sure + a predicted pointer so Plan must refuse
- * to display "sure"; if a leftover pointer already blocks that write,
- * fall back to mostly_sure — still a live read. */
+/** Seed Offer Desk step 1 as WU-OD-001 (family-genome 3-digit shape).
+ * Never mint WU-OD-01: that 2-digit code is the evidence pack's own, and
+ * creating it first makes POST /genome/import refuse with
+ * work_unit_id_already_exists so Evidence's files table never shows a
+ * WU-OD-* backing. WU-OD-001 still matches Plan's Offer Desk step 1.
+ * Prefer sure + a predicted pointer so Plan must refuse to display
+ * "sure"; if a leftover pointer already blocks that write, fall back to
+ * mostly_sure — still a live read. */
 async function seedPlanVerify(request: APIRequestContext, apiKey: string): Promise<{
   code: string;
   wuId: number;
@@ -148,7 +152,7 @@ async function seedPlanVerify(request: APIRequestContext, apiKey: string): Promi
   const listed = await request.get("/api/work-units/", { headers });
   expect(listed.ok(), await listed.text()).toBeTruthy();
   const existing = ((await listed.json()) as { items: { id: number; code: string }[] }).items.find(
-    (u) => u.code === "WU-OD-01" || u.code === "WU-OD-001",
+    (u) => u.code === "WU-OD-001",
   );
 
   let wuId: number;
@@ -170,7 +174,7 @@ async function seedPlanVerify(request: APIRequestContext, apiKey: string): Promi
     expect(created.status(), await created.text()).toBe(201);
     const typeId = ((await created.json()) as { id: number }).id;
     const unitBody = {
-      code: "WU-OD-01",
+      code: "WU-OD-001",
       name: "Recruiter sends offer request",
       business_object_type_id: typeId,
       current_condition: "Request not received",
@@ -187,11 +191,7 @@ async function seedPlanVerify(request: APIRequestContext, apiKey: string): Promi
       failure_semantics: "hold and notify",
       owner: "Ops",
     };
-    let wuRes = await request.post("/api/work-units/", { headers, data: unitBody });
-    if (wuRes.status() === 500) {
-      unitBody.code = "WU-OD-001";
-      wuRes = await request.post("/api/work-units/", { headers, data: unitBody });
-    }
+    const wuRes = await request.post("/api/work-units/", { headers, data: unitBody });
     expect(wuRes.status(), await wuRes.text()).toBe(201);
     wuId = ((await wuRes.json()) as { id: number }).id;
     code = unitBody.code;
