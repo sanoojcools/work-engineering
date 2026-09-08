@@ -2,31 +2,33 @@
 
 **Work order:** [`docs/V10_BUILD.md`](V10_BUILD.md)
 
-V10-1 shipped (#21+#22). **V10-2 BACKEND shipped (#23).** Next = **Cursor Evidence UI**.
+V10-1 shipped. V10-2 backend #23 shipped. **V10-2 UI = PR #24** (merge when CI green, then this unlock applies).
 
 ---
 
 | Who | Slice | Status |
 |---|---|---|
-| **Cursor** | **V10-2 Evidence UI** (click claim → pointer) | **UNLOCKED** |
-| Claude | V10-3 verify/cert/5th gate | LOCKED until Cursor # (this UI) merged — then new chat |
-| V10-4 … 14 | — | locked |
+| Cursor | V10-2 Evidence UI | **#24 — merge when green, then idle** |
+| **Claude** | **V10-3 verify + certify + 5th gate (backend)** | **UNLOCKED after #24 is on main** |
+| Cursor | V10-3 Plan columns | LOCKED until Claude V10-3 merges |
+| V10-4 … | Chart 18-leaf | locked |
 
 ---
 
-## Cursor V10-2 UI (only unlocked)
+## V10-3 Claude (backend only)
 
-Branch `cursor/v10-2-ui` off latest `main` (must include `3513afc` / PR #23).
+Do not edit CensusEvidence / Chart pages.
 
-Evidence (census step 3):
-- Click a claim → show pointer (file + cell/page/line) or honest **cannot open**
-- Status in plain words: seen in records / said by a person / pieced together / proposed by us / predicted by a model
-- **Composed** badge until adopted; binding fields never look like model output
-- Guest: no live Client A pointers, no key minted
-- Do not add tables, resolvers, or V10-3. Do not rebuild Chart 18-leaf.
+Per unit on the offer→Day-1 journey:
+- verification_design: method (one of seven or none), independent? (different lineage / deterministic / no), sampling, cost or “not stated”
+- Certification **separate** from provenance: sure / mostly sure / reported not seen / cannot define
+- 5th gate: non-waivable from confirmed intent; error-cost = contestable default
+- Dual-employment stop still unliftable at ambitious
+- Handoff **Not ready** if independence required and missing
+- Dual-track flag stored: do may be delegated, check stays human — no executor
 
-Playwright: guest 1→6 still; Evidence click does not mint a key; keyed claim with a real XLSX cell shows the cell; broken pointer does not display as a fact.
-PR → main. Stop.
+Tests: offer-release Not ready without independent check; predicted provenance cannot become “sure”; dual-employment still stop; RLS.
+HONESTY.md. Branch claude/v10-3. PR → main. Squash-merge CI green. Stop. No V10-4.
 
 ---
 
