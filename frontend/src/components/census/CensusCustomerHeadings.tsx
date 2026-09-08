@@ -25,7 +25,7 @@ const HEADINGS: {
     label: "How we know it",
     term: "Provenance",
     simple: "Where this claim came from — a file, a sitting, or a reconstruction. Empty means we do not know yet.",
-    technical: "Provenance / evidence_ref on the Work Unit. This slice does not add pointer columns (that is V10-2).",
+    technical: "GET /work-units/{id}/pointers — file + cell/page/line after the resolver ran. Unopened pointers are not facts. Five statuses in plain words on Evidence.",
   },
   {
     label: "Checked by",

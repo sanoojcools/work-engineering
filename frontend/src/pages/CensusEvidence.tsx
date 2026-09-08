@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { CensusStepper } from "../components/census/CensusStepper";
+import { EvidenceClaims } from "../components/census/EvidenceClaims";
 import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
 import { DOCUMENT_CHECK_RECORD } from "../lib/offerDeskWorkRecord";
@@ -147,6 +148,7 @@ export default function CensusEvidence() {
         this tenant's own evidence, not a description of it.
       </p>
 
+      <EvidenceClaims />
       <FilesSection />
       <RegistersSection />
 
@@ -169,9 +171,9 @@ export default function CensusEvidence() {
 
       <IoPanes
         given="Capture: three seats, Offer Desk as the worked example."
-        understood="A claim is not evidence. A file with a server-computed hash is, and a register count is not a percentage."
-        processed="GET /files (this tenant's own uploads + what each backs) and GET /discovery/gaps (bucketed into three registers). No new store, no new detector."
-        output="Real files, real backing, real register counts — zero is an honest answer, not a bug."
+        understood="A claim is not a fact until its pointer opens. Guest looking does not mint a key."
+        processed="GET /work-units/{id}/pointers (click a claim), GET /files, GET /discovery/gaps. Guest never calls these. No new table, no resolver in this UI."
+        output="Click a claim: file + cell/page/line, or cannot open. Composed is a badge. Binding fields are said by a person."
       />
 
       <p style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>

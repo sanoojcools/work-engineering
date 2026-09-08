@@ -371,6 +371,28 @@ tbody tr[onclick], tbody tr.selected { cursor: pointer; }
 .census-copy-item { font-size: 12px; color: var(--ink-2); }
 .census-copy-label { font-weight: 600; }
 
+.claim-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.claim-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+.claim-item.active { border-color: var(--accent); }
+.claim-item-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
 .split { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.9fr); gap: 20px; }
 
 .tabs { display: flex; gap: 2px; margin-bottom: 18px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }

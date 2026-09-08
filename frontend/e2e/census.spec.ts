@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 /** CENSUS-v0's five required scenarios (docs/BUILD_PROGRAM.md, "Playwright
@@ -22,6 +23,119 @@ async function signInWithFreshDemoKey(page: Page, request: APIRequestContext): P
 
 function stepCount(page: Page) {
   return page.locator(".progress-count");
+}
+
+const CLAIMS_XLSX = join(process.cwd(), "e2e", "fixtures", "offer-pack-claims.xlsx");
+
+/** Seed one Work Unit + an XLSX pointer (and a broken / composed / binding
+ * sibling) through the real API so Evidence can click them. Unique code so
+ * a warm Client A tenant from an earlier run does not 409. */
+async function seedEvidencePointers(request: APIRequestContext, apiKey: string): Promise<{
+  code: string;
+  fileName: string;
+  cell: string;
+}> {
+  const headers = { "X-Spec-Key": apiKey };
+  const typesRes = await request.get("/api/ontology/types", { headers });
+  expect(typesRes.ok(), await typesRes.text()).toBeTruthy();
+  const types = (await typesRes.json()) as { items: { id: number; name: string }[] };
+  let typeId = types.items[0]?.id;
+  if (!typeId) {
+    const created = await request.post("/api/ontology/types", {
+      headers,
+      data: {
+        name: "V10-2 Evidence UI Object",
+        kind: "business_object",
+        description: "",
+        state_machine: '["draft","done"]',
+      },
+    });
+    expect([201, 409]).toContain(created.status());
+    if (created.status() === 201) {
+      typeId = ((await created.json()) as { id: number }).id;
+    } else {
+      const again = await request.get("/api/ontology/types", { headers });
+      const page = (await again.json()) as { items: { id: number; name: string }[] };
+      typeId = page.items.find((t) => t.name === "V10-2 Evidence UI Object")?.id;
+    }
+  }
+  expect(typeId).toBeTruthy();
+
+  const code = `WU-V102-${Date.now().toString(36)}${Math.floor(Math.random() * 46656).toString(36)}`.slice(0, 40);
+  const wuRes = await request.post("/api/work-units/", {
+    headers,
+    data: {
+      code,
+      name: "Check candidate documents before offer release",
+      business_object_type_id: typeId,
+      current_condition: "Documents unchecked",
+      desired_condition: "Accepted or blocked",
+      context: "",
+      trigger: "request arrives",
+      inputs: "form",
+      authority: "",
+      actor_constraints: "",
+      acceptance_criteria: "",
+      evidence_required: "",
+      verification_method: "deterministic_rule",
+      sla_hours: 4,
+      failure_semantics: "hold and notify",
+      owner: "Ops",
+    },
+  });
+  expect(wuRes.status(), await wuRes.text()).toBe(201);
+  const wuId = ((await wuRes.json()) as { id: number }).id;
+
+  const fileName = "offer-pack-claims.xlsx";
+  const up = await request.post("/api/files/upload", {
+    headers,
+    multipart: {
+      file: {
+        name: fileName,
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        buffer: readFileSync(CLAIMS_XLSX),
+      },
+    },
+  });
+  expect(up.status(), await up.text()).toBe(201);
+  const fileId = Number(((await up.json()) as { file_id: string }).file_id);
+  const cell = "B2";
+  const quote = "Offer pack waiting";
+
+  const observed = await request.post(`/api/work-units/${wuId}/pointers`, {
+    headers,
+    data: { field_name: "trigger", status: "observed", file_id: fileId, cell },
+  });
+  expect(observed.ok(), await observed.text()).toBeTruthy();
+  const observedBody = (await observed.json()) as { status: string; resolved: boolean };
+  expect(observedBody.status).toBe("observed");
+  expect(observedBody.resolved).toBe(true);
+
+  const broken = await request.post(`/api/work-units/${wuId}/pointers`, {
+    headers,
+    data: { field_name: "inputs", status: "observed", file_id: fileId, cell: "Z99" },
+  });
+  expect(broken.ok(), await broken.text()).toBeTruthy();
+  const brokenBody = (await broken.json()) as { status: string; resolved: boolean };
+  expect(brokenBody.status).toBe("predicted");
+  expect(brokenBody.resolved).toBe(false);
+
+  const composed = await request.post(`/api/work-units/${wuId}/pointers`, {
+    headers,
+    data: { field_name: "context", status: "composed" },
+  });
+  expect(composed.ok(), await composed.text()).toBeTruthy();
+
+  const binding = await request.post(`/api/work-units/${wuId}/pointers`, {
+    headers,
+    data: { field_name: "authority", status: "declared", file_id: fileId, cell, quote },
+  });
+  expect(binding.ok(), await binding.text()).toBeTruthy();
+  const bindingBody = (await binding.json()) as { status: string; resolved: boolean };
+  expect(bindingBody.status).toBe("declared");
+  expect(bindingBody.resolved).toBe(true);
+
+  return { code, fileName, cell };
 }
 
 test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows Offer Desk and Onboarding lanes", async ({ page }) => {
@@ -58,6 +172,12 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows Offer 
   await expect(page.getByText("Missing").first()).toBeVisible();
   await expect(page.getByText("Uncertain").first()).toBeVisible();
   await expect(page.getByText("Contradictory").first()).toBeVisible();
+  await expect(page.getByTestId("evidence-claims")).toBeVisible();
+  await page.getByTestId("evidence-claim-guest-authority").click();
+  await expect(page.getByTestId("evidence-cannot-open")).toBeVisible();
+  await expect(page.getByTestId("evidence-cannot-open")).toContainText("cannot open");
+  await expect(page.getByTestId("evidence-pointer")).toHaveCount(0);
+  await expect(page.getByTestId("evidence-binding-note")).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 
   await page.getByRole("link", { name: "Next: Gap →" }).click();
@@ -286,6 +406,47 @@ test("keyed Evidence lists this tenant's real uploaded files and what each one b
 
   // Real conformance-gap counts, not the guest's illustrative four rows.
   await expect(page.getByText(/Read from this tenant's own conformance gaps/)).toBeVisible();
+});
+
+test("keyed Evidence click shows a real XLSX cell; a broken pointer is not a fact", async ({ page, request }) => {
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+  const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
+  const seeded = await seedEvidencePointers(request, apiKey);
+
+  await page.goto("/census/evidence");
+  await expect(page.getByTestId("evidence-claims")).toBeVisible();
+
+  const opened = page.getByTestId(`evidence-claim-${seeded.code}-trigger`);
+  await expect(opened).toBeVisible({ timeout: 15_000 });
+  await expect(opened).toContainText("seen in records");
+  await opened.click();
+  await expect(page.getByTestId("evidence-pointer")).toBeVisible();
+  await expect(page.getByTestId("evidence-pointer-cell")).toHaveText(seeded.cell);
+  await expect(page.getByTestId("evidence-pointer-file")).toHaveText(seeded.fileName);
+  await expect(page.getByTestId("evidence-detail-status")).toHaveText("seen in records");
+  await expect(page.getByTestId("evidence-cannot-open")).toHaveCount(0);
+
+  const broken = page.getByTestId(`evidence-claim-${seeded.code}-inputs`);
+  await expect(broken).toContainText("predicted by a model");
+  await expect(broken).not.toContainText("seen in records");
+  await broken.click();
+  await expect(page.getByTestId("evidence-cannot-open")).toBeVisible();
+  await expect(page.getByTestId("evidence-pointer")).toHaveCount(0);
+  await expect(page.getByTestId("evidence-detail-status")).toHaveText("predicted by a model");
+  await expect(page.getByTestId("evidence-downgraded")).toBeVisible();
+
+  await page.getByTestId(`evidence-claim-${seeded.code}-context`).click();
+  await expect(page.getByTestId("evidence-claim-detail").getByTestId("evidence-composed-badge")).toBeVisible();
+  await expect(page.getByTestId("evidence-detail-status")).toHaveText("proposed by us");
+  await expect(page.getByTestId("evidence-cannot-open")).toBeVisible();
+
+  await page.getByTestId(`evidence-claim-${seeded.code}-authority`).click();
+  await expect(page.getByTestId("evidence-detail-status")).toHaveText("said by a person");
+  await expect(page.getByTestId("evidence-binding-note")).toBeVisible();
+  await expect(page.getByTestId("evidence-claim-detail")).not.toContainText("predicted by a model");
+  await expect(page.getByTestId("evidence-pointer-cell")).toHaveText(seeded.cell);
+  await expect(page.getByTestId("evidence-pointer-quote")).toContainText("Offer pack waiting");
 });
 
 /** CENSUS-PACK (docs/BUILD_PROGRAM.md P1/P2). */

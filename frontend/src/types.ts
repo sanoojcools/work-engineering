@@ -518,6 +518,38 @@ export type CensusRecord = {
   readiness: CensusReadiness;
 };
 
+/** V10-2. Mirrors backend/app/schemas/pointers.py::FieldPointerOut.
+ * `status` is what stands after the resolver ran; `requested_status` is
+ * what the caller claimed. They diverge when a broken pointer was
+ * downgraded. The UI must display `status`, never treat an unopened
+ * pointer as a fact. */
+export const POINTER_STATUSES = [
+  "observed",
+  "declared",
+  "reconstructed",
+  "composed",
+  "predicted",
+] as const;
+export type PointerStatus = (typeof POINTER_STATUSES)[number];
+
+export type FieldPointer = {
+  id: number;
+  work_unit_id: number;
+  field_name: string;
+  requested_status: PointerStatus;
+  status: PointerStatus;
+  file_id: number | null;
+  page: number | null;
+  line: number | null;
+  cell: string | null;
+  quote: string;
+  resolved: boolean;
+  resolution_note: string;
+  gap_id: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
 // Slice 2.1: consent receipts, POST /api/consent/receipts. Mirrors
 // backend/app/schemas/consent.py::ConsentReceiptOut.
 export type ConsentReceipt = {
