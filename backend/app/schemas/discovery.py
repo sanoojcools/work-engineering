@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from ..models.discovery import CandidateStatus, GapKind, IntentKind, Origin, TraceKind
+from ..models.discovery import CandidateStatus, GapKind, GapTier, IntentKind, Origin, TraceKind
 from ..models.ontology import Provenance
 
 
@@ -80,6 +80,11 @@ class GapCreate(BaseModel):
 class GapOut(BaseModel):
     id: int
     kind: GapKind
+    # V10-5b (docs/NEXT.md): which of the three tiers this gap sits in.
+    # Read-only and derived -- GapCreate deliberately does not accept it
+    # (see routers/discovery.py::create_gap), because a tier that disagreed
+    # with its kind would be a lie a caller could tell.
+    tier: GapTier
     severity: str
     description: str
     discovered_ref: str

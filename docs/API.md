@@ -75,7 +75,7 @@ PUT VERDICT returns `recommended_level`, `applied_gates`, `allocation`, `mean`, 
 | GET, POST | `/discovery/traces` |
 | GET, POST | `/discovery/intent` |
 | GET, POST | `/discovery/candidates` |
-| GET, POST | `/discovery/gaps` |
+| GET, POST | `/discovery/gaps` | Every gap carries `tier`: `process` \| `journey` \| `outcome`. `GET ?tier=` filters; POST derives `tier` from `kind` and does not accept it |
 | POST | `/discovery/gaps/scan` | Declared vs discovered |
 | POST | `/discovery/suggest` | LLM; empty `items` when provider is `none` |
 

@@ -17,9 +17,10 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from ..models.client import Client
-from ..models.discovery import ConformanceGap, GapKind
+from ..models.discovery import ConformanceGap, GapKind, GapTier, tier_for_kind
 from ..models.graph import EdgeType, WorkEdge
 from ..models.ontology import EntityKind, EntityType, Provenance
+from ..models.outcome import OutcomeRecord, OutcomeStatus
 from ..models.regulatory import RegulatoryEntry
 from ..models.security import (
     AuditLog,
@@ -31,11 +32,13 @@ from ..models.security import (
     WorkUnitProvenanceDetail,
     WorkUnitRegulatoryLink,
 )
+from ..models.work_system import WorkSystem
 from ..models.workunit import ActorType, UnitStatus, VerificationMethod, WorkUnit
 from ..schemas.genome_import import GenomeImportRequest
 from . import work_units as wu_svc
 from .gqs import GATE_PASS_THRESHOLD, compute_gqs
 from .pii import PII_CANDIDATE_FIELDS, scan_and_store_pii
+from .work_system import WORK_SYSTEM_DESK_LANES, desk_of
 
 VERDICT_KEY_MAP = {
     "V": "verifiability", "E": "evidence", "R": "reversibility",
@@ -477,6 +480,7 @@ def _flag_undeclared_gaps(
             continue
         db.add(ConformanceGap(
             kind=GapKind.undeclared,
+            tier=GapTier.process,
             severity="P2",
             description=(
                 f"{wu.code} is declared (business object '{wu_in.business_object}') with no "
@@ -543,6 +547,7 @@ def _flag_split_recommended(
 
         db.add(ConformanceGap(
             kind=GapKind.split_recommended,
+            tier=GapTier.process,
             severity="P2",
             description=(
                 f"{wu.code}: split recommended -- {'; '.join(reasons)}. Advisory only -- the "
@@ -599,6 +604,7 @@ def _flag_missing_terminal_state(db: Session, client_id: int, code_to_wu: dict[s
         codes = sorted(r[0] for r in rows)
         db.add(ConformanceGap(
             kind=GapKind.missing_terminal_state,
+            tier=GapTier.process,
             severity="P2",
             description=(
                 f"Business object '{bo_name}' has {len(rows)} work units ({', '.join(codes)}) "
@@ -607,6 +613,179 @@ def _flag_missing_terminal_state(db: Session, client_id: int, code_to_wu: dict[s
                 f"the import was accepted and no state machine was written."
             ),
             declared_ref=bo_name,
+            discovered_ref="",
+            work_unit_id=None,
+            client_id=client_id,
+        ))
+        flagged += 1
+    return flagged
+
+
+def _existing_gap_refs(db: Session, client_id: int, kind: GapKind) -> set[str]:
+    """The declared_refs this client already has a gap of `kind` for.
+
+    Gates 6/9/10 above deliberately re-flag on every import: their subject
+    is a Work Unit (or a business object) in *this* batch, so a second
+    import of different units is a genuinely second finding. The two
+    V10-5b gaps below are the opposite -- their subject is the Work System
+    itself, which does not change because another genome arrived -- so
+    re-flagging them per import would turn one standing finding into a
+    growing pile of identical rows. NEXT.md's own wording for the outcome
+    tier is "one `outcome` gap"; the journey tier gets the same treatment
+    for the same reason."""
+    return {
+        row[0]
+        for row in db.query(ConformanceGap.declared_ref)
+        .filter(ConformanceGap.client_id == client_id, ConformanceGap.kind == kind)
+        .distinct()
+        .all()
+    }
+
+
+def _flag_missing_handoff(db: Session, client_id: int, code_to_wu: dict[str, WorkUnit]) -> int:
+    """V10-5b JOURNEY tier (docs/NEXT.md, docs/V10_BUILD.md V10-5 "Tier 2
+    journey owner"): advisory, not blocking -- same warn-never-reject shape
+    as Gates 6/9/10.
+
+    For each adjacent desk pair in the Work System's own lane order
+    (services/work_system.py::WORK_SYSTEM_DESK_LANES -- Offer Desk then
+    Onboarding), a handoff exists if this client has at least one WorkEdge
+    running from a unit on the upstream desk to a unit on the downstream
+    desk. If the upstream desk has units and no such edge exists, the
+    journey stops at that desk's edge and nobody owns the seam -- one gap
+    (kind=missing_handoff, tier=journey, severity=P2).
+
+    Scope, deliberately:
+    - Only a pair this import actually touched is evaluated. A genome of
+      Finance units must not produce a verdict on the HR journey, exactly
+      as Gate 9 only evaluates business objects this import touched.
+    - The edge search is cumulative across the client's units, not limited
+      to this batch: a handoff imported last month is a real handoff, same
+      corroboration scope Gates 9/10 already use.
+    - Zero units on the upstream desk means nothing to hand off yet, which
+      is not a gap -- it is an empty inventory, and calling it a journey
+      failure would be inventing a finding.
+    - Nothing is written to work_systems, no edge is created to "fix" the
+      seam, and no owner is invented for it (the Work System's own owner
+      field is honestly a stand-in -- see models/work_system.py).
+    """
+    touched_desks = {desk for desk in (desk_of(wu.code) for wu in code_to_wu.values()) if desk}
+    if not touched_desks:
+        return 0
+
+    # (id, code) rather than whole WorkUnit rows: all this needs is which
+    # ids sit on which lane and enough codes to name the upstream desk in
+    # the description.
+    units_by_desk: dict[str, list[tuple[int, str]]] = {}
+    for desk_name, prefixes in WORK_SYSTEM_DESK_LANES:
+        rows: set[tuple[int, str]] = set()
+        for prefix in prefixes:
+            rows.update(
+                db.query(WorkUnit.id, WorkUnit.code)
+                .filter(WorkUnit.client_id == client_id, WorkUnit.code.startswith(prefix))
+                .all()
+            )
+        units_by_desk[desk_name] = sorted(rows, key=lambda row: row[1])
+
+    already_flagged = _existing_gap_refs(db, client_id, GapKind.missing_handoff)
+    flagged = 0
+    lane_names = [desk_name for desk_name, _ in WORK_SYSTEM_DESK_LANES]
+    for upstream, downstream in zip(lane_names, lane_names[1:]):
+        if upstream not in touched_desks and downstream not in touched_desks:
+            continue
+        upstream_units = units_by_desk[upstream]
+        if not upstream_units:
+            continue
+        downstream_units = units_by_desk[downstream]
+
+        seam_ref = f"{upstream} -> {downstream}"
+        if seam_ref in already_flagged:
+            continue
+
+        upstream_ids = {unit_id for unit_id, _ in upstream_units}
+        downstream_ids = {unit_id for unit_id, _ in downstream_units}
+        has_handoff = bool(downstream_ids) and db.query(WorkEdge.id).filter(
+            WorkEdge.source_id.in_(upstream_ids), WorkEdge.target_id.in_(downstream_ids)
+        ).first() is not None
+        if has_handoff:
+            continue
+
+        if downstream_units:
+            why = (
+                f"{downstream} has {len(downstream_units)} work unit(s) but no dependency edge runs "
+                f"from any {upstream} unit into any of them"
+            )
+        else:
+            why = f"{downstream} has no work units on this tenant at all, so the journey stops at {upstream}"
+        db.add(ConformanceGap(
+            kind=GapKind.missing_handoff,
+            tier=tier_for_kind(GapKind.missing_handoff),
+            severity="P2",
+            description=(
+                f"Work System journey seam '{seam_ref}': {why}. {upstream} contributes "
+                f"{len(upstream_units)} work unit(s) ({', '.join(code for _, code in upstream_units[:8])}"
+                f"{', …' if len(upstream_units) > 8 else ''}). Advisory only -- the import was accepted, "
+                f"no edge was created and no journey owner was invented."
+            ),
+            declared_ref=seam_ref,
+            discovered_ref="",
+            work_unit_id=None,
+            client_id=client_id,
+        ))
+        flagged += 1
+    return flagged
+
+
+def _flag_outcome_not_measured(db: Session, client_id: int) -> int:
+    """V10-5b OUTCOME tier (docs/NEXT.md, docs/V10_BUILD.md V10-5 "Tier 3
+    promised vs **not measured** (never invent)"): advisory, warn, never
+    reject -- and never a number.
+
+    A Work System whose outcome_records row still says `not_measured`
+    (services/outcome.py: only a caller's PUT with a real numeric result AND
+    a named source can move it to `measured`) gets one gap saying the
+    promise is unmeasured. A Work System with NO outcome_records row counts
+    the same way, because that is exactly what that table's own contract
+    says absence means -- get_or_create auto-vivifies the honest
+    `not_measured` default on first read, so a missing row and a
+    not_measured row are the same claim. No row is created here: reading a
+    genome must not write the Work System's outcome record.
+
+    This never invents a measured KPI. The description quotes only the
+    tenant's own declared promise (WorkSystem.outcome, sourced from the
+    sitting) and states that nothing measured exists -- it contains no
+    result, no percentage and no estimate, and this function has no write
+    path to OutcomeRecord.measured at all.
+
+    A client with no Work System row (nothing seeds one -- see
+    routers/work_systems.py) has made no promise, so there is nothing to
+    warn about and no gap is written.
+    """
+    systems = db.query(WorkSystem).filter(WorkSystem.client_id == client_id).order_by(WorkSystem.id).all()
+    if not systems:
+        return 0
+
+    already_flagged = _existing_gap_refs(db, client_id, GapKind.outcome_not_measured)
+    flagged = 0
+    for ws in systems:
+        if ws.code in already_flagged:
+            continue
+        record = db.query(OutcomeRecord).filter(OutcomeRecord.work_system_id == ws.id).one_or_none()
+        if record is not None and record.status == OutcomeStatus.measured:
+            continue
+        state = "has no outcome record yet" if record is None else "outcome record still says not_measured"
+        promised = (ws.outcome or "").strip() or "not stated"
+        db.add(ConformanceGap(
+            kind=GapKind.outcome_not_measured,
+            tier=tier_for_kind(GapKind.outcome_not_measured),
+            severity="P2",
+            description=(
+                f"Work System '{ws.code}' promises: {promised} -- and {state}, so nothing measured "
+                f"backs that promise. Advisory only -- the import was accepted, and no measured "
+                f"result was invented to close this (a real one arrives only via PUT "
+                f"/work-systems/{{id}}/outcome with a number and a named source)."
+            ),
+            declared_ref=ws.code,
             discovered_ref="",
             work_unit_id=None,
             client_id=client_id,
@@ -740,9 +919,16 @@ def _write_genome(
                 db.add(WorkEdge(source_id=source.id, target_id=target.id, edge_type=EdgeType.sequence))
                 edge_count += 1
 
+    # V10-5b: the three gap tiers, in tier order. Tier 1 (process) is the
+    # three pre-existing gates; Tier 2 (journey) and Tier 3 (outcome) are new
+    # and run last because both read the rows written above (the journey seam
+    # needs this batch's edges to exist).
     gaps_flagged = _flag_undeclared_gaps(db, client_id, parsed, code_to_wu)
     split_recommended_flagged = _flag_split_recommended(db, client_id, parsed, code_to_wu)
     missing_terminal_state_flagged = _flag_missing_terminal_state(db, client_id, code_to_wu)
+    db.flush()
+    missing_handoff_flagged = _flag_missing_handoff(db, client_id, code_to_wu)
+    outcome_not_measured_flagged = _flag_outcome_not_measured(db, client_id)
 
     version.work_unit_count = len(code_to_wu)
     version.gates_passed = json.dumps(["gqs", "pydantic_validation"])
@@ -778,4 +964,21 @@ def _write_genome(
         # graph has no terminal state -- warned, not rejected, no state
         # machine written.
         "missing_terminal_state_flagged": missing_terminal_state_flagged,
+        # V10-5b Tier 2 (journey): a Work System desk seam this import
+        # touched with no handoff edge across it -- warned, not rejected, no
+        # edge created, no journey owner invented.
+        "missing_handoff_flagged": missing_handoff_flagged,
+        # V10-5b Tier 3 (outcome): a Work System whose promise has no
+        # measured result -- warned, not rejected, and no measured value
+        # invented to close it.
+        "outcome_not_measured_flagged": outcome_not_measured_flagged,
+        # The same three counts keyed by tier, so a caller that wants
+        # "gaps by tier" doesn't have to know which gate belongs to which
+        # tier (models/discovery.py::TIER_BY_KIND is the one place that
+        # mapping lives).
+        "gaps_by_tier": {
+            GapTier.process.value: gaps_flagged + split_recommended_flagged + missing_terminal_state_flagged,
+            GapTier.journey.value: missing_handoff_flagged,
+            GapTier.outcome.value: outcome_not_measured_flagged,
+        },
     }
