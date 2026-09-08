@@ -1,0 +1,35 @@
+name: Next Claude slice
+
+# Does nothing until repo variable AUTO_SLICES=true and ANTHROPIC_API_KEY is set.
+# Trigger = Grok/human updates docs/NEXT.md (or Actions → Run workflow).
+
+on:
+  push:
+    branches: [main]
+    paths: [docs/NEXT.md]
+  workflow_dispatch:
+
+concurrency:
+  group: next-claude
+  cancel-in-progress: true
+
+jobs:
+  claude:
+    if: vars.AUTO_SLICES == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are Claude on this repo. Read CLAUDE.md then docs/NEXT.md.
+            Execute ONLY the Claude section. If LOCKED, comment BLOCKED on a tracking issue and stop.
+            Follow docs/contracts/ named there. One PR to main. Do not merge. Do not edit Cursor files.
+            HONESTY.md paragraph. Stop when the PR is open.
