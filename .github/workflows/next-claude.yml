@@ -47,4 +47,4 @@ jobs:
           Do not merge. Do not edit frontend Census/Chart/Plan. HONESTY.md paragraph.
           Stop when the PR is open.
           EOF
-          )" --dangerously-skip-permissions --print
+          )" --dangerously-skip-permissions --print --model claude-sonnet-4-5
