@@ -117,7 +117,12 @@ export function EvidenceClaims() {
   const selected = claims.find((c) => c.id === selectedId) ?? null;
 
   return (
-    <div className="card" data-testid="evidence-claims" style={{ marginBottom: 16 }}>
+    <div
+      className="card"
+      data-testid="evidence-claims"
+      aria-busy={!isGuest && loading ? "true" : "false"}
+      style={{ marginBottom: 16 }}
+    >
       <h3 style={{ marginTop: 0 }}>
         How we know each claim{" "}
         <InfoTooltip
@@ -132,14 +137,18 @@ export function EvidenceClaims() {
       </p>
       {needsKey && !isGuest && <ApiKeyBanner onSaved={() => setNeedsKey(false)} />}
       {error && <div className="banner error">{error}</div>}
-      {loading && <p className="hint">Loading this tenant's field claims…</p>}
+      {loading && !isGuest && (
+        <p className="hint" data-testid="evidence-claims-loading">
+          Loading this tenant's field claims…
+        </p>
+      )}
       {!loading && claims.length === 0 && (
         <p className="hint" style={{ marginBottom: 0 }}>
           No field claims recorded yet on this tenant. Zero is an honest answer — nothing here is
           invented to look complete.
         </p>
       )}
-      {claims.length > 0 && (
+      {!loading && claims.length > 0 && (
         <ul className="claim-list">
           {claims.map((claim) => {
             const active = claim.id === selectedId;

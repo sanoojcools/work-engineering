@@ -22,7 +22,10 @@ export function InfoTooltip({ term, simple, technical, example }: InfoTooltipPro
         type="button"
         className="info-btn"
         aria-label={`Info about ${term}`}
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
       >
