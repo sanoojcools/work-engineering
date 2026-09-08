@@ -208,7 +208,7 @@ function chartSection(units: WorkUnit[], verdicts: Verdict[]): string {
 
 function planSection(): string {
   return [
-    `- **Hours:** ${DOCUMENT_CHECK_RECORD.declaredHours} declared / ${DOCUMENT_CHECK_RECORD.defendedHours} defended (hrs/mo), Document check, after four costing disciplines.`,
+    `- **Hours:** ${DOCUMENT_CHECK_RECORD.declaredHours} stated / ${DOCUMENT_CHECK_RECORD.defendedHours} defended (hrs/mo), Document check, after four costing disciplines.`,
     `- **Stop:** ${DOCUMENT_CHECK_RECORD.stopRule}`,
     `- **Quality gate:** ${GQS_REMINDER_PRE} ${GQS_REMINDER_BOLD} ${GQS_REMINDER_POST}`,
   ].join("\n");

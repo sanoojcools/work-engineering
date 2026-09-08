@@ -26,6 +26,7 @@ import {
   usePlanVerify,
   type PlanVerifyRow,
 } from "../lib/planVerify";
+import { APPETITE_STOP_COPY } from "../lib/planEcon";
 import type { HandoffOut, ModerationEntry, Page, Verdict, WorkUnit } from "../types";
 
 // The Document check unit's own real code (OfferDeskDocumentCheck.tsx's
@@ -371,10 +372,10 @@ function ModerationSection({ units, verdicts }: { units: WorkUnit[]; verdicts: V
   );
 }
 
-/** CENSUS-v0 Part A, step 6, rebuilt for V10-3: live how-sure / checked-by /
- * independent columns from verification_design + certification, plus one
- * Outcome line (promised sitting sentence, measured = not measured). Hours
- * 95/61.8 stay. No new arithmetic. */
+/** CENSUS-v0 Part A, step 6: V10-3 columns + outcome strip stay. V10-6
+ * Plan economics: Offer Desk 95 stated / 61.8 defended as two numbers;
+ * other desks stated hours only; appetite does not lift the dual-employment
+ * stop. No new arithmetic. */
 export default function CensusPlan() {
   const isGuest = useIsGuest();
   const { keyClientId } = useCompany();
@@ -473,33 +474,38 @@ export default function CensusPlan() {
         <Link to="/scout/offer-desk/spec-deny">Ask Spec without a pass →</Link>
       </div>
 
-      <h3 style={{ marginBottom: 4 }}>
+      <h3 style={{ marginBottom: 4 }} data-testid="plan-econ">
         Hours{" "}
         <InfoTooltip
           term="Hours"
-          simple="Offer Desk's own declared vs. defended pair, both visible — the smaller, defended number is never hidden behind the bigger declared one. Every other desk states one number only; none gets an invented defended figure."
+          simple="Offer Desk shows both numbers: 95 stated and 61.8 defended. They stay two numbers — the smaller one is never hidden behind the bigger one. Every other desk shows stated hours only; we do not invent a defended figure for them."
+          technical="Declared sheet claim vs defended after four costing disciplines (OfferDeskHours). Other desks: deskHoursSummary() verbatim TOTAL ESTIMATED SAVINGS — no second case."
         />
       </h3>
       <div className="split" style={{ gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 12 }}>
         <div className="card" style={{ margin: 0 }}>
-          <div className="hint" style={{ marginTop: 0, fontWeight: 700 }}>Declared</div>
-          <p style={{ fontSize: 28, margin: "4px 0" }}>{DOCUMENT_CHECK_RECORD.declaredHours}</p>
+          <div className="hint" style={{ marginTop: 0, fontWeight: 700 }}>Stated</div>
+          <p style={{ fontSize: 28, margin: "4px 0" }} data-testid="plan-hours-stated">
+            {DOCUMENT_CHECK_RECORD.declaredHours}
+          </p>
           <p style={{ fontSize: 13, margin: 0 }}>hrs/mo, Offer Desk's own workbook line.</p>
         </div>
         <div className="card" style={{ margin: 0 }}>
           <div className="hint" style={{ marginTop: 0, fontWeight: 700 }}>Defended</div>
-          <p style={{ fontSize: 28, margin: "4px 0" }}>{DOCUMENT_CHECK_RECORD.defendedHours}</p>
-          <p style={{ fontSize: 13, margin: 0 }}>hrs/mo, after four costing disciplines. Still declared math, not traces.</p>
+          <p style={{ fontSize: 28, margin: "4px 0" }} data-testid="plan-hours-defended">
+            {DOCUMENT_CHECK_RECORD.defendedHours}
+          </p>
+          <p style={{ fontSize: 13, margin: 0 }}>hrs/mo, after four costing disciplines. Still the sheet, not traces.</p>
         </div>
       </div>
       <Link to="/scout/offer-desk/hours" className="card" style={{ textDecoration: "none", color: "inherit", margin: 0, display: "block", marginBottom: 12 }}>
-        <h4 style={{ margin: 0 }}>Hours — 95 declared / 61.8 defended</h4>
+        <h4 style={{ margin: 0 }}>Hours — 95 stated / 61.8 defended</h4>
         <p className="hint" style={{ marginBottom: 0 }}>See the four costing disciplines behind the defended number →</p>
       </Link>
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card" style={{ marginBottom: 12 }} data-testid="plan-hours-other">
         <h4 style={{ marginTop: 0 }}>Other desks — stated only</h4>
         <p className="hint" style={{ marginTop: 0 }}>
-          Every other desk's own declared hrs/mo line, verbatim — no second, defended case computed for any of them.
+          Every other desk's own stated hrs/mo line, verbatim — no second, defended case computed for any of them.
         </p>
         <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
           <thead>
@@ -521,6 +527,9 @@ export default function CensusPlan() {
           <Link to="/hr/function-hours">Function hours — all six desks →</Link>
         </p>
       </div>
+      <p className="hint" style={{ marginTop: 0, marginBottom: 16 }} data-testid="plan-appetite-stop">
+        {APPETITE_STOP_COPY}
+      </p>
 
       <ModerationSection units={units} verdicts={verdicts} />
 
@@ -549,9 +558,9 @@ export default function CensusPlan() {
           />
         </h3>
         <p style={{ fontSize: 13 }}>
-          The thing a CHRO forwards: {DOCUMENT_CHECK_RECORD.declaredHours} and {DOCUMENT_CHECK_RECORD.defendedHours}{" "}
-          both stated, the dual-employment stop restated, the family GQS reminder above, and — where a unit is not
-          ready to hand off — the reason, not a fake allow.
+          The thing a CHRO forwards: {DOCUMENT_CHECK_RECORD.declaredHours} stated and{" "}
+          {DOCUMENT_CHECK_RECORD.defendedHours} defended, the dual-employment stop restated, the family GQS reminder
+          above, and — where a unit is not ready to hand off — the reason, not a fake allow.
         </p>
         <DownloadCensusButton />
       </div>
@@ -560,7 +569,7 @@ export default function CensusPlan() {
         given="Work Chart: the journey's two lanes, real or declared-schematic; this tenant's real verification designs, certifications, and outcome record."
         understood="How sure we are cannot read as sure while a claim is still predicted. Measured stays not measured until a real number and a source exist — never an invented KPI."
         processed="GET /work-units/{id}/verification-design, GET /work-units/{id}/certification, GET /work-systems/{id}/outcome. Same deskHoursSummary() as the function-hours panel. Moderation is real: GET/POST /moderation, reason + name required server-side."
-        output={`${LANE_DESK_IDS.reduce((n, d) => n + DESKS_BY_ID[d].steps.length, 0)} units listed. Outcome not measured. ${DOCUMENT_CHECK_RECORD.declaredHours}/${DOCUMENT_CHECK_RECORD.defendedHours} hrs. Family genome ~30/90 — not a pass.`}
+        output={`${LANE_DESK_IDS.reduce((n, d) => n + DESKS_BY_ID[d].steps.length, 0)} units listed. Outcome not measured. ${DOCUMENT_CHECK_RECORD.declaredHours} stated / ${DOCUMENT_CHECK_RECORD.defendedHours} defended hrs. Family genome ~30/90 — not a pass.`}
       />
 
       <p style={{ marginTop: 20 }}>

@@ -3,11 +3,12 @@ import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
 import { SeatStepper } from "../components/offerDesk/SeatStepper";
 import { DOCUMENT_CHECK_RECORD } from "../lib/offerDeskWorkRecord";
+import { APPETITE_STOP_COPY } from "../lib/planEcon";
 
 const DISCIPLINES = [
   {
     name: "1. Keep the sheet claim visible",
-    does: "95 hrs/mo stays on screen as declared. We do not overwrite it with a prettier number.",
+    does: "95 hrs/mo stays on screen as stated. We do not overwrite it with a prettier number.",
   },
   {
     name: "2. Do not treat per-case minutes as a measured month",
@@ -28,32 +29,36 @@ export default function OfferDeskHours() {
   return (
     <>
       <p className="hint" style={{ marginBottom: 4 }}>
-        Offer Desk · declared 95 · defended 61.8
+        Offer Desk · stated 95 · defended 61.8
       </p>
       <h2>
         Hours{" "}
         <InfoTooltip
           term="Defended hours"
           simple="A number we will still say after costing discipline. Not a measurement taken on this desk this week."
+          technical="Declared sheet claim stays visible as stated 95. Defended 61.8 is after four costing disciplines. Neither is a live month on this tenant."
         />
       </h2>
       <p className="lede">
-        Both numbers stay visible. {rec.declaredHours} is the sheet claim ({rec.declaredHoursLabel}). {rec.defendedHours} is the defended case after four costing disciplines. Neither is a live month on this tenant.
+        Both numbers stay visible. {rec.declaredHours} is stated from the sheet ({rec.declaredHoursLabel}). {rec.defendedHours} is the defended case after four costing disciplines. Neither is a live month on this tenant.
       </p>
       <SeatStepper />
 
-      <div className="split" style={{ gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+      <div className="split" style={{ gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 12 }}>
         <div className="card" style={{ margin: 0 }}>
-          <div className="hint" style={{ marginTop: 0, fontWeight: 700 }}>Declared</div>
+          <div className="hint" style={{ marginTop: 0, fontWeight: 700 }}>Stated</div>
           <p style={{ fontSize: 28, margin: "4px 0" }}>{rec.declaredHours}</p>
           <p style={{ fontSize: 13, margin: 0 }}>hrs/mo on the workbook automation-readiness line.</p>
         </div>
         <div className="card" style={{ margin: 0 }}>
           <div className="hint" style={{ marginTop: 0, fontWeight: 700 }}>Defended</div>
           <p style={{ fontSize: 28, margin: "4px 0" }}>{rec.defendedHours}</p>
-          <p style={{ fontSize: 13, margin: 0 }}>hrs/mo after the four disciplines below. Still declared math, not traces.</p>
+          <p style={{ fontSize: 13, margin: 0 }}>hrs/mo after the four disciplines below. Still the sheet, not traces.</p>
         </div>
       </div>
+      <p className="hint" style={{ marginTop: 0, marginBottom: 16 }}>
+        {APPETITE_STOP_COPY}
+      </p>
 
       {DISCIPLINES.map((row) => (
         <div className="card" key={row.name} style={{ marginBottom: 12 }}>
@@ -66,7 +71,7 @@ export default function OfferDeskHours() {
         given="Workbook claim of ~95 hrs/mo and per-case times on eleven steps."
         understood="A claim is not a measurement. Volume, overlap, and unobserved systems cannot be spent twice."
         processed="Four disciplines. No agent scoring. No invented Zwayam volume."
-        output={`${rec.declaredHours} stays labelled declared. ${rec.defendedHours} is the defended case. Both remain on the sitting record.`}
+        output={`${rec.declaredHours} stays labelled stated. ${rec.defendedHours} is the defended case. Both remain on the sitting record.`}
       />
 
       <p style={{ marginTop: 20 }}>
