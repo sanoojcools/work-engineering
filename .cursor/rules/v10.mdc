@@ -9,9 +9,9 @@ On every new chat, **before writing code**:
 
 1. Run `git pull origin main`
 2. Read `docs/NEXT.md`
-3. Read any file it names for Cursor (`packs/hr/hire_leaves.yaml`, `docs/contracts/…`)
+3. Read any file it names for Cursor
 4. If the Cursor section is **LOCKED** or missing, reply exactly: `BLOCKED — see docs/NEXT.md` and stop. No feature PR.
-5. If UNLOCKED, do **only** that slice. Branch `cursor/…` off latest main. PR → main. Stop. Do not start Claude’s slice.
+5. If UNLOCKED, do **only** that slice. Branch `cursor/…` off latest main. Open the PR as **Ready for review** — **never Draft**. Stop. Do not merge. Do not start Claude’s slice.
 
 Do not edit `backend/` except types you consume. Do not touch files NEXT assigns to Claude.
 
