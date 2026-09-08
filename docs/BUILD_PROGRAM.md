@@ -1,37 +1,12 @@
 # Build program
 
-**Work order:** [`docs/V10_BUILD.md`](V10_BUILD.md)
+**Founder:** [`docs/HOW_WE_WORK.md`](HOW_WE_WORK.md) · **Pastes:** [`docs/NEXT.md`](NEXT.md)
 
-V10-1 shipped. V10-2 backend #23 shipped. **V10-2 UI = PR #24** (merge when CI green, then this unlock applies).
+V10-1 done. V10-2 done (#23+#24). **Now both tracks UNLOCKED.**
 
----
-
-| Who | Slice | Status |
+| Who | Slice | Files |
 |---|---|---|
-| Cursor | V10-2 Evidence UI | **#24 — merge when green, then idle** |
-| **Claude** | **V10-3 verify + certify + 5th gate (backend)** | **UNLOCKED after #24 is on main** |
-| Cursor | V10-3 Plan columns | LOCKED until Claude V10-3 merges |
-| V10-4 … | Chart 18-leaf | locked |
+| **Claude** | V10-3 verify/cert | `docs/contracts/v10-3-verify.md` only |
+| **Cursor** | V10-4 18-leaf Chart | `packs/hr/hire_leaves.yaml` · not CensusPlan.tsx |
 
----
-
-## V10-3 Claude (backend only)
-
-Do not edit CensusEvidence / Chart pages.
-
-Per unit on the offer→Day-1 journey:
-- verification_design: method (one of seven or none), independent? (different lineage / deterministic / no), sampling, cost or “not stated”
-- Certification **separate** from provenance: sure / mostly sure / reported not seen / cannot define
-- 5th gate: non-waivable from confirmed intent; error-cost = contestable default
-- Dual-employment stop still unliftable at ambitious
-- Handoff **Not ready** if independence required and missing
-- Dual-track flag stored: do may be delegated, check stays human — no executor
-
-Tests: offer-release Not ready without independent check; predicted provenance cannot become “sure”; dual-employment still stop; RLS.
-HONESTY.md. Branch claude/v10-3. PR → main. Squash-merge CI green. Stop. No V10-4.
-
----
-
-## Non-negotiables
-
-Spec deny. Talk-only empty. 95 vs 61.8. Dual employment = stop. Fabricated ≠ Rashmi. Guest mints no key.
+If an agent edits the other’s files, reject the PR.
