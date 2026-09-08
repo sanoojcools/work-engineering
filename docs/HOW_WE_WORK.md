@@ -1,12 +1,16 @@
 # How we work
 
-**Laptop agents cannot start themselves.** Cloud can: [`docs/AUTOSTART.md`](AUTOSTART.md) (once).
+You are in the loop **only** for exceptions (`needs-founder` on GitHub).
 
-After that:
+Normal path (after [`AUTOSTART.md`](AUTOSTART.md) + **Allow auto-merge**):
 
 ```
-Grok updates docs/NEXT.md  →  Claude + Cursor cloud start  →  PRs open
-You: Squash and merge when CI green
+Grok writes docs/NEXT.md  →  cloud Claude + Cursor open PRs
+CI green  →  squash-merge happens without you
 ```
 
-Until you flip `AUTO_SLICES=true`: `git pull` then type `go` in each New chat.
+You get a GitHub mail only if:
+- label **needs-founder** (NEXT.md / contracts / workflows / login vendor / STOP-GATE)
+- CI red twice
+
+Until autostart is on: `git pull` → type `go` in two New chats. Merge is still automatic for `claude/*` and `cursor/*` PRs once **Allow auto-merge** is on.
