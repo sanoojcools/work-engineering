@@ -1,0 +1,10 @@
+name: Run next slice
+description: Agents execute docs/NEXT.md — founder does not type go
+title: "slice: run NEXT.md"
+labels: [auto-slice]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read `docs/NEXT.md`. Claude does the Claude section. Cursor does the Cursor section.
+        Open a PR. Do not type anything else. Do not wait for the founder.
