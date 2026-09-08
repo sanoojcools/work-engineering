@@ -1,30 +1,31 @@
 # NEXT — agents read this and execute their section
 
-Fired 2026-09-08T10:14Z (secret + AUTO_SLICES on).
-
-V10-3 verify/cert **shipped** (PR #25). Do not rebuild it.
+Fired 2026-09-08T10:33Z. V10-3 law #25, Outcome table #26, Chart 18-leaf #28 — shipped. Do not rebuild them.
 
 ---
 
 ## Claude
 
-Execute **V10-5 BACKEND only** — Outcome Record.
+**V10-5b BACKEND** — three-tier gaps (process / journey / outcome).
 
-- Table `outcome_records` (RLS): work_system_id, promised text, measured text nullable, status `not_measured` | `measured`
-- GET/PUT `/api/work-systems/{id}/outcome`
-- Default for offer→Day-1: promised = sitting outcome sentence from Offer Desk meta; measured = **null**, status = `not_measured`. **Never invent 62%.**
-- Do not edit frontend, Chart, Plan, Evidence, hire_leaves.yaml, NEXT.md.
-Tests: guest 401; keyed GET shows not_measured; PUT measured only with a real number+source else 422; RLS.
-HONESTY.md. Branch `claude/v10-5-outcome`. PR → main. Stop. Do not merge (automerge will).
+Reuse `conformance_gaps`. Additive column `tier` (default `process`). On import:
+- undeclared twin / split-recommended / missing terminal → `process`
+- missing handoff to the next desk in the Work System → `journey`
+- Work System has `outcome_records.status=not_measured` → one `outcome` gap (warn, never reject)
+Do not invent measured KPIs. Do not edit frontend, Chart, Plan, NEXT.md.
+Tests: three kinds created on a real import; outcome gap present while not_measured; RLS; GQS still the reject.
+Branch `claude/v10-5b-gap-tiers`. PR → main. Stop.
 
 ---
 
 ## Cursor
 
-If a PR from `cursor/v10-4` (or title containing V10-4) is already open or merged: **stop**.
+If a PR titled V10-4 is still open: stop.
 
-Else execute **V10-4 FRONTEND only**.
-Read `packs/hr/hire_leaves.yaml`. Work Chart: **exactly 18 leaves**, bands automate/augment/human/**external**, composite “the hire is complete”.
-Synthetic names on Chart. Do not edit backend. Do not edit `CensusPlan.tsx`.
-Playwright: Chart shows 18 leaves + an external band; guest 1→6; Plan still 95 and 61.8.
-Branch `cursor/v10-4-chart` off latest **main**. PR → main. Stop.
+**V10-3 UI + outcome strip on Plan only.**
+`CensusPlan.tsx`: columns in customer words — how sure we are, checked by, independent?
+Read live `verification_design` + `certification` (V10-3). Predicted cannot display as sure.
+One Outcome line: promised = sitting sentence, measured = **not measured** (GET `/work-systems/{id}/outcome`). Never print 62%.
+Do not edit backend. Do not rebuild Chart 18-leaf.
+Playwright: Plan shows not measured + 95 and 61.8; guest 1→6.
+Branch `cursor/v10-3-plan-columns` off latest main. PR → main. Stop.
