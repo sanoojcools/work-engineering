@@ -167,20 +167,43 @@ function claimFromPointer(unit: WorkUnit, pointer: FieldPointer, fileName: strin
   };
 }
 
+/** Chrome allows six HTTP/1.1 sockets per origin. Evidence also loads
+ * whoami, files, and gaps, so unbounded Promise.all of GET /pointers for
+ * every Client A unit (HR clone + Offer Desk import) queues behind them
+ * and the keyed walk times out in CI even though the resolver already ran. */
+async function mapPool<T, R>(items: T[], limit: number, mapper: (item: T) => Promise<R>): Promise<R[]> {
+  if (items.length === 0) return [];
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const index = next++;
+      if (index >= items.length) return;
+      results[index] = await mapper(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 export function useEvidenceClaims() {
   const isGuest = useIsGuest();
-  const { keyClientId } = useCompany();
-  const unitsPath = isGuest ? null : withClient("/work-units/", keyClientId);
-  const filesPath = isGuest ? null : "/files";
+  const { keyClientId, firstLoadPending } = useCompany();
+  const unitsPath = isGuest || firstLoadPending ? null : withClient("/work-units/", keyClientId);
+  const filesPath = isGuest || firstLoadPending ? null : "/files";
 
   const [units, setUnits] = useState<WorkUnit[]>([]);
   const [files, setFiles] = useState<UploadedFileOut[]>([]);
   const [pointersByUnit, setPointersByUnit] = useState<Record<number, FieldPointer[]>>({});
-  const [loading, setLoading] = useState(!isGuest);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [needsKey, setNeedsKey] = useState(false);
 
   useEffect(() => {
+    if (firstLoadPending) {
+      setLoading(true);
+      return;
+    }
     if (isGuest || !unitsPath || !filesPath) {
       setUnits([]);
       setFiles([]);
@@ -201,9 +224,13 @@ export function useEvidenceClaims() {
         if (cancelled) return;
         const unitItems = unitsPage.items;
         const fileItems = filesPage.items;
-        const pairs = await Promise.all(
-          unitItems.map(async (u) => [u.id, await listPointers(u.id)] as const),
-        );
+        const pairs = await mapPool(unitItems, 3, async (u) => {
+          try {
+            return [u.id, await listPointers(u.id)] as const;
+          } catch {
+            return [u.id, [] as FieldPointer[]] as const;
+          }
+        });
         if (cancelled) return;
         const map: Record<number, FieldPointer[]> = {};
         for (const [id, items] of pairs) map[id] = items;
@@ -222,22 +249,25 @@ export function useEvidenceClaims() {
     return () => {
       cancelled = true;
     };
-  }, [isGuest, unitsPath, filesPath, keyClientId]);
+  }, [firstLoadPending, isGuest, unitsPath, filesPath, keyClientId]);
 
   const claims = useMemo(() => {
+    if (firstLoadPending) return [];
     if (isGuest) return GUEST_EVIDENCE_CLAIMS;
-    const filesById = new Map(files.map((f) => [f.id, f.file_name]));
+    if (loading) return [];
+    const filesById = new Map(files.map((f) => [Number(f.id), f.file_name]));
     const out: EvidenceClaim[] = [];
     for (const unit of units) {
       for (const pointer of pointersByUnit[unit.id] ?? []) {
         if (!(POINTERABLE_FIELDS as readonly string[]).includes(pointer.field_name)) continue;
-        const fileName = pointer.file_id != null ? (filesById.get(pointer.file_id) ?? null) : null;
+        const fileName =
+          pointer.file_id != null ? (filesById.get(Number(pointer.file_id)) ?? null) : null;
         out.push(claimFromPointer(unit, pointer, fileName));
       }
     }
     out.sort((a, b) => a.id.localeCompare(b.id));
     return out;
-  }, [isGuest, units, files, pointersByUnit]);
+  }, [firstLoadPending, loading, isGuest, units, files, pointersByUnit]);
 
   return { isGuest, claims, loading, error, needsKey, setNeedsKey };
 }

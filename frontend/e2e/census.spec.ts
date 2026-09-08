@@ -32,13 +32,12 @@ const CLAIMS_XLSX = join(process.cwd(), "e2e", "fixtures", "offer-pack-claims.xl
  * a warm Client A tenant from an earlier run does not 409. */
 async function seedEvidencePointers(request: APIRequestContext, apiKey: string): Promise<{
   code: string;
+  wuId: number;
   fileName: string;
   cell: string;
 }> {
   const headers = { "X-Spec-Key": apiKey };
   // Unique type each run — do not reuse types.items[0] after a genome import.
-  // That first row can be a leftover catalog/pack type; creating our own
-  // object keeps this seed independent of Client A's sitting imports.
   const typeName = `V10-2 Evidence UI Object ${Date.now().toString(36)}`;
   const created = await request.post("/api/ontology/types", {
     headers,
@@ -133,8 +132,28 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
   expect(bindingBody.status).toBe("declared");
   expect(bindingBody.resolved).toBe(true);
 
-  return { code: usedCode, fileName, cell };
+  return { code: usedCode, wuId, fileName, cell };
 }
+
+/** Whoami first (guest Start is a no-op). If this tenant already has a
+ * started census — CI does, after the persist test — we do not click.
+ * Playwright's click retries when the keyed Start button unmounts into
+ * "Census started", so a successful start would otherwise hang the test. */
+async function startKeyedCensus(page: Page): Promise<void> {
+  await page.goto("/");
+  await expect(page.getByText(/Authenticated as/)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
+  const startedBadge = page.getByText("Census started");
+  const keyedStartHint = page.getByText(/Creates a census record for this Offer/);
+  const loadingCensus = page.getByText("Loading this tenant's census…");
+  await expect(startedBadge.or(keyedStartHint).or(loadingCensus)).toBeVisible({ timeout: 15_000 });
+  await expect(loadingCensus).toHaveCount(0, { timeout: 15_000 });
+  if ((await startedBadge.count()) > 0) return;
+  await expect(keyedStartHint).toBeVisible();
+  await page.getByRole("button", { name: "Start census" }).evaluate((el) => (el as HTMLButtonElement).click());
+  await expect(startedBadge).toBeVisible({ timeout: 15_000 });
+}
+
 
 test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 leaves and an external band", async ({ page }) => {
   await page.goto("/");
@@ -377,41 +396,53 @@ test("Spec deny without a file still denies", async ({ page, request }) => {
 });
 
 test("keyed Evidence click shows a real XLSX cell; a broken pointer is not a fact", async ({ page, request }) => {
-  // Runs before the evidence-pack genome import. After that import, POST
-  // /work-units can 500 on db.refresh under RLS on this singleton Client A.
-  test.setTimeout(60_000);
+  // Before the evidence-pack genome import (that import can 500 POST /work-units
+  // on db.refresh). Wait for whoami + GET /pointers like #29 so the B2 cell
+  // and the broken predicted pointer both render.
+  test.setTimeout(90_000);
   await signInWithFreshDemoKey(page, request);
+  await startKeyedCensus(page);
   const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
   const seeded = await seedEvidencePointers(request, apiKey);
 
+  const pointersLoaded = page.waitForResponse(
+    (res) =>
+      res.request().method() === "GET" &&
+      res.ok() &&
+      res.url().includes(`/work-units/${seeded.wuId}/pointers`),
+    { timeout: 45_000 },
+  );
   await page.goto("/census/evidence");
-  await expect(page.getByTestId("evidence-claims")).toBeVisible();
+  await pointersLoaded;
+  await expect(page.getByTestId("evidence-claims")).toHaveAttribute("aria-busy", "false", {
+    timeout: 45_000,
+  });
+  await expect(page.getByTestId("evidence-claims-loading")).toHaveCount(0);
 
-  const opened = page.getByTestId(`evidence-claim-${seeded.code}-trigger`);
-  await expect(opened).toBeVisible({ timeout: 15_000 });
-  await expect(opened).toContainText("seen in records");
-  await opened.click();
+  const openedStatus = page.getByTestId(`evidence-claim-status-${seeded.code}-trigger`);
+  await expect(openedStatus).toHaveText("seen in records", { timeout: 15_000 });
+  await openedStatus.click();
   await expect(page.getByTestId("evidence-pointer")).toBeVisible();
   await expect(page.getByTestId("evidence-pointer-cell")).toHaveText(seeded.cell);
   await expect(page.getByTestId("evidence-pointer-file")).toHaveText(seeded.fileName);
   await expect(page.getByTestId("evidence-detail-status")).toHaveText("seen in records");
   await expect(page.getByTestId("evidence-cannot-open")).toHaveCount(0);
 
-  const broken = page.getByTestId(`evidence-claim-${seeded.code}-inputs`);
-  await expect(broken).toContainText("predicted by a model");
-  await expect(broken).not.toContainText("seen in records");
-  await broken.click();
+  const brokenStatus = page.getByTestId(`evidence-claim-status-${seeded.code}-inputs`);
+  await expect(brokenStatus).toHaveText("predicted by a model");
+  await brokenStatus.click();
   await expect(page.getByTestId("evidence-cannot-open")).toBeVisible();
+  await expect(page.getByTestId("evidence-cannot-open")).toContainText(/cannot open/);
   await expect(page.getByTestId("evidence-pointer")).toHaveCount(0);
   await expect(page.getByTestId("evidence-detail-status")).toHaveText("predicted by a model");
   await expect(page.getByTestId("evidence-downgraded")).toBeVisible();
 
-  await page.getByTestId(`evidence-claim-${seeded.code}-context`).click();
+  await page.getByTestId(`evidence-claim-status-${seeded.code}-context`).click();
   await expect(page.getByTestId("evidence-claim-detail").getByTestId("evidence-composed-badge")).toBeVisible();
   await expect(page.getByTestId("evidence-detail-status")).toHaveText("proposed by us");
   await expect(page.getByTestId("evidence-cannot-open")).toBeVisible();
 
-  await page.getByTestId(`evidence-claim-${seeded.code}-authority`).click();
+  await page.getByTestId(`evidence-claim-status-${seeded.code}-authority`).click();
   await expect(page.getByTestId("evidence-detail-status")).toHaveText("said by a person");
   await expect(page.getByTestId("evidence-binding-note")).toBeVisible();
   await expect(page.getByTestId("evidence-claim-detail")).not.toContainText("predicted by a model");
