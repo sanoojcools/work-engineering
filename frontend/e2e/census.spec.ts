@@ -29,7 +29,8 @@ const CLAIMS_XLSX = join(process.cwd(), "e2e", "fixtures", "offer-pack-claims.xl
 
 /** Seed one Work Unit + an XLSX pointer (and a broken / composed / binding
  * sibling) through the real API so Evidence can click them. Unique code so
- * a warm Client A tenant from an earlier run does not 409. */
+ * a warm Client A tenant from an earlier run does not 409. Unique type so
+ * we do not reuse types.items[0] after a V10-2 evidence-pack genome import. */
 async function seedEvidencePointers(request: APIRequestContext, apiKey: string): Promise<{
   code: string;
   wuId: number;
@@ -37,7 +38,6 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
   cell: string;
 }> {
   const headers = { "X-Spec-Key": apiKey };
-  // Unique type each run — do not reuse types.items[0] after a genome import.
   const typeName = `V10-2 Evidence UI Object ${Date.now().toString(36)}`;
   const created = await request.post("/api/ontology/types", {
     headers,
@@ -153,7 +153,6 @@ async function startKeyedCensus(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Start census" }).evaluate((el) => (el as HTMLButtonElement).click());
   await expect(startedBadge).toBeVisible({ timeout: 15_000 });
 }
-
 
 test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 leaves and an external band", async ({ page }) => {
   await page.goto("/");
@@ -395,10 +394,58 @@ test("Spec deny without a file still denies", async ({ page, request }) => {
   await expect(page.getByText("evidence_ref required by contract").first()).toBeVisible();
 });
 
+test("keyed Evidence lists this tenant's real uploaded files and what each one backs", async ({ page, request }) => {
+  // V10-2 Evidence file-list walk — kept alongside the pointer test below
+  // and the V10-4 Chart 18-leaf / external-band assertions.
+  // 7 sequential real file uploads + a genome import comfortably exceed the
+  // suite's default 30s per-test budget.
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+
+  // Real upload + real genome import -- the one path in this walk that
+  // clears the quality gate (see OfferDeskEvidencePack.tsx). 9 of its 11
+  // Work Units cite one of the 7 uploaded files; uan-service-history-sample.csv
+  // is uploaded but cited by none, on purpose (offerDeskEvidencePack.json).
+  await page.goto("/scout/offer-desk/evidence-pack");
+  await page.getByRole("button", { name: "Load the evidence pack & import" }).click();
+  const importBanner = page.locator(".banner").first();
+  await expect(importBanner).toBeVisible({ timeout: 30_000 });
+  // Client A is the same singleton tenant every demo bootstrap reuses (see
+  // the Ratify test's own comment above) -- against a Postgres that already
+  // ran this exact test, WU-OD-01..11 already exist and POST /genome/import
+  // correctly refuses to re-import them (work_unit_id_already_exists), same
+  // as test_genome_import_conflicts.py proves at the API level. Either
+  // outcome still uploads these 7 files for real this run; only a fresh
+  // "Accepted." also writes brand-new provenance rows for them.
+  const bannerText = await importBanner.innerText();
+  expect(bannerText, bannerText).toMatch(/Accepted\.|Not accepted\./);
+
+  await page.goto("/census/evidence");
+  await expect(page.getByRole("heading", { name: "Evidence", exact: false }).first()).toBeVisible();
+
+  const filesTable = page.locator(".table-wrap").first();
+  // This run's own 7 uploads are real either way.
+  await expect(filesTable.getByText("zwayam-candidate-export.csv").first()).toBeVisible();
+  // Some file on this tenant backs a real Offer Desk unit with a real code +
+  // plain-word claim -- from this run if the import was freshly accepted,
+  // or from whichever earlier run first seeded this tenant otherwise.
+  await expect(filesTable.getByText(/WU-OD-\d+/).first()).toBeVisible();
+  // uan-service-history-sample.csv is never cited by this fixture's own
+  // provenance map, on every run -- says so, honestly, instead of a blank
+  // cell (.first() only guards against a warm tenant holding one such row
+  // per earlier run; the property being checked is the same on all of them).
+  const orphanRow = filesTable.locator("tr", { has: page.getByText("uan-service-history-sample.csv") }).first();
+  await expect(orphanRow.getByText("Backs nothing yet.")).toBeVisible();
+
+  // Real conformance-gap counts, not the guest's illustrative four rows.
+  await expect(page.getByText(/Read from this tenant's own conformance gaps/)).toBeVisible();
+});
+
 test("keyed Evidence click shows a real XLSX cell; a broken pointer is not a fact", async ({ page, request }) => {
-  // Before the evidence-pack genome import (that import can 500 POST /work-units
-  // on db.refresh). Wait for whoami + GET /pointers like #29 so the B2 cell
-  // and the broken predicted pointer both render.
+  // V10-2 pointer walk (kept with V10-4 Chart 18-leaf / external-band).
+  // Fresh CI Postgres still shares Client A: Start census, GET /pointers,
+  // and the click must all finish inside one job. Unique type + one 500
+  // retry above so a prior evidence-pack import does not fail this seed.
   test.setTimeout(90_000);
   await signInWithFreshDemoKey(page, request);
   await startKeyedCensus(page);
@@ -448,51 +495,6 @@ test("keyed Evidence click shows a real XLSX cell; a broken pointer is not a fac
   await expect(page.getByTestId("evidence-claim-detail")).not.toContainText("predicted by a model");
   await expect(page.getByTestId("evidence-pointer-cell")).toHaveText(seeded.cell);
   await expect(page.getByTestId("evidence-pointer-quote")).toContainText("Offer pack waiting");
-});
-
-test("keyed Evidence lists this tenant's real uploaded files and what each one backs", async ({ page, request }) => {
-  // 7 sequential real file uploads + a genome import comfortably exceed the
-  // suite's default 30s per-test budget.
-  test.setTimeout(60_000);
-  await signInWithFreshDemoKey(page, request);
-
-  // Real upload + real genome import -- the one path in this walk that
-  // clears the quality gate (see OfferDeskEvidencePack.tsx). 9 of its 11
-  // Work Units cite one of the 7 uploaded files; uan-service-history-sample.csv
-  // is uploaded but cited by none, on purpose (offerDeskEvidencePack.json).
-  await page.goto("/scout/offer-desk/evidence-pack");
-  await page.getByRole("button", { name: "Load the evidence pack & import" }).click();
-  const importBanner = page.locator(".banner").first();
-  await expect(importBanner).toBeVisible({ timeout: 30_000 });
-  // Client A is the same singleton tenant every demo bootstrap reuses (see
-  // the Ratify test's own comment above) -- against a Postgres that already
-  // ran this exact test, WU-OD-01..11 already exist and POST /genome/import
-  // correctly refuses to re-import them (work_unit_id_already_exists), same
-  // as test_genome_import_conflicts.py proves at the API level. Either
-  // outcome still uploads these 7 files for real this run; only a fresh
-  // "Accepted." also writes brand-new provenance rows for them.
-  const bannerText = await importBanner.innerText();
-  expect(bannerText, bannerText).toMatch(/Accepted\.|Not accepted\./);
-
-  await page.goto("/census/evidence");
-  await expect(page.getByRole("heading", { name: "Evidence", exact: false }).first()).toBeVisible();
-
-  const filesTable = page.locator(".table-wrap").first();
-  // This run's own 7 uploads are real either way.
-  await expect(filesTable.getByText("zwayam-candidate-export.csv").first()).toBeVisible();
-  // Some file on this tenant backs a real Offer Desk unit with a real code +
-  // plain-word claim -- from this run if the import was freshly accepted,
-  // or from whichever earlier run first seeded this tenant otherwise.
-  await expect(filesTable.getByText(/WU-OD-\d+/).first()).toBeVisible();
-  // uan-service-history-sample.csv is never cited by this fixture's own
-  // provenance map, on every run -- says so, honestly, instead of a blank
-  // cell (.first() only guards against a warm tenant holding one such row
-  // per earlier run; the property being checked is the same on all of them).
-  const orphanRow = filesTable.locator("tr", { has: page.getByText("uan-service-history-sample.csv") }).first();
-  await expect(orphanRow.getByText("Backs nothing yet.")).toBeVisible();
-
-  // Real conformance-gap counts, not the guest's illustrative four rows.
-  await expect(page.getByText(/Read from this tenant's own conformance gaps/)).toBeVisible();
 });
 
 /** CENSUS-PACK (docs/BUILD_PROGRAM.md P1/P2). */
