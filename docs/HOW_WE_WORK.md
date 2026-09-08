@@ -1,16 +1,12 @@
 # How we work
 
-Agents **read `docs/NEXT.md` themselves** (`CLAUDE.md` + `.cursor/rules/v10.mdc`).
+**Laptop agents cannot start themselves.** Cloud can: [`docs/AUTOSTART.md`](AUTOSTART.md) (once).
 
-You:
+After that:
 
 ```
-git pull origin main
-Claude + New  →  type: go
-Cursor + New  →  type: go
-When CI green →  Squash and merge
-git pull
+Grok updates docs/NEXT.md  →  Claude + Cursor cloud start  →  PRs open
+You: Squash and merge when CI green
 ```
 
-Do not paste long prompts. Do not ask Grok “what’s next?”
-Grok only: CI still red after one fix, or change the 14-slice list.
+Until you flip `AUTO_SLICES=true`: `git pull` then type `go` in each New chat.
