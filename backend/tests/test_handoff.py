@@ -37,10 +37,26 @@ def _make_tenant(session, slug):
     return raw_key, client_id
 
 
+_WORK_UNIT_CHILD_TABLES = ("verdict_scores", "cost_profiles", "verification_designs")
+
+
 def _cleanup(session, client_ids):
     ids = {"ids": client_ids}
-    session.execute(text("DELETE FROM verdict_scores WHERE work_unit_id IN (SELECT id FROM work_units WHERE client_id = ANY(:ids))"), ids)
+    # V10-3 tests below log a moderation entry and/or run POST /census/run,
+    # which (like V10-3's own verification-design writes) leaves rows this
+    # older cleanup never had to clear.
+    session.execute(text("DELETE FROM moderation_entries WHERE client_id = ANY(:ids)"), ids)
+    for table in _WORK_UNIT_CHILD_TABLES:
+        session.execute(text(
+            f"DELETE FROM {table} WHERE work_unit_id IN (SELECT id FROM work_units WHERE client_id = ANY(:ids))"
+        ), ids)
+    session.execute(text(
+        "DELETE FROM work_edges WHERE source_id IN (SELECT id FROM work_units WHERE client_id = ANY(:ids)) "
+        "OR target_id IN (SELECT id FROM work_units WHERE client_id = ANY(:ids))"
+    ), ids)
+    session.execute(text("DELETE FROM conformance_gaps WHERE client_id = ANY(:ids)"), ids)
     session.execute(text("DELETE FROM work_units WHERE client_id = ANY(:ids)"), ids)
+    session.execute(text("DELETE FROM audit_logs WHERE client_id = ANY(:ids)"), ids)
     session.execute(text("DELETE FROM org_api_keys WHERE client_id = ANY(:ids)"), ids)
     session.execute(text("DELETE FROM clients WHERE id = ANY(:ids)"), ids)
     session.commit()
@@ -106,7 +122,11 @@ def test_not_ready_when_record_exists_but_never_scored(real_client, tenant):
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["ready"] is False
-    assert body["gates"] is None
+    # gates is no longer strictly "None until VERDICT-scored": V10-3's 5th
+    # gate (intent_guardrail) is computed from VerificationDesign, not
+    # VerdictScore, so it can fire (and populate gates) even pre-score --
+    # this unit has no verification-design row at all (method=none).
+    assert body["gates"] == ["intent_guardrail"]
     assert body["bundle"] is None
     assert any("verdict" in r.lower() for r in body["reasons"])
 
@@ -120,6 +140,14 @@ def test_ready_once_scored_with_no_dual_employment_requirement(real_client, tena
         json={"verifiability": 4, "evidence": 4, "reversibility": 4, "determinism": 3, "impact_scope": 4, "compliance": 5, "tacitness": 3},
     )
     assert scored.status_code == 200, scored.text
+    # V10-3's 5th gate (docs/contracts/v10-3-verify.md): method=none blocks
+    # every unit, not just offer-release/dual-employment ones -- a real
+    # method must be on record before this unit can read ready=True.
+    design = real_client.put(
+        f"/api/work-units/{wu['id']}/verification-design", headers=tenant["headers"],
+        json={"method": "system_of_record"},
+    )
+    assert design.status_code == 200, design.text
 
     resp = real_client.get("/api/spec/handoff/WU-TEST-HANDOFF-B", headers=tenant["headers"])
     assert resp.status_code == 200, resp.text
@@ -169,6 +197,13 @@ def test_dual_employment_unit_ready_once_the_stop_is_stated_and_scored(real_clie
         json={"verifiability": 3, "evidence": 4, "reversibility": 3, "determinism": 2, "impact_scope": 4, "compliance": 5, "tacitness": 3},
     )
     assert scored.status_code == 200, scored.text
+    # WU-OD-02 is a dual-employment code, so V10-3's 5th gate also needs a
+    # real method AND a recorded independent check before this reads ready.
+    design = real_client.put(
+        f"/api/work-units/{wu['id']}/verification-design", headers=tenant["headers"],
+        json={"method": "second_person", "independent": "different_lineage"},
+    )
+    assert design.status_code == 200, design.text
 
     resp = real_client.get("/api/spec/handoff/WU-OD-02", headers=tenant["headers"])
     assert resp.status_code == 200, resp.text
@@ -198,3 +233,112 @@ def test_rls_handoff_isolation_via_http(real_client, tenant):
     session = SetupSession()
     _cleanup(session, [cid_b])
     session.close()
+
+
+# --- V10-3 (docs/contracts/v10-3-verify.md): 5th gate (intent_guardrail)
+# + dual-employment-stop-under-moderation ---
+
+_SCORE = {
+    "verifiability": 4, "evidence": 4, "reversibility": 4, "determinism": 3,
+    "impact_scope": 4, "compliance": 5, "tacitness": 3,
+}
+
+
+@pg_skip
+def test_offer_release_not_ready_without_independent_check(real_client, tenant):
+    """Contract test 1, verbatim: 'Offer-release unit, independent=no ->
+    handoff not ready.' WU-OD-05 is sheet step 5, the offer's actual
+    release (services/handoff.py's OFFER_RELEASE_CODES) -- a real method is
+    recorded so only the missing independent check is under test here."""
+    wu = _make_work_unit(real_client, tenant["headers"], tenant["client_id"], "WU-OD-05", "relnoind")
+    scored = real_client.put(f"/api/verdict/{wu['id']}", headers=tenant["headers"], json=_SCORE)
+    assert scored.status_code == 200, scored.text
+
+    design = real_client.put(
+        f"/api/work-units/{wu['id']}/verification-design", headers=tenant["headers"],
+        json={"method": "second_person"},
+    )
+    assert design.status_code == 200, design.text
+    assert design.json()["independent"] == "not_stated"
+
+    resp = real_client.get("/api/spec/handoff/WU-OD-05", headers=tenant["headers"])
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["ready"] is False
+    assert body["independent_check_required"] is True
+    assert "intent_guardrail" in (body["gates"] or [])
+    assert any("independent check" in r.lower() for r in body["reasons"])
+    assert body["bundle"] is None
+
+
+@pg_skip
+def test_offer_release_ready_once_independent_check_recorded(real_client, tenant):
+    wu = _make_work_unit(real_client, tenant["headers"], tenant["client_id"], "WU-OD-05", "relok")
+    scored = real_client.put(f"/api/verdict/{wu['id']}", headers=tenant["headers"], json=_SCORE)
+    assert scored.status_code == 200, scored.text
+
+    design = real_client.put(
+        f"/api/work-units/{wu['id']}/verification-design", headers=tenant["headers"],
+        json={"method": "second_person", "independent": "different_lineage"},
+    )
+    assert design.status_code == 200, design.text
+
+    resp = real_client.get("/api/spec/handoff/WU-OD-05", headers=tenant["headers"])
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["ready"] is True, body["reasons"]
+    assert body["independent_check_required"] is True
+    assert body["bundle"] is not None
+
+
+@pg_skip
+def test_not_ready_when_method_is_none_even_for_a_unit_that_needs_no_independence(real_client, tenant):
+    """5th gate's other half: method=none blocks every unit, not only
+    offer-release/dual-employment ones -- no verification-design row at
+    all reads identically to one whose row still says method=none."""
+    wu = _make_work_unit(real_client, tenant["headers"], tenant["client_id"], "WU-TEST-HANDOFF-NOMETHOD", "nomethod")
+    scored = real_client.put(f"/api/verdict/{wu['id']}", headers=tenant["headers"], json=_SCORE)
+    assert scored.status_code == 200, scored.text
+
+    resp = real_client.get("/api/spec/handoff/WU-TEST-HANDOFF-NOMETHOD", headers=tenant["headers"])
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["ready"] is False
+    assert body["independent_check_required"] is False  # not an offer-release/dual-employment code
+    assert "intent_guardrail" in (body["gates"] or [])
+    assert any("no verification method" in r.lower() for r in body["reasons"])
+
+
+@pg_skip
+def test_moderation_toward_ambitious_does_not_lift_dual_employment_stop(real_client, tenant):
+    """Dual-employment stop never lifts: a logged request to moderate this
+    unit's scenario allocation all the way to the most ambitious level
+    (S3, L6) is an opinion (models/moderation.py), never a write to
+    verdict_scores/work_units -- handoff must stay exactly as refused as it
+    was before the moderation entry existed."""
+    wu = _make_work_unit(
+        real_client, tenant["headers"], tenant["client_id"], "WU-OD-02", "modstop",
+        acceptance_criteria="All documents present", evidence_required="Zwayam event",
+    )
+    scored = real_client.put(f"/api/verdict/{wu['id']}", headers=tenant["headers"], json=_SCORE)
+    assert scored.status_code == 200, scored.text
+
+    before = real_client.get("/api/spec/handoff/WU-OD-02", headers=tenant["headers"]).json()
+    assert before["ready"] is False
+
+    mod = real_client.post("/api/moderation", headers=tenant["headers"], json={
+        "work_unit_code": "WU-OD-02",
+        "from_level": scored.json()["recommended_level"],
+        "to_level": 6,
+        "reason": "Ambitious case: assume this scales without friction.",
+        "moderated_by": "Test Ops Lead",
+    })
+    assert mod.status_code == 201, mod.text
+
+    after = real_client.get("/api/spec/handoff/WU-OD-02", headers=tenant["headers"])
+    assert after.status_code == 200, after.text
+    body = after.json()
+    assert body["dual_employment_stop_required"] is True
+    assert body["ready"] is False
+    assert body["bundle"] is None
+    assert any("dual-employment stop" in r.lower() for r in body["reasons"])

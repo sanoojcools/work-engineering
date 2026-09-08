@@ -59,6 +59,13 @@ from .verification import (  # noqa: F401
     VerificationOutcome,
     VerificationRun,
 )
+from .verification_design import (  # noqa: F401
+    Certification,
+    CertificationClass,
+    IndependenceKind,
+    VerificationDesign,
+    VerificationDesignMethod,
+)
 from .work_system import WorkSystem, WorkSystemStatus  # noqa: F401
 from .workunit import (  # noqa: F401
     ActorType,

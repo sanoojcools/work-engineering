@@ -20,6 +20,7 @@ from . import (
     scout,
     spec,
     verification,
+    verification_design,
     verdict,
     work_graph,
     work_systems,
@@ -37,6 +38,7 @@ api_router.include_router(censuses.router, prefix="/censuses", tags=["censuses"]
 api_router.include_router(ontology.router, prefix="/ontology", tags=["ontology"])
 api_router.include_router(work_units.router, prefix="/work-units", tags=["work-units"])
 api_router.include_router(pointers.router, prefix="/work-units", tags=["pointers"])
+api_router.include_router(verification_design.router, prefix="/work-units", tags=["verification-design"])
 api_router.include_router(work_graph.router, prefix="/work-graph", tags=["work-graph"])
 api_router.include_router(verdict.router, prefix="/verdict", tags=["verdict"])
 api_router.include_router(economics.router, prefix="/economics", tags=["economics"])
