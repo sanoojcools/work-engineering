@@ -1,13 +1,10 @@
-/** Sample Work Capture Grid rows for demos and for getting a feel for the
- * shape of a good answer.
+/** Sample Work Capture Grid rows for demos.
  *
- * HR & People Ops on purpose: that is the function the Client A census and the
- * shipped sample genome both cover, so a Scout session filled from these sits
- * in the same domain as everything else on screen instead of introducing a
- * second, unrelated story mid-demo.
+ * HR & People Ops rows remain for non-Offer-Desk tools. The SME Offer Desk
+ * sitting uses OFFER_DESK_SAMPLE_ROWS (Rashmi sheet) — not these — so a demo
+ * does not mix payroll/exit into Offer Desk.
  *
- * Eight rows because the Genome Strength meter expects 8 work units — loading
- * the full set takes a session to 100% and unlocks Future Preview.
+ * Eight rows because the completeness meter expects 8 work units.
  */
 export type SampleRow = {
   name: string;
@@ -18,7 +15,7 @@ export type SampleRow = {
   pain: string;
   handoffs: string;
   decision_rule: string;
-  time_minutes: number;
+  time_minutes: number | null;
 };
 
 export const HR_SAMPLE_ROWS: SampleRow[] = [
