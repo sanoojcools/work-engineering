@@ -1,35 +1,26 @@
-# Autostart (no “go”)
+# Autostart + automerge
 
-Laptop Claude and laptop Cursor **cannot** start themselves. Cloud can.
+Laptop agents cannot wake themselves. Cloud can. Merge can too.
 
-After this, **your job is merge**. Agents start when `docs/NEXT.md` changes (Grok does that).
+## One-time (you)
 
----
+**A. GitHub repo → Settings → General**
+- [ ] Allow auto-merge
+- [ ] Automatically delete head branches (optional)
 
-## Once: Claude on GitHub
+**B. Claude cloud**
+1. Claude Code: `/install-github-app`
+2. Settings → Secrets: `ANTHROPIC_API_KEY`
+3. Settings → Variables: `AUTO_SLICES` = `true`
 
-1. In a Claude Code terminal on this repo: `/install-github-app` (you are admin).
-2. Repo **Settings → Secrets**: `ANTHROPIC_API_KEY`
-3. Repo **Settings → Variables**: `AUTO_SLICES` = `true`
+**C. Cursor cloud**  
+[cursor.com/automations](https://cursor.com/automations) — trigger push `docs/NEXT.md`, prompt: do Cursor section of NEXT.md, open PR, do not merge (automerge job does).
 
-Workflow: `.github/workflows/next-claude.yml`  
-Until step 3, it **does not run** (no red X).
+Until B+C: you still type `go`. **A alone** already removes squash-and-merge for `claude/*` and `cursor/*` PRs.
 
-Claude opens a PR. **You still squash-merge** (or turn on auto-merge on that PR).
+## Exceptions (you still decide)
 
----
+PR gets **needs-founder** and will **not** merge if it touches:
+`docs/NEXT.md`, contracts, `V10_BUILD`, workflows, `hire_leaves.yaml`, login/Clerk/WorkOS, or says STOP-GATE.
 
-## Once: Cursor cloud
-
-Laptop Cursor will never wake on its own.
-
-1. [cursor.com/automations](https://cursor.com/automations) (or `/automate` in Cursor)
-2. Trigger: GitHub **push** to `main` **path** `docs/NEXT.md` (same as Claude)
-3. Prompt: `Read docs/NEXT.md. Do only the Cursor section. If LOCKED, stop. Open a PR. Do not merge.`
-4. Repo: `sanoojcools/work-engineering`. Spend cap you’re willing to burn.
-
----
-
-## Loop guard
-
-Agents must **not** edit `docs/NEXT.md`. Only Grok/you. That file is the starter pistol. If Claude rewrites NEXT, you get a fork bomb — reject that PR.
+Unlabel after you read it → automerge resumes.
