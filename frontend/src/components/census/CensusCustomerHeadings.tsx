@@ -30,8 +30,14 @@ const HEADINGS: {
   {
     label: "Checked by",
     term: "Verification",
-    simple: "Who or what is supposed to check this piece, when that is stated. 'Not ready' means the check is missing, not that it passed.",
-    technical: "verification_method and the handoff readiness rule on Plan. Independent-check columns arrive in V10-3, not here.",
+    simple: "Who or what is supposed to check this piece, when that is stated. 'Not stated' means no check is recorded yet — not a pass.",
+    technical: "GET /work-units/{id}/verification-design · method. Guest rows stay not stated.",
+  },
+  {
+    label: "Independent?",
+    term: "Independence",
+    simple: "Whether the check is independent of the person who did the work. Not stated until someone records it.",
+    technical: "GET /work-units/{id}/verification-design · independent. Offer-release and dual-employment pieces need independence ≠ no before handoff is ready.",
   },
   {
     label: "Careful / as calculated / ambitious",

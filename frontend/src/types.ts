@@ -550,6 +550,57 @@ export type FieldPointer = {
   updated_at: string;
 };
 
+// V10-3. Mirrors backend/app/schemas/verification_design.py. `class` is
+// the contract's own wire name for certification (Python attribute is
+// cert_class). Separate from provenance / field pointers.
+export const VERIFY_METHODS = [
+  "document_check",
+  "system_of_record",
+  "second_person",
+  "sample",
+  "reconcile",
+  "model_plus_human",
+  "none",
+] as const;
+export type VerifyMethod = (typeof VERIFY_METHODS)[number];
+
+export const INDEPENDENCE_KINDS = ["different_lineage", "deterministic", "no", "not_stated"] as const;
+export type IndependenceKind = (typeof INDEPENDENCE_KINDS)[number];
+
+export const CERT_CLASSES = ["sure", "mostly_sure", "reported_not_seen", "cannot_define"] as const;
+export type CertificationClass = (typeof CERT_CLASSES)[number];
+
+export type VerificationDesign = {
+  id: number;
+  work_unit_id: number;
+  method: VerifyMethod;
+  independent: IndependenceKind;
+  sampling: string | null;
+  cost_of_check: string | null;
+  dual_track: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Certification = {
+  id: number;
+  work_unit_id: number;
+  class: CertificationClass;
+  created_at: string;
+  updated_at: string;
+};
+
+// V10-5. Mirrors backend/app/schemas/outcome.py::OutcomeOut.
+export type OutcomeRecord = {
+  id: number;
+  work_system_id: number;
+  promised: string;
+  measured: string | null;
+  status: "not_measured" | "measured";
+  created_at: string;
+  updated_at: string;
+};
+
 // Slice 2.1: consent receipts, POST /api/consent/receipts. Mirrors
 // backend/app/schemas/consent.py::ConsentReceiptOut.
 export type ConsentReceipt = {
