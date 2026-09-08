@@ -1,8 +1,8 @@
-"""V10-3 (docs/V10_BUILD.md): verification design + certification API
-(services/verification_design.py). Real Postgres only for the positive
-paths -- same reasoning test_pointers.py/test_handoff.py already give
-(TenantDbDep's `SET app.current_client_id` is Postgres-only syntax SQLite
-can't execute).
+"""V10-3 contract (docs/contracts/v10-3-verify.md): verification design +
+certification API (services/verification_design.py). Real Postgres only
+for the positive paths -- same reasoning test_pointers.py/test_handoff.py
+already give (TenantDbDep's `SET app.current_client_id` is Postgres-only
+syntax SQLite can't execute).
 """
 from __future__ import annotations
 
@@ -44,6 +44,9 @@ def _make_tenant(session, slug):
 
 def _cleanup(session, client_ids):
     ids = {"ids": client_ids}
+    session.execute(text(
+        "DELETE FROM certifications WHERE work_unit_id IN (SELECT id FROM work_units WHERE client_id = ANY(:ids))"
+    ), ids)
     session.execute(text(
         "DELETE FROM verification_designs WHERE work_unit_id IN (SELECT id FROM work_units WHERE client_id = ANY(:ids))"
     ), ids)
@@ -121,23 +124,25 @@ def _upload(real_client, headers, content: bytes, name: str) -> int:
 def test_verification_design_rejects_missing_key(client):
     assert client.get("/api/work-units/1/verification-design").status_code == 401
     assert client.put("/api/work-units/1/verification-design", json={}).status_code == 401
+    assert client.get("/api/work-units/1/certification").status_code == 401
+    assert client.put("/api/work-units/1/certification", json={}).status_code == 401
 
 
 @pg_skip
-def test_no_design_yet_404s(real_client, two_tenants):
+def test_no_design_or_certification_yet_404s(real_client, two_tenants):
     headers = two_tenants["headers_a"]
     type_id = _type(real_client)
     wu_id = _work_unit(real_client, headers, type_id, "WU-VD-NONE")
 
-    r = real_client.get(f"/api/work-units/{wu_id}/verification-design", headers=headers)
-    assert r.status_code == 404, r.text
+    assert real_client.get(f"/api/work-units/{wu_id}/verification-design", headers=headers).status_code == 404
+    assert real_client.get(f"/api/work-units/{wu_id}/certification", headers=headers).status_code == 404
 
 
 @pg_skip
 def test_put_design_defaults(real_client, two_tenants):
-    """BUILD_PROGRAM.md: method one of seven or none, sampling/cost 'not
-    stated' when not given, error-cost defaults to contestable, and
-    dual_track is always true (structural -- see model docstring)."""
+    """Contract: method one of seven or 'none', independent one of four
+    including 'not_stated', sampling/cost_of_check nullable, dual_track
+    always true (structural -- see model docstring)."""
     headers = two_tenants["headers_a"]
     type_id = _type(real_client)
     wu_id = _work_unit(real_client, headers, type_id, "WU-VD-DEFAULTS")
@@ -145,14 +150,10 @@ def test_put_design_defaults(real_client, two_tenants):
     r = real_client.put(f"/api/work-units/{wu_id}/verification-design", headers=headers, json={})
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["method"] is None
-    assert body["independence"] == "no"
-    assert body["independence_required"] is False
-    assert body["sampling"] == "not stated"
-    assert body["cost"] is None
-    assert body["error_cost"] == "contestable"
-    assert body["certification"] == "cannot_define"
-    assert body["checked_by"] == ""
+    assert body["method"] == "none"
+    assert body["independent"] == "not_stated"
+    assert body["sampling"] is None
+    assert body["cost_of_check"] is None
     assert body["dual_track"] is True
 
     reread = real_client.get(f"/api/work-units/{wu_id}/verification-design", headers=headers)
@@ -167,22 +168,21 @@ def test_put_design_is_idempotent_upsert(real_client, two_tenants):
     wu_id = _work_unit(real_client, headers, type_id, "WU-VD-UPSERT")
 
     first = real_client.put(f"/api/work-units/{wu_id}/verification-design", headers=headers, json={
-        "method": "human_spot_check", "sampling": "10% monthly", "cost": 25.0,
+        "method": "second_person", "sampling": "10% monthly", "cost_of_check": "not_stated",
     })
     assert first.status_code == 200, first.text
 
     second = real_client.put(f"/api/work-units/{wu_id}/verification-design", headers=headers, json={
-        "method": "cross_system_reconciliation", "sampling": "100%", "cost": 40.0,
-        "independence": "different_lineage", "checked_by": "Ops Lead",
+        "method": "reconcile", "sampling": "100%", "cost_of_check": "2 FTE-hours/month",
+        "independent": "different_lineage",
     })
     assert second.status_code == 200, second.text
 
     assert second.json()["id"] == first.json()["id"]
-    assert second.json()["method"] == "cross_system_reconciliation"
+    assert second.json()["method"] == "reconcile"
     assert second.json()["sampling"] == "100%"
-    assert second.json()["cost"] == 40.0
-    assert second.json()["independence"] == "different_lineage"
-    assert second.json()["checked_by"] == "Ops Lead"
+    assert second.json()["cost_of_check"] == "2 FTE-hours/month"
+    assert second.json()["independent"] == "different_lineage"
 
 
 @pg_skip
@@ -192,8 +192,7 @@ def test_dual_track_is_not_caller_settable(real_client, two_tenants):
     wu_id = _work_unit(real_client, headers, type_id, "WU-VD-DUALTRACK")
 
     r = real_client.put(
-        f"/api/work-units/{wu_id}/verification-design", headers=headers,
-        json={"dual_track": False, "checked_by": "Someone"},
+        f"/api/work-units/{wu_id}/verification-design", headers=headers, json={"dual_track": False},
     )
     assert r.status_code == 200, r.text
     # The schema has no such field -- a caller-supplied value is silently
@@ -202,8 +201,13 @@ def test_dual_track_is_not_caller_settable(real_client, two_tenants):
 
 
 @pg_skip
-def test_certification_sure_rejected_while_a_predicted_pointer_exists(real_client, two_tenants):
-    """BUILD_PROGRAM.md: 'predicted provenance cannot become sure'."""
+def test_certification_sure_rejected_while_a_pointer_is_predicted(real_client, two_tenants):
+    """Contract, verbatim: 'class=sure rejected if any binding field
+    pointer status is predicted or composed (422)'. Not scoped to V10-2's
+    BINDING_FIELDS -- see services/verification_design.py's docstring for
+    why (a real binding field can never actually reach predicted/composed
+    through this app's own write path, which would make that scoping
+    unreachable and this required test un-satisfiable)."""
     headers = two_tenants["headers_a"]
     type_id = _type(real_client)
     wu_id = _work_unit(real_client, headers, type_id, "WU-VD-PREDICTED")
@@ -215,30 +219,43 @@ def test_certification_sure_rejected_while_a_predicted_pointer_exists(real_clien
     assert broken.status_code == 200, broken.text
     assert broken.json()["status"] == "predicted"
 
-    r = real_client.put(f"/api/work-units/{wu_id}/verification-design", headers=headers, json={
-        "certification": "sure",
-    })
+    r = real_client.put(f"/api/work-units/{wu_id}/certification", headers=headers, json={"class": "sure"})
     assert r.status_code == 422, r.text
     assert "sure" in r.json()["detail"].lower()
-
-    # Nothing was persisted by the rejected attempt.
-    assert real_client.get(f"/api/work-units/{wu_id}/verification-design", headers=headers).status_code == 404
+    assert real_client.get(f"/api/work-units/{wu_id}/certification", headers=headers).status_code == 404
 
 
 @pg_skip
-def test_certification_sure_allowed_without_a_predicted_pointer(real_client, two_tenants):
-    """Certification is its own column, not derived from provenance/pointer
-    status -- a unit with zero pointers at all may still be stated 'sure'
-    by a human; only an actual predicted claim blocks it."""
+def test_certification_sure_rejected_while_a_pointer_is_composed(real_client, two_tenants):
+    headers = two_tenants["headers_a"]
+    type_id = _type(real_client)
+    wu_id = _work_unit(real_client, headers, type_id, "WU-VD-COMPOSED")
+
+    composed = real_client.post(f"/api/work-units/{wu_id}/pointers", headers=headers, json={
+        "field_name": "trigger", "status": "composed",
+    })
+    assert composed.status_code == 200, composed.text
+    assert composed.json()["status"] == "composed"
+
+    r = real_client.put(f"/api/work-units/{wu_id}/certification", headers=headers, json={"class": "sure"})
+    assert r.status_code == 422, r.text
+
+
+@pg_skip
+def test_certification_sure_allowed_without_a_blocking_pointer(real_client, two_tenants):
+    """A unit with zero pointers at all may still be stated 'sure' by a
+    human -- only an actual predicted/composed claim blocks it."""
     headers = two_tenants["headers_a"]
     type_id = _type(real_client)
     wu_id = _work_unit(real_client, headers, type_id, "WU-VD-SURE-OK")
 
-    r = real_client.put(f"/api/work-units/{wu_id}/verification-design", headers=headers, json={
-        "certification": "sure", "checked_by": "Ops Lead",
-    })
+    r = real_client.put(f"/api/work-units/{wu_id}/certification", headers=headers, json={"class": "sure"})
     assert r.status_code == 200, r.text
-    assert r.json()["certification"] == "sure"
+    assert r.json()["class"] == "sure"
+
+    reread = real_client.get(f"/api/work-units/{wu_id}/certification", headers=headers)
+    assert reread.status_code == 200, reread.text
+    assert reread.json()["class"] == "sure"
 
 
 @pg_skip
@@ -249,18 +266,18 @@ def test_rls_verification_design_isolation_via_http(real_client, two_tenants):
     wu_a = _work_unit(real_client, headers_a, type_id, "WU-VD-RLS-A")
 
     created = real_client.put(f"/api/work-units/{wu_a}/verification-design", headers=headers_a, json={
-        "method": "human_spot_check",
+        "method": "second_person",
     })
     assert created.status_code == 200, created.text
 
     # B cannot reach A's work unit at all -- 404, not a redacted 200.
     assert real_client.get(f"/api/work-units/{wu_a}/verification-design", headers=headers_b).status_code == 404
     cross_write = real_client.put(
-        f"/api/work-units/{wu_a}/verification-design", headers=headers_b, json={"method": "outcome_delay"},
+        f"/api/work-units/{wu_a}/verification-design", headers=headers_b, json={"method": "sample"},
     )
     assert cross_write.status_code == 404, cross_write.text
 
     # A's own read is unaffected.
     own = real_client.get(f"/api/work-units/{wu_a}/verification-design", headers=headers_a)
     assert own.status_code == 200, own.text
-    assert own.json()["method"] == "human_spot_check"
+    assert own.json()["method"] == "second_person"

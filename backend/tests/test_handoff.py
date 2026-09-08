@@ -122,7 +122,11 @@ def test_not_ready_when_record_exists_but_never_scored(real_client, tenant):
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["ready"] is False
-    assert body["gates"] is None
+    # gates is no longer strictly "None until VERDICT-scored": V10-3's 5th
+    # gate (intent_guardrail) is computed from VerificationDesign, not
+    # VerdictScore, so it can fire (and populate gates) even pre-score --
+    # this unit has no verification-design row at all (method=none).
+    assert body["gates"] == ["intent_guardrail"]
     assert body["bundle"] is None
     assert any("verdict" in r.lower() for r in body["reasons"])
 
@@ -136,6 +140,14 @@ def test_ready_once_scored_with_no_dual_employment_requirement(real_client, tena
         json={"verifiability": 4, "evidence": 4, "reversibility": 4, "determinism": 3, "impact_scope": 4, "compliance": 5, "tacitness": 3},
     )
     assert scored.status_code == 200, scored.text
+    # V10-3's 5th gate (docs/contracts/v10-3-verify.md): method=none blocks
+    # every unit, not just offer-release/dual-employment ones -- a real
+    # method must be on record before this unit can read ready=True.
+    design = real_client.put(
+        f"/api/work-units/{wu['id']}/verification-design", headers=tenant["headers"],
+        json={"method": "system_of_record"},
+    )
+    assert design.status_code == 200, design.text
 
     resp = real_client.get("/api/spec/handoff/WU-TEST-HANDOFF-B", headers=tenant["headers"])
     assert resp.status_code == 200, resp.text
@@ -185,6 +197,13 @@ def test_dual_employment_unit_ready_once_the_stop_is_stated_and_scored(real_clie
         json={"verifiability": 3, "evidence": 4, "reversibility": 3, "determinism": 2, "impact_scope": 4, "compliance": 5, "tacitness": 3},
     )
     assert scored.status_code == 200, scored.text
+    # WU-OD-02 is a dual-employment code, so V10-3's 5th gate also needs a
+    # real method AND a recorded independent check before this reads ready.
+    design = real_client.put(
+        f"/api/work-units/{wu['id']}/verification-design", headers=tenant["headers"],
+        json={"method": "second_person", "independent": "different_lineage"},
+    )
+    assert design.status_code == 200, design.text
 
     resp = real_client.get("/api/spec/handoff/WU-OD-02", headers=tenant["headers"])
     assert resp.status_code == 200, resp.text
@@ -216,7 +235,8 @@ def test_rls_handoff_isolation_via_http(real_client, tenant):
     session.close()
 
 
-# --- V10-3: 5th gate (independent check) + dual-employment-stop-under-moderation ---
+# --- V10-3 (docs/contracts/v10-3-verify.md): 5th gate (intent_guardrail)
+# + dual-employment-stop-under-moderation ---
 
 _SCORE = {
     "verifiability": 4, "evidence": 4, "reversibility": 4, "determinism": 3,
@@ -226,43 +246,44 @@ _SCORE = {
 
 @pg_skip
 def test_offer_release_not_ready_without_independent_check(real_client, tenant):
-    """V10-3's 5th gate (docs/BUILD_PROGRAM.md): 'Handoff Not ready if
-    independence required and missing.' A human explicitly required an
-    independent check on this unit's verification design; none is recorded."""
-    wu = _make_work_unit(real_client, tenant["headers"], tenant["client_id"], "WU-TEST-HANDOFF-IND", "ind")
+    """Contract test 1, verbatim: 'Offer-release unit, independent=no ->
+    handoff not ready.' WU-OD-05 is sheet step 5, the offer's actual
+    release (services/handoff.py's OFFER_RELEASE_CODES) -- a real method is
+    recorded so only the missing independent check is under test here."""
+    wu = _make_work_unit(real_client, tenant["headers"], tenant["client_id"], "WU-OD-05", "relnoind")
     scored = real_client.put(f"/api/verdict/{wu['id']}", headers=tenant["headers"], json=_SCORE)
     assert scored.status_code == 200, scored.text
 
     design = real_client.put(
         f"/api/work-units/{wu['id']}/verification-design", headers=tenant["headers"],
-        json={"independence_required": True},
+        json={"method": "second_person"},
     )
     assert design.status_code == 200, design.text
-    assert design.json()["independence"] == "no"
+    assert design.json()["independent"] == "not_stated"
 
-    resp = real_client.get("/api/spec/handoff/WU-TEST-HANDOFF-IND", headers=tenant["headers"])
+    resp = real_client.get("/api/spec/handoff/WU-OD-05", headers=tenant["headers"])
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["ready"] is False
     assert body["independent_check_required"] is True
-    assert "gate5_independent_check" in (body["gates"] or [])
-    assert any("independent check required and missing" in r.lower() for r in body["reasons"])
+    assert "intent_guardrail" in (body["gates"] or [])
+    assert any("independent check" in r.lower() for r in body["reasons"])
     assert body["bundle"] is None
 
 
 @pg_skip
 def test_offer_release_ready_once_independent_check_recorded(real_client, tenant):
-    wu = _make_work_unit(real_client, tenant["headers"], tenant["client_id"], "WU-TEST-HANDOFF-IND-OK", "indok")
+    wu = _make_work_unit(real_client, tenant["headers"], tenant["client_id"], "WU-OD-05", "relok")
     scored = real_client.put(f"/api/verdict/{wu['id']}", headers=tenant["headers"], json=_SCORE)
     assert scored.status_code == 200, scored.text
 
     design = real_client.put(
         f"/api/work-units/{wu['id']}/verification-design", headers=tenant["headers"],
-        json={"independence_required": True, "independence": "different_lineage"},
+        json={"method": "second_person", "independent": "different_lineage"},
     )
     assert design.status_code == 200, design.text
 
-    resp = real_client.get("/api/spec/handoff/WU-TEST-HANDOFF-IND-OK", headers=tenant["headers"])
+    resp = real_client.get("/api/spec/handoff/WU-OD-05", headers=tenant["headers"])
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["ready"] is True, body["reasons"]
@@ -271,27 +292,21 @@ def test_offer_release_ready_once_independent_check_recorded(real_client, tenant
 
 
 @pg_skip
-def test_offer_release_not_ready_when_verdict_intent_is_unconfirmed(real_client, tenant):
-    """The other half of the 5th gate: non-waivable, from VERDICT's own
-    origin -- no explicit independence_required flag needed. POST
-    /census/run (services/census.py::run_census) is the real production
-    path that drafts a VerdictScore with origin="inferred" for a unit
-    nobody has confirmed; that alone must be enough to refuse handoff."""
-    _make_work_unit(real_client, tenant["headers"], tenant["client_id"], "WU-HR-GATE5-01", "g5")
+def test_not_ready_when_method_is_none_even_for_a_unit_that_needs_no_independence(real_client, tenant):
+    """5th gate's other half: method=none blocks every unit, not only
+    offer-release/dual-employment ones -- no verification-design row at
+    all reads identically to one whose row still says method=none."""
+    wu = _make_work_unit(real_client, tenant["headers"], tenant["client_id"], "WU-TEST-HANDOFF-NOMETHOD", "nomethod")
+    scored = real_client.put(f"/api/verdict/{wu['id']}", headers=tenant["headers"], json=_SCORE)
+    assert scored.status_code == 200, scored.text
 
-    run = real_client.post("/api/census/run", headers=tenant["headers"], json={
-        "client_id": tenant["client_id"], "function": "HR & People Ops",
-    })
-    assert run.status_code == 200, run.text
-    assert run.json()["verdict_drafted"] >= 1
-
-    resp = real_client.get("/api/spec/handoff/WU-HR-GATE5-01", headers=tenant["headers"])
+    resp = real_client.get("/api/spec/handoff/WU-TEST-HANDOFF-NOMETHOD", headers=tenant["headers"])
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["ready"] is False
-    assert body["independent_check_required"] is True
-    assert "gate5_independent_check" in (body["gates"] or [])
-    assert any("not yet confirmed" in r.lower() for r in body["reasons"])
+    assert body["independent_check_required"] is False  # not an offer-release/dual-employment code
+    assert "intent_guardrail" in (body["gates"] or [])
+    assert any("no verification method" in r.lower() for r in body["reasons"])
 
 
 @pg_skip

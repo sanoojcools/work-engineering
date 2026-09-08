@@ -1,42 +1,29 @@
-"""P2 -- Handoff completeness (docs/BUILD_PROGRAM.md CENSUS-PACK).
+"""P2 -- Handoff completeness (docs/BUILD_PROGRAM.md CENSUS-PACK), extended
+by V10-3 (docs/contracts/v10-3-verify.md).
 
 A Work Unit is Ready to hand off only if:
   1. a record exists for its code on this tenant,
-  2. it names a verification method -- models/workunit.py's own column
-     default means any real row already satisfies this the moment (1)
-     holds, so this is a schema guarantee once a record exists, not a
-     second live check invented here. There is no separate "independent
-     checker" column on WorkUnit today (offerDeskWorkRecord.ts's own
-     `independentChecker` prose is frontend-only, Document-check-specific
-     text) -- inventing one to score against here would be exactly the
-     kind of fabricated field this codebase's own honesty discipline
-     refuses elsewhere, so a named verification method is read as
-     satisfying this condition's whole "check method OR no independent
-     checker today" clause: either a real method is named (this), or,
-     failing that, an explicit "none today" would have to be a real
-     stated field to check -- and none exists to check today.
-  3. VERDICT has actually scored it, so its hard gates are *known*. An
+  2. VERDICT has actually scored it, so its hard gates are *known*. An
      empty gates list from a real score is fine ("gates listed: may be
      none" per the build doc); the absence of a score is not, because
      nobody can honestly call a unit ready without having run the scoring
      that would surface a gate if one applied.
-  4. where the sheet itself states a dual-employment stop on this exact
+  3. where the sheet itself states a dual-employment stop on this exact
      unit (Document check, sheet step 2 -- offerDeskWorkRecord.ts's
      DOCUMENT_CHECK_RECORD.stopRule), the live record still carries that
      stop in its own persisted text. This is the one condition that can
      regress after being true: an edit to the record could silently drop
      the stop language, and this check exists to catch exactly that drift,
      not to restate a rule that can never fail.
-  5. V10-3's 5th gate: an independent check is required and recorded.
-     "Required" is true whenever either is true -- a human explicitly said
-     so on this unit's verification_design (services/verification_design.py),
-     or VERDICT's own origin is "inferred" rather than "confirmed" (nobody
-     has attested this score, so an independent check is required
-     regardless of what the design says -- this half is non-waivable: there
-     is no field that can turn it back off). "Recorded" means
-     VerificationDesign.independence is anything other than "no". Neither
-     half invents a requirement nobody stated or attested -- same discipline
-     condition 4 already follows for the dual-employment stop.
+  4. V10-3's 5th gate, `intent_guardrail` (docs/contracts/v10-3-verify.md,
+     verbatim): `method=none` (no verification_designs row at all reads
+     identically to one whose row still says so) OR `independent` is
+     `no`/`not_stated` while this unit is one that always needs
+     independence -- offer-release (sheet step 5, "trigger offer letter" --
+     frontend/src/lib/workSystemUnits.ts's candidateCodes("offer-desk", 5))
+     and dual-employment (step 2, same codes as condition 3) units, named
+     as such by the contract rather than a general caller-settable flag.
+     Non-waivable: no field anywhere turns either half back off.
 
 Read-only. Never executes the unit, never sends it to an agent (P2's own
 scope line) -- this only answers "is this unit's record complete enough to
@@ -55,17 +42,18 @@ import json
 from sqlalchemy.orm import Session
 
 from ..models.verdict import VerdictScore
-from ..models.verification_design import IndependenceKind, VerificationDesign
+from ..models.verification_design import IndependenceKind, VerificationDesign, VerificationDesignMethod
 from ..models.workunit import WorkUnit
 from ..schemas.handoff import HandoffOut
 from . import work_units as wu_svc
 
-# V10-3's 5th gate id, surfaced in HandoffOut.gates alongside VERDICT's own
-# gate1_regulatory..gate4_evidence -- computed here, at handoff time, rather
-# than persisted on VerdictScore.applied_gates, so it never changes what
-# automation_index/census/projections already read off a scored unit
-# (services/verdict.py's recommended_level/applied_gates are untouched).
-GATE5_INDEPENDENT_CHECK = "gate5_independent_check"
+# V10-3's 5th gate id (docs/contracts/v10-3-verify.md, verbatim), surfaced
+# in HandoffOut.gates alongside VERDICT's own gate1_regulatory..
+# gate4_evidence -- computed here, at handoff time, rather than persisted
+# on VerdictScore.applied_gates, so it never changes what automation_index/
+# census/projections already read off a scored unit (services/verdict.py's
+# recommended_level/applied_gates are untouched).
+INTENT_GUARDRAIL = "intent_guardrail"
 
 # The sheet's own dual-employment stop (offerDeskWorkRecord.ts's
 # DOCUMENT_CHECK_RECORD.stopRule) attaches to exactly one real business
@@ -76,6 +64,19 @@ GATE5_INDEPENDENT_CHECK = "gate5_independent_check"
 # frontend/src/lib/workSystemUnits.ts's candidateCodes()). No other unit's
 # sheet states this stop, so no other code is checked against it.
 DUAL_EMPLOYMENT_STOP_CODES = frozenset({"WU-OD-02", "WU-OD-002"})
+
+# Sheet step 5, "Rashmi triggers offer letter in Zwayam... TA Head signs
+# first, then sent to candidate" (offerDeskData.ts) -- the one step that is
+# the offer's actual release, distinct from step 2's document check.
+# Same two code shapes as DUAL_EMPLOYMENT_STOP_CODES, same reasoning.
+OFFER_RELEASE_CODES = frozenset({"WU-OD-05", "WU-OD-005"})
+
+# Units the contract names as always needing independence, regardless of
+# any explicit per-unit setting -- "offer-release and dual-employment units
+# always need independence != no" (docs/contracts/v10-3-verify.md).
+_ALWAYS_NEEDS_INDEPENDENCE = DUAL_EMPLOYMENT_STOP_CODES | OFFER_RELEASE_CODES
+
+_INDEPENDENCE_MISSING = (IndependenceKind.no, IndependenceKind.not_stated)
 
 
 def _dual_employment_text_present(wu: WorkUnit) -> bool:
@@ -111,19 +112,19 @@ def check_readiness(db: Session, code: str) -> HandoffOut:
             "longer states it."
         )
 
-    # 5th gate (docs/BUILD_PROGRAM.md): non-waivable the moment VERDICT's
-    # intent isn't confirmed -- see this module's docstring, condition 5.
+    # 5th gate: intent_guardrail (docs/contracts/v10-3-verify.md).
     design = db.query(VerificationDesign).filter(VerificationDesign.work_unit_id == wu.id).one_or_none()
-    intent_unconfirmed = verdict is not None and verdict.origin != "confirmed"
-    independence_required = bool(design and design.independence_required) or intent_unconfirmed
-    independence_recorded = design is not None and design.independence != IndependenceKind.no
-    if independence_required and not independence_recorded:
-        reasons.append(
-            "Independent check required and missing"
-            + (" -- VERDICT's intent is not yet confirmed by a human (non-waivable)" if intent_unconfirmed else "")
-            + "."
-        )
-        gates = [*(gates or []), GATE5_INDEPENDENT_CHECK]
+    method_missing = design is None or design.method == VerificationDesignMethod.none
+    needs_independence = code in _ALWAYS_NEEDS_INDEPENDENCE
+    independence_missing = design is None or design.independent in _INDEPENDENCE_MISSING
+    if method_missing or (needs_independence and independence_missing):
+        detail = []
+        if method_missing:
+            detail.append("no verification method is recorded")
+        if needs_independence and independence_missing:
+            detail.append("this unit always needs an independent check and none is recorded")
+        reasons.append("Not ready (5th gate, non-waivable): " + "; ".join(detail) + ".")
+        gates = [*(gates or []), INTENT_GUARDRAIL]
 
     ready = not reasons
     return HandoffOut(
@@ -133,6 +134,6 @@ def check_readiness(db: Session, code: str) -> HandoffOut:
         verification_method=wu.verification_method.value if wu.verification_method else None,
         gates=gates,
         dual_employment_stop_required=dual_required,
-        independent_check_required=independence_required,
+        independent_check_required=needs_independence,
         bundle=wu_svc.to_out(wu) if ready else None,
     )

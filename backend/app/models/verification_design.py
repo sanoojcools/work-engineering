@@ -1,52 +1,49 @@
-"""V10-3 (docs/V10_BUILD.md, docs/BUILD_PROGRAM.md): verification design +
-certification -- the canon "Verification design + independence" scoreboard
-row (docs/V10_CLOSE.md).
-
-One row per Work Unit (same shape as VerdictScore/CostProfile: a unique
-work_unit_id, upserted via PUT). This is the PLAN for how a unit's claims
-get checked -- method, independence, sampling, cost -- distinct from
-models/verification.py's VerificationRun, which is one row per actual
-EXECUTED check (G3). A unit can have a verification_design with zero runs
-against it yet.
-
-Certification is deliberately its own column, answering a third, different
-question from the two existing classifications already in this codebase:
-- models/ontology.py's Provenance (4 values: observed/declared/inferred/
-  designed) -- set at genome-import time, about where a Work Unit's data
-  came from.
-- models/pointers.py's PointerStatus (5 values, V10-2) -- set per field,
-  about whether one field's evidence pointer actually opens.
-CertificationClass answers neither of those -- it is a human's own stated
-confidence that a unit's contract is correct, after everything above. See
-services/verification_design.py for the one enforced cross-check between
-this column and PointerStatus: a "predicted" (unverifiable) field pointer
-means the unit cannot be certified "sure".
+"""V10-3 contract (docs/contracts/v10-3-verify.md): verification design +
+certification. Two separate 1:1-with-work_units tables, per the contract's
+own instruction that certification is "separate table from provenance /
+field_pointers" -- and, by the same reasoning, separate from the design
+table itself, since a design is a plan for how a unit's claims get checked
+while a certification is a human's stated confidence in the result. See
+services/verification_design.py for the one enforced cross-check the
+contract specifies between certification and V10-2's field pointers.
 """
 from __future__ import annotations
 
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..db import Base
-from .workunit import VerificationMethod
 
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class VerificationDesignMethod(str, enum.Enum):
+    """The contract's own seven values -- deliberately NOT
+    models/workunit.py's VerificationMethod: that enum is the 18-attribute
+    contract's execution-time method; this is separate, plain-language
+    vocabulary for how a unit's claims get checked (Plan-column material).
+    `none` is the explicit "nothing stated" value, and this column's
+    default -- a unit with no verification_designs row at all reads
+    identically to one whose row still says `method=none`."""
+    document_check = "document_check"
+    system_of_record = "system_of_record"
+    second_person = "second_person"
+    sample = "sample"
+    reconcile = "reconcile"
+    model_plus_human = "model_plus_human"
+    none = "none"
+
+
 class IndependenceKind(str, enum.Enum):
-    """BUILD_PROGRAM.md's "independent? (different lineage / deterministic /
-    no)" -- three-valued, not boolean: a check counts as independent either
-    because a different source/system did it (different_lineage) or because
-    the method itself is deterministic and has no judgement to bias
-    (deterministic); anything else is "no"."""
     different_lineage = "different_lineage"
     deterministic = "deterministic"
     no = "no"
+    not_stated = "not_stated"
 
 
 class CertificationClass(str, enum.Enum):
@@ -56,48 +53,45 @@ class CertificationClass(str, enum.Enum):
     cannot_define = "cannot_define"
 
 
-class ErrorCost(str, enum.Enum):
-    """What a wrong call here costs. Stored and defaulted per V10_BUILD.md
-    ("error-cost = contestable default") -- this slice does not yet compute
-    a harm/exposure number from it (that is V10-6's economics slice); the
-    column exists so this slice's Plan UI, and that later one, have
-    somewhere honest to read/write it rather than inventing a number now."""
-    contestable = "contestable"   # a wrong call can be caught and disputed after the fact
-    irreversible = "irreversible"
-
-
 class VerificationDesign(Base):
     """The verification PLAN for one Work Unit. Upserted via PUT
-    /work-units/{id}/verification-design, same shape as VerdictScore."""
+    /work-units/{id}/verification-design."""
     __tablename__ = "verification_designs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     work_unit_id: Mapped[int] = mapped_column(ForeignKey("work_units.id"), unique=True)
 
-    # None = "no method stated" (BUILD_PROGRAM.md's "one of seven or none").
-    method: Mapped[VerificationMethod | None] = mapped_column(Enum(VerificationMethod), nullable=True)
-    independence: Mapped[IndependenceKind] = mapped_column(Enum(IndependenceKind), default=IndependenceKind.no)
-    # Explicit, caller-stated requirement -- never inferred from the unit's
-    # other fields (this codebase's own discipline: don't invent a fact
-    # nobody stated). services/handoff.py ORs this with the non-waivable
-    # trigger from an unconfirmed VerdictScore.origin -- see that module.
-    independence_required: Mapped[bool] = mapped_column(Boolean, default=False)
-    sampling: Mapped[str] = mapped_column(Text, default="not stated")
-    cost: Mapped[float | None] = mapped_column(Float, nullable=True)  # None == "not stated"
-    error_cost: Mapped[ErrorCost] = mapped_column(Enum(ErrorCost), default=ErrorCost.contestable)
+    method: Mapped[VerificationDesignMethod] = mapped_column(
+        Enum(VerificationDesignMethod), default=VerificationDesignMethod.none)
+    independent: Mapped[IndependenceKind] = mapped_column(
+        Enum(IndependenceKind), default=IndependenceKind.not_stated)
+    # Nullable text, "or not_stated" per the contract -- never imputed,
+    # same "None means nobody said" convention as WorkUnit.volume_per_month.
+    sampling: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cost_of_check: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    certification: Mapped[CertificationClass] = mapped_column(
-        Enum(CertificationClass), default=CertificationClass.cannot_define)
-    # Free text naming the human who stands behind `certification` -- Plan's
-    # "checked by" column (BUILD_PROGRAM.md). Never an agent/executor id:
-    # see `dual_track` below.
-    checked_by: Mapped[str] = mapped_column(String(120), default="")
-
-    # Structural, not caller-settable (services/verification_design.py never
-    # reads this off the write payload): "do" (WorkUnit.actor_type) may be
-    # delegated to an agent; "check" -- this row -- never is. There is no
-    # executor field for it to be delegated to, by design.
+    # Structural, not on the write schema at all (services/verification_design.py
+    # never reads this off the payload): "do may be delegated, check stays
+    # human. Never starts an agent" (contract, verbatim) -- always true.
     dual_track: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+
+    work_unit: Mapped["WorkUnit"] = relationship()
+
+
+class Certification(Base):
+    """Separate table from provenance / field_pointers (contract,
+    verbatim). `class` is a Python keyword -- mapped to the `cert_class`
+    attribute, DB column stays literally `class` per the contract's own
+    naming."""
+    __tablename__ = "certifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    work_unit_id: Mapped[int] = mapped_column(ForeignKey("work_units.id"), unique=True)
+    cert_class: Mapped[CertificationClass] = mapped_column(
+        "class", Enum(CertificationClass), default=CertificationClass.cannot_define)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
