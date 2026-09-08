@@ -235,10 +235,16 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await page.getByRole("link", { name: "Next: Plan →" }).click();
   await expect(page).toHaveURL(/\/census\/plan$/);
   await expect(stepCount(page)).toContainText("6 of 6");
-  // E -- PLAN: 95/61.8 visible directly on Plan itself, not just behind a
-  // click through to the Hours page. Outcome stays not measured — never 62%.
+  // E -- PLAN: 95 stated / 61.8 defended visible as two numbers on Plan
+  // itself, not just behind a click through to the Hours page. Outcome
+  // stays not measured — never 62%. Appetite does not lift the stop.
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
   await expect(page.getByText("95", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("61.8", { exact: true }).first()).toBeVisible();
+  await expect(page.getByTestId("plan-appetite-stop")).toHaveText(/appetite does not lift the dual-employment stop/i);
+  await expect(page.getByTestId("plan-hours-other")).not.toContainText("61.8");
+  await expect(page.getByTestId("plan-hours-other")).not.toContainText("Defended");
   await expect(page.getByTestId("plan-outcome-measured")).toHaveText(/not measured/);
   await expect(page.getByTestId("plan-outcome")).not.toContainText("62%");
   await expect(page.getByText("Independent?").first()).toBeVisible();
@@ -271,22 +277,28 @@ test("keyed Start census persists across a refresh", async ({ page, request }) =
   await expect(page.getByTestId("census-readiness")).toBeVisible();
 });
 
-test("Hours 95 declared / 61.8 defended still visible from Plan", async ({ page }) => {
+test("Hours 95 stated / 61.8 defended still visible from Plan", async ({ page }) => {
   await page.goto("/census/plan");
-  await page.getByRole("link", { name: /Hours — 95 declared/ }).click();
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  await page.getByRole("link", { name: /Hours — 95 stated/ }).click();
   await expect(page).toHaveURL(/\/scout\/offer-desk\/hours$/);
   await expect(page.getByText("95", { exact: true })).toBeVisible();
   await expect(page.getByText("61.8", { exact: true })).toBeVisible();
+  await expect(page.getByText(/appetite does not lift the dual-employment stop/i)).toBeVisible();
 });
 
 test("Plan shows not measured plus 95 and 61.8", async ({ page }) => {
   await page.goto("/census/plan");
   await expect(page.getByTestId("plan-outcome-measured")).toHaveText(/not measured/);
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
   await expect(page.getByText("95", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("61.8", { exact: true }).first()).toBeVisible();
   await expect(page.getByTestId("plan-outcome")).not.toContainText("62%");
   await expect(page.getByTestId("plan-outcome-measured")).not.toContainText("62");
   await expect(page.getByText("Independent?").first()).toBeVisible();
+  await expect(page.getByTestId("plan-appetite-stop")).toHaveText(/appetite does not lift the dual-employment stop/i);
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 });
 
@@ -525,6 +537,7 @@ test("guest census download contains 95, 61.8, and 'not a pass'", async ({ page 
   const content = readFileSync(path as string, "utf-8");
   expect(content).toContain("95");
   expect(content).toContain("61.8");
+  expect(content).toContain("95 stated / 61.8 defended");
   expect(content).toMatch(/not a pass/);
   expect(content).toContain("The hire is complete");
   expect(content).toContain("Outside this desk");
