@@ -14,6 +14,10 @@ class HandoffOut(BaseModel):
     # list, which means scored with zero hard gates applied.
     gates: list[str] | None = None
     dual_employment_stop_required: bool = False
+    # V10-3's 5th gate -- true when an independent check is required (either
+    # a human said so on this unit's verification_design, or VERDICT's own
+    # intent is unconfirmed, non-waivably) and none is recorded.
+    independent_check_required: bool = False
     # Only populated when ready -- a refused unit gets a reason, not a
     # contract "here anyway" (P2: "must refuse a bundle if not ready").
     bundle: WorkUnitOut | None = None

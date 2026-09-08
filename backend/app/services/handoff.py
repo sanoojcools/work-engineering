@@ -27,6 +27,16 @@ A Work Unit is Ready to hand off only if:
      regress after being true: an edit to the record could silently drop
      the stop language, and this check exists to catch exactly that drift,
      not to restate a rule that can never fail.
+  5. V10-3's 5th gate: an independent check is required and recorded.
+     "Required" is true whenever either is true -- a human explicitly said
+     so on this unit's verification_design (services/verification_design.py),
+     or VERDICT's own origin is "inferred" rather than "confirmed" (nobody
+     has attested this score, so an independent check is required
+     regardless of what the design says -- this half is non-waivable: there
+     is no field that can turn it back off). "Recorded" means
+     VerificationDesign.independence is anything other than "no". Neither
+     half invents a requirement nobody stated or attested -- same discipline
+     condition 4 already follows for the dual-employment stop.
 
 Read-only. Never executes the unit, never sends it to an agent (P2's own
 scope line) -- this only answers "is this unit's record complete enough to
@@ -45,9 +55,17 @@ import json
 from sqlalchemy.orm import Session
 
 from ..models.verdict import VerdictScore
+from ..models.verification_design import IndependenceKind, VerificationDesign
 from ..models.workunit import WorkUnit
 from ..schemas.handoff import HandoffOut
 from . import work_units as wu_svc
+
+# V10-3's 5th gate id, surfaced in HandoffOut.gates alongside VERDICT's own
+# gate1_regulatory..gate4_evidence -- computed here, at handoff time, rather
+# than persisted on VerdictScore.applied_gates, so it never changes what
+# automation_index/census/projections already read off a scored unit
+# (services/verdict.py's recommended_level/applied_gates are untouched).
+GATE5_INDEPENDENT_CHECK = "gate5_independent_check"
 
 # The sheet's own dual-employment stop (offerDeskWorkRecord.ts's
 # DOCUMENT_CHECK_RECORD.stopRule) attaches to exactly one real business
@@ -93,6 +111,20 @@ def check_readiness(db: Session, code: str) -> HandoffOut:
             "longer states it."
         )
 
+    # 5th gate (docs/BUILD_PROGRAM.md): non-waivable the moment VERDICT's
+    # intent isn't confirmed -- see this module's docstring, condition 5.
+    design = db.query(VerificationDesign).filter(VerificationDesign.work_unit_id == wu.id).one_or_none()
+    intent_unconfirmed = verdict is not None and verdict.origin != "confirmed"
+    independence_required = bool(design and design.independence_required) or intent_unconfirmed
+    independence_recorded = design is not None and design.independence != IndependenceKind.no
+    if independence_required and not independence_recorded:
+        reasons.append(
+            "Independent check required and missing"
+            + (" -- VERDICT's intent is not yet confirmed by a human (non-waivable)" if intent_unconfirmed else "")
+            + "."
+        )
+        gates = [*(gates or []), GATE5_INDEPENDENT_CHECK]
+
     ready = not reasons
     return HandoffOut(
         work_unit_code=code,
@@ -101,5 +133,6 @@ def check_readiness(db: Session, code: str) -> HandoffOut:
         verification_method=wu.verification_method.value if wu.verification_method else None,
         gates=gates,
         dual_employment_stop_required=dual_required,
+        independent_check_required=independence_required,
         bundle=wu_svc.to_out(wu) if ready else None,
     )
