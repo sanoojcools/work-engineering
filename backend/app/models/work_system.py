@@ -78,6 +78,19 @@ class WorkSystem(Base):
     work_system_intent_confirmed_by: Mapped[str] = mapped_column(String(120), default="")
     work_system_intent_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # V10-9 (docs/V10_BUILD.md "STRATEGY INTENT -- one line, not a studio"):
+    # the third, and last, intent level on this one journey row -- same
+    # get-or-create-once, confirm-flips-a-timestamp shape as the two above,
+    # not a fourth table and not INT-007 (docs/INTENT_CONTRACT.md's refusal
+    # still holds: no new identifier or table for intent records). `focus`
+    # is the one-line "what this period is about" sentence; `owner` is a
+    # named human or an explicit stand-in label until a real sponsor exists
+    # -- same idiom as this table's own `owner` column.
+    strategy_intent_focus: Mapped[str] = mapped_column(Text, default="")
+    strategy_intent_owner: Mapped[str] = mapped_column(String(160), default="")
+    strategy_intent_confirmed_by: Mapped[str] = mapped_column(String(120), default="")
+    strategy_intent_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 

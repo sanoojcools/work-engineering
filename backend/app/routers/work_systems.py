@@ -65,6 +65,8 @@ def ensure_work_system(payload: WorkSystemEnsureIn, db: TenantDbDep, key: OrgKey
         function_intent_measure=payload.function_intent_measure,
         work_system_intent_purpose=payload.work_system_intent_purpose,
         work_system_intent_owner=payload.work_system_intent_owner,
+        strategy_intent_focus=payload.strategy_intent_focus,
+        strategy_intent_owner=payload.strategy_intent_owner,
     )
     db.add(row)
     db.flush()
@@ -130,6 +132,27 @@ def confirm_work_system_intent(work_system_id: int, payload: WorkSystemIntentCon
     db.add(AuditLog(
         client_id=key.client_id, actor=key.label or f"org_api_key:{key.id}",
         action="work_system.confirm_work_system_intent", resource="work_system", resource_id=str(row.id),
+        detail=f"confirmed_by={payload.confirmed_by}",
+    ))
+    db.commit()
+    _rebind_tenant(db, key)
+    db.refresh(row)
+    return work_system_svc.to_out(row)
+
+
+@router.post("/{work_system_id}/confirm-strategy-intent", response_model=WorkSystemOut)
+def confirm_strategy_intent(work_system_id: int, payload: WorkSystemIntentConfirmIn, db: TenantDbDep, key: OrgKeyDep) -> WorkSystemOut:
+    """V10-9: third intent level, same one-time confirm shape as the two
+    above -- never touches strategy_intent_focus/owner, which are set once
+    at ensure time and never overwritten."""
+    row: WorkSystem = get_or_404(db, WorkSystem, work_system_id, "WorkSystem")
+    if row.strategy_intent_confirmed_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Strategy intent already confirmed")
+    row.strategy_intent_confirmed_by = payload.confirmed_by
+    row.strategy_intent_confirmed_at = _utcnow()
+    db.add(AuditLog(
+        client_id=key.client_id, actor=key.label or f"org_api_key:{key.id}",
+        action="work_system.confirm_strategy_intent", resource="work_system", resource_id=str(row.id),
         detail=f"confirmed_by={payload.confirmed_by}",
     ))
     db.commit()
