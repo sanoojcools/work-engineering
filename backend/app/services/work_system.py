@@ -43,6 +43,24 @@ def _intent_status(confirmed_at: datetime | None) -> str:
     return "confirmed" if confirmed_at is not None else "draft"
 
 
+# V10-9: "unowned goals are dashed" -- an intent whose owner field is blank
+# renders as this literal em dash rather than empty text, same idiom
+# function_intent_measure already uses ("not stated" for a blank measure).
+_UNOWNED = "—"
+
+
+def _owner_display(owner: str) -> str:
+    return owner if owner else _UNOWNED
+
+
+def _intent_debt(ws: WorkSystem) -> int:
+    """V10-9: "counted" half of "unowned goals are dashed and counted" --
+    a simple integer, not a dashboard. Counts the three intents on this row
+    (function / work system / strategy) whose owner is still blank."""
+    owners = (ws.function_intent_owner, ws.work_system_intent_owner, ws.strategy_intent_owner)
+    return sum(1 for owner in owners if not owner)
+
+
 def to_out(ws: WorkSystem) -> WorkSystemOut:
     return WorkSystemOut(
         id=ws.id,
@@ -58,7 +76,7 @@ def to_out(ws: WorkSystem) -> WorkSystemOut:
         created_at=ws.created_at,
         function_intent=IntentOut(
             label=ws.function_intent_outcome,
-            owner=ws.function_intent_owner,
+            owner=_owner_display(ws.function_intent_owner),
             measure=ws.function_intent_measure or "not stated",
             status=_intent_status(ws.function_intent_confirmed_at),
             confirmed_by=ws.function_intent_confirmed_by,
@@ -66,10 +84,19 @@ def to_out(ws: WorkSystem) -> WorkSystemOut:
         ),
         work_system_intent=IntentOut(
             label=ws.work_system_intent_purpose,
-            owner=ws.work_system_intent_owner,
+            owner=_owner_display(ws.work_system_intent_owner),
             measure=None,
             status=_intent_status(ws.work_system_intent_confirmed_at),
             confirmed_by=ws.work_system_intent_confirmed_by,
             confirmed_at=ws.work_system_intent_confirmed_at,
         ),
+        strategy_intent=IntentOut(
+            label=ws.strategy_intent_focus,
+            owner=_owner_display(ws.strategy_intent_owner),
+            measure=None,
+            status=_intent_status(ws.strategy_intent_confirmed_at),
+            confirmed_by=ws.strategy_intent_confirmed_by,
+            confirmed_at=ws.strategy_intent_confirmed_at,
+        ),
+        intent_debt=_intent_debt(ws),
     )

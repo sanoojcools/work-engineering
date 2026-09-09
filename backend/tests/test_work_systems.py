@@ -85,6 +85,8 @@ def _ensure_body(**overrides) -> dict:
         "function_intent_measure": "SLA: 2 hours from recruiter request to offer letter release",
         "work_system_intent_purpose": "If Offer Desk stalls, candidates walk to other offers over two weeks.",
         "work_system_intent_owner": "Head of HR operations (stand-in)",
+        "strategy_intent_focus": "This quarter: cut offer-to-Day-1 cycle time, not headcount.",
+        "strategy_intent_owner": "Head of HR operations (stand-in)",
     }
     body.update(overrides)
     return body
@@ -122,6 +124,16 @@ def test_ensure_creates_candidate_row(real_client, two_tenants):
     assert row["work_system_intent"]["label"].startswith("If Offer Desk stalls")
     assert row["work_system_intent"]["status"] == "draft"
     assert row["work_system_intent"]["measure"] is None
+
+    # V10-9: third intent level, same draft shape, plus the debt count --
+    # all three intents are owned here, so debt is 0.
+    assert row["strategy_intent"]["label"] == "This quarter: cut offer-to-Day-1 cycle time, not headcount."
+    assert row["strategy_intent"]["owner"] == "Head of HR operations (stand-in)"
+    assert row["strategy_intent"]["status"] == "draft"
+    assert row["strategy_intent"]["confirmed_by"] == ""
+    assert row["strategy_intent"]["confirmed_at"] is None
+    assert row["strategy_intent"]["measure"] is None
+    assert row["intent_debt"] == 0
 
     listed = real_client.get("/api/work-systems", headers=headers_a)
     assert listed.json()["total"] == 1
@@ -297,3 +309,97 @@ def test_confirm_intent_cross_tenant_is_404(real_client, two_tenants):
         json={"confirmed_by": "intruder"},
     )
     assert cross.status_code == 404, cross.text
+
+
+# --- V10-9: strategy intent (third intent level) + intent debt ---
+
+
+@pg_skip
+def test_confirm_strategy_intent_sets_owner_and_timestamp(real_client, two_tenants):
+    headers_a = two_tenants["headers_a"]
+    ws_id = real_client.post("/api/work-systems", headers=headers_a, json=_ensure_body()).json()["id"]
+
+    confirmed = real_client.post(
+        f"/api/work-systems/{ws_id}/confirm-strategy-intent", headers=headers_a,
+        json={"confirmed_by": "Sanooj (HR ops)"},
+    )
+    assert confirmed.status_code == 200, confirmed.text
+    intent = confirmed.json()["strategy_intent"]
+    assert intent["status"] == "confirmed"
+    assert intent["confirmed_by"] == "Sanooj (HR ops)"
+    assert intent["confirmed_at"] is not None
+    # The other two intents are untouched by confirming this one.
+    assert confirmed.json()["function_intent"]["status"] == "draft"
+    assert confirmed.json()["work_system_intent"]["status"] == "draft"
+
+    reread = real_client.get("/api/work-systems", headers=headers_a).json()["items"][0]
+    assert reread["strategy_intent"]["status"] == "confirmed"
+    assert reread["strategy_intent"]["confirmed_by"] == "Sanooj (HR ops)"
+
+
+@pg_skip
+def test_confirm_strategy_intent_twice_is_rejected(real_client, two_tenants):
+    headers_a = two_tenants["headers_a"]
+    ws_id = real_client.post("/api/work-systems", headers=headers_a, json=_ensure_body()).json()["id"]
+
+    first = real_client.post(
+        f"/api/work-systems/{ws_id}/confirm-strategy-intent", headers=headers_a, json={"confirmed_by": "A"},
+    )
+    assert first.status_code == 200, first.text
+
+    again = real_client.post(
+        f"/api/work-systems/{ws_id}/confirm-strategy-intent", headers=headers_a, json={"confirmed_by": "B"},
+    )
+    assert again.status_code == 409, again.text
+
+
+@pg_skip
+def test_confirm_strategy_intent_requires_a_name(real_client, two_tenants):
+    headers_a = two_tenants["headers_a"]
+    ws_id = real_client.post("/api/work-systems", headers=headers_a, json=_ensure_body()).json()["id"]
+
+    empty = real_client.post(
+        f"/api/work-systems/{ws_id}/confirm-strategy-intent", headers=headers_a, json={"confirmed_by": ""},
+    )
+    assert empty.status_code == 422, empty.text
+
+
+@pg_skip
+def test_confirm_strategy_intent_cross_tenant_is_404(real_client, two_tenants):
+    headers_a = two_tenants["headers_a"]
+    headers_b = two_tenants["headers_b"]
+    ws_a = real_client.post("/api/work-systems", headers=headers_a, json=_ensure_body()).json()
+
+    cross = real_client.post(
+        f"/api/work-systems/{ws_a['id']}/confirm-strategy-intent", headers=headers_b,
+        json={"confirmed_by": "intruder"},
+    )
+    assert cross.status_code == 404, cross.text
+
+
+@pg_skip
+def test_unowned_goals_are_dashed_and_counted(real_client, two_tenants):
+    """V10-9: an intent with no owner renders "--" (never blank) and is
+    counted into intent_debt -- a simple integer, not a dashboard."""
+    headers_a = two_tenants["headers_a"]
+    row = real_client.post(
+        "/api/work-systems", headers=headers_a,
+        json=_ensure_body(work_system_intent_owner="", strategy_intent_owner=""),
+    ).json()
+
+    assert row["function_intent"]["owner"] == "Head of HR operations (stand-in)"
+    assert row["work_system_intent"]["owner"] == "—"
+    assert row["strategy_intent"]["owner"] == "—"
+    assert row["intent_debt"] == 2
+
+    # All three unowned -> all three dashed, debt 3. A fresh code avoids the
+    # (client_id, code) unique constraint colliding with the row above.
+    all_unowned = real_client.post(
+        "/api/work-systems", headers=headers_a,
+        json=_ensure_body(
+            code="WS-OFFER-ONBOARD-2",
+            function_intent_owner="", work_system_intent_owner="", strategy_intent_owner="",
+        ),
+    ).json()
+    assert all_unowned["intent_debt"] == 3
+    assert all_unowned["function_intent"]["owner"] == "—"

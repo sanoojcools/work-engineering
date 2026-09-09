@@ -6,13 +6,17 @@ from pydantic import BaseModel, Field
 
 
 class IntentOut(BaseModel):
-    """One of the two D -- INTENT-LITE intents attached to a WorkSystem row.
-    `label` is the function's outcome sentence for Function intent, or the
-    journey's purpose sentence for Work System intent -- the two intents
-    don't share a field name, so the router names it generically here.
-    `measure` is only ever populated for Function intent ("not stated" when
-    the T&M sheets name none); Work System intent always sends null.
-    `status` is derived from confirmed_at, never stored independently."""
+    """One of the three intents attached to a WorkSystem row: D -- INTENT-LITE's
+    Function and Work System intents, plus V10-9's Strategy intent (period
+    focus). `label` is the function's outcome sentence for Function intent,
+    the journey's purpose sentence for Work System intent, or the period's
+    one-line focus for Strategy intent -- none of the three share a field
+    name, so the router names it generically here. `measure` is only ever
+    populated for Function intent ("not stated" when the T&M sheets name
+    none); the other two always send null. `status` is derived from
+    confirmed_at, never stored independently. `owner` reads "--" (dashed)
+    rather than blank when nobody is named yet -- see intent_debt below,
+    which counts exactly the intents this renders dashed."""
 
     label: str
     owner: str
@@ -36,6 +40,12 @@ class WorkSystemOut(BaseModel):
     created_at: datetime
     function_intent: IntentOut
     work_system_intent: IntentOut
+    strategy_intent: IntentOut
+    # V10-9: count of the three intents above (function / work system /
+    # strategy) that are unowned right now -- "goal" here means one
+    # intent's own label, "unowned" means its owner field is blank. A
+    # simple integer, not a dashboard -- see services/work_system.py.
+    intent_debt: int
 
 
 class WorkSystemEnsureIn(BaseModel):
@@ -57,6 +67,8 @@ class WorkSystemEnsureIn(BaseModel):
     function_intent_measure: str = ""
     work_system_intent_purpose: str = ""
     work_system_intent_owner: str = ""
+    strategy_intent_focus: str = ""
+    strategy_intent_owner: str = ""
 
 
 class WorkSystemRatifyIn(BaseModel):
