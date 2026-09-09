@@ -249,6 +249,14 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
   await expect(page.getByText("95", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("61.8", { exact: true }).first()).toBeVisible();
+  await expect(page.getByTestId("plan-period")).toBeVisible();
+  await expect(page.getByTestId("plan-period-focus")).toContainText("This period:");
+  await expect(page.getByTestId("plan-period-focus")).toContainText(
+    "This quarter: cut offer-to-Day-1 cycle time, not headcount.",
+  );
+  await expect(page.getByTestId("plan-period-unowned")).toContainText(/unowned lines: \d+/);
+  await expect(page.getByTestId("plan-period-guest")).toContainText(/looking only/i);
+  await expect(page.getByTestId("plan-period").getByRole("button", { name: "Confirm as owner" })).toHaveCount(0);
   await expect(page.getByTestId("plan-appetite-stop")).toHaveText(/appetite does not lift the dual-employment stop/i);
   await expect(page.getByTestId("plan-hours-other")).not.toContainText("61.8");
   await expect(page.getByTestId("plan-hours-other")).not.toContainText("Defended");
@@ -302,6 +310,9 @@ test("Plan shows not measured plus 95 and 61.8", async ({ page }) => {
   await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
   await expect(page.getByText("95", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("61.8", { exact: true }).first()).toBeVisible();
+  await expect(page.getByTestId("plan-period")).toBeVisible();
+  await expect(page.getByTestId("plan-period-focus")).toContainText("This period:");
+  await expect(page.getByTestId("plan-period-unowned")).toContainText(/unowned lines: \d+/);
   await expect(page.getByTestId("plan-outcome")).not.toContainText("62%");
   await expect(page.getByTestId("plan-outcome-measured")).not.toContainText("62");
   await expect(page.getByText("Independent?").first()).toBeVisible();
@@ -545,6 +556,8 @@ test("guest census download contains 95, 61.8, and 'not a pass'", async ({ page 
   expect(content).toContain("95");
   expect(content).toContain("61.8");
   expect(content).toContain("95 stated / 61.8 defended");
+  expect(content).toContain("This period:");
+  expect(content).toMatch(/unowned lines: \d+/);
   expect(content).toMatch(/not a pass/);
   expect(content).toContain("The hire is complete");
   expect(content).toContain("Outside this desk");
@@ -763,4 +776,33 @@ test("keyed sit close Confirm persists; cards are real or none yet", async ({ pa
   } else {
     await expect(card.first().getByTestId("sit-close-card-human")).not.toHaveText("");
   }
+});
+
+/** V10-9 FRONTEND. One Plan row for this period + unowned-lines count.
+ * Guest 1→6 and Plan 95 / 61.8 stay in the tests above. */
+
+test("keyed Confirm as owner on Plan this-period row persists", async ({ page, request }) => {
+  await signInWithFreshDemoKey(page, request);
+  await page.goto("/census/plan");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  await expect(page.getByTestId("plan-period")).toBeVisible();
+  await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
+
+  const confirm = page.getByTestId("plan-period-confirm");
+  const confirmed = page.getByTestId("plan-period-confirmed");
+  await expect(confirm.or(confirmed)).toBeVisible({ timeout: 15_000 });
+
+  if (await confirm.isVisible()) {
+    await page.getByTestId("plan-period-confirmed-by").fill("QA Period Owner");
+    await confirm.click();
+    await expect(confirmed).toContainText(/QA Period Owner/);
+  } else {
+    await expect(confirmed).toBeVisible();
+  }
+
+  await page.reload();
+  await expect(page.getByTestId("plan-period-confirmed")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
 });

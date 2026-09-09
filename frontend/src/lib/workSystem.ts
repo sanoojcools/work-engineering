@@ -13,14 +13,16 @@
  * INTENT-PLAN adds: the two D -- INTENT-LITE intents (lib/intent.ts) sent
  * once at ensure time alongside entry/exit/owner/outcome, confirm calls for
  * each, and a shared useWorkSystem() hook so Work Chart and Plan don't each
- * carry their own copy of the same ensure/loading/error/needsKey plumbing. */
+ * carry their own copy of the same ensure/loading/error/needsKey plumbing.
+ * V10-9 adds the period-focus line on the same ensure payload, confirmed
+ * from Plan via POST /work-systems/{id}/confirm-strategy-intent. */
 import { useEffect, useState } from "react";
 import { apiFetch, NeedsApiKeyError } from "./apiFetch";
 import { useIsGuest } from "./guestMode";
 import { OFFER_DESK_SEATS } from "./offerDeskSeats";
 import { OFFER_DESK_META } from "./offerDeskData";
 import { ONBOARDING_SPEC } from "./desks/onboarding";
-import { FUNCTION_INTENT_DRAFT, WORK_SYSTEM_INTENT_DRAFT } from "./intent";
+import { FUNCTION_INTENT_DRAFT, STRATEGY_INTENT_DRAFT, WORK_SYSTEM_INTENT_DRAFT } from "./intent";
 import { useCompany } from "../company";
 import type { IntentOut, WorkSystem } from "../types";
 
@@ -42,7 +44,21 @@ const ENSURE_BODY = {
   function_intent_measure: FUNCTION_INTENT_DRAFT.measure,
   work_system_intent_purpose: WORK_SYSTEM_INTENT_DRAFT.purpose,
   work_system_intent_owner: WORK_SYSTEM_INTENT_DRAFT.owner,
+  strategy_intent_focus: STRATEGY_INTENT_DRAFT.focus,
+  strategy_intent_owner: STRATEGY_INTENT_DRAFT.owner,
 } as const;
+
+/** Same em dash services/work_system.py sends when an intent has no owner. */
+export const UNOWNED_OWNER = "—";
+
+export function ownerOrDash(owner: string | null | undefined): string {
+  const trimmed = (owner ?? "").trim();
+  return trimmed && trimmed !== UNOWNED_OWNER ? trimmed : UNOWNED_OWNER;
+}
+
+function intentDebtFromOwners(...owners: string[]): number {
+  return owners.filter((owner) => !owner.trim()).length;
+}
 
 /** Guest / not-yet-ensured preview of both intents -- same draft text a
  * keyed tenant's first ensure call would persist, shown read-only. Never
@@ -65,6 +81,15 @@ const GUEST_WORK_SYSTEM_INTENT: IntentOut = {
   confirmed_at: null,
 };
 
+const GUEST_STRATEGY_INTENT: IntentOut = {
+  label: STRATEGY_INTENT_DRAFT.focus,
+  owner: STRATEGY_INTENT_DRAFT.owner,
+  measure: null,
+  status: "draft",
+  confirmed_by: "",
+  confirmed_at: null,
+};
+
 /** The same declared-schematic fallback useWorkSystem() renders for a
  * guest, exported so lib/censusExport.ts (CENSUS-PACK P1) can build a
  * guest export without a hook -- one shape, not a second one invented for
@@ -78,6 +103,12 @@ export const GUEST_JOURNEY: WorkSystem = {
   created_at: "",
   function_intent: GUEST_FUNCTION_INTENT,
   work_system_intent: GUEST_WORK_SYSTEM_INTENT,
+  strategy_intent: GUEST_STRATEGY_INTENT,
+  intent_debt: intentDebtFromOwners(
+    GUEST_FUNCTION_INTENT.owner,
+    GUEST_WORK_SYSTEM_INTENT.owner,
+    GUEST_STRATEGY_INTENT.owner,
+  ),
 };
 
 export async function listWorkSystems(): Promise<WorkSystem[]> {
@@ -104,6 +135,10 @@ export async function confirmFunctionIntent(id: number, confirmedBy: string): Pr
 
 export async function confirmWorkSystemIntent(id: number, confirmedBy: string): Promise<WorkSystem> {
   return apiFetch.post<WorkSystem>(`/work-systems/${id}/confirm-work-system-intent`, { confirmed_by: confirmedBy });
+}
+
+export async function confirmStrategyIntent(id: number, confirmedBy: string): Promise<WorkSystem> {
+  return apiFetch.post<WorkSystem>(`/work-systems/${id}/confirm-strategy-intent`, { confirmed_by: confirmedBy });
 }
 
 /** Shared by Work Chart (purpose strip + Ratify) and Plan (units + intent

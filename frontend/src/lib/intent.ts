@@ -1,7 +1,9 @@
-/** D -- INTENT-LITE (docs/BUILD_PROGRAM.md). Two intents, drafted from
- * existing sheet/sitting text only -- no invented COO strategy, no third
- * intent, no strategy constitution. Both attach to the one Work System this
- * app ships (workSystem.ts's OFFER_TO_ONBOARDING_JOURNEY).
+/** D -- INTENT-LITE (docs/BUILD_PROGRAM.md) plus V10-9's period focus.
+ * Function and Work System intents are drafted from existing sheet/sitting
+ * text only -- no invented COO strategy, no strategy constitution. V10-9
+ * adds one more line on the same Work System row (the period's focus),
+ * shown as a single Plan row, never a studio. All three attach to the one
+ * Work System this app ships (workSystem.ts's OFFER_TO_ONBOARDING_JOURNEY).
  *
  * Function intent (HR operations) -- outcome + owner + measure -- reuses
  * PLAYBACK_ROWS' own "What the work is" / function_head cell verbatim
@@ -56,4 +58,13 @@ export const WORK_SYSTEM_INTENT_DRAFT = {
     "If Offer Desk stalls, we don't lose a hire in one day — we lose it over two weeks, quietly, as candidates walk to other offers.",
   owner: OFFER_DESK_SEATS.sub_function_lead.interviewee_name,
   source: "Function Head interview (CHRO stand-in), Q1, offer-desk-inputs/01-interviews/function-head-interview-chro.md",
+} as const;
+
+/** V10-9. One-line period focus persisted on first ensure, same sentence
+ * the backend tests already use — stand-in owner until a real sponsor.
+ * Plan shows this as "This period:"; the canon name lives in the i-button. */
+export const STRATEGY_INTENT_DRAFT = {
+  focus: "This quarter: cut offer-to-Day-1 cycle time, not headcount.",
+  owner: OFFER_DESK_SEATS.sub_function_lead.interviewee_name,
+  source: "V10-9 period focus on the existing work_systems row — not a new intent table",
 } as const;

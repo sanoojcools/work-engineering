@@ -21,7 +21,7 @@ import { GUEST_REGISTER_COUNTS, REGISTERS, REGISTER_COPY, countRegisters } from 
 import { CANNOT_SEE_CONNECTOR_NOTE, CANNOT_SEE_JUDGMENT_NOTE, GATE_KINDS, isGateKind, KIND_COPY } from "./gapGateKinds";
 import { GAP_TIERS, TIER_COPY, gapsInTier } from "./gapTiers";
 import { unitReadiness } from "./handoffReadiness";
-import { ensureOfferToOnboardingWorkSystem, GUEST_JOURNEY } from "./workSystem";
+import { ensureOfferToOnboardingWorkSystem, GUEST_JOURNEY, ownerOrDash } from "./workSystem";
 import type { Gap, Page, UploadedFileOut, Verdict, WorkSystem, WorkUnit } from "../types";
 
 // Reused verbatim by CensusPlan.tsx's own "Quality gate reminder" card, so
@@ -216,8 +216,10 @@ function chartSection(units: WorkUnit[], verdicts: Verdict[]): string {
   return blocks.join("\n").trim();
 }
 
-function planSection(): string {
+function planSection(journey: WorkSystem): string {
+  const owner = ownerOrDash(journey.strategy_intent.owner);
   return [
+    `- **This period:** ${journey.strategy_intent.label || "Not drafted yet."} · ${owner} · unowned lines: ${journey.intent_debt}`,
     `- **Hours:** ${DOCUMENT_CHECK_RECORD.declaredHours} stated / ${DOCUMENT_CHECK_RECORD.defendedHours} defended (hrs/mo), Document check, after four costing disciplines.`,
     `- **Stop:** ${DOCUMENT_CHECK_RECORD.stopRule}`,
     `- **Quality gate:** ${GQS_REMINDER_PRE} ${GQS_REMINDER_BOLD} ${GQS_REMINDER_POST}`,
@@ -306,7 +308,7 @@ export function buildCensusMarkdown(input: CensusExportInput, generatedAt: Date 
     `## 5. Chart snapshot`,
     chartSection(units, verdicts),
     `## 6. Plan`,
-    planSection(),
+    planSection(journey),
     `## 7. Open questions / repair list`,
     openQuestionsSection(isGuest, gaps, units, verdicts),
   ];

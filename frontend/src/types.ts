@@ -459,18 +459,22 @@ export type WorkSystem = {
   created_at: string;
   function_intent: IntentOut;
   work_system_intent: IntentOut;
+  // V10-9. Third intent on the same row (period focus) plus how many of
+  // the three are still unowned — one integer, not a dashboard.
+  strategy_intent: IntentOut;
+  intent_debt: number;
 };
 
-// D -- INTENT-LITE. Mirrors backend/app/schemas/work_system.py::IntentOut.
+// D -- INTENT-LITE + V10-9. Mirrors backend/app/schemas/work_system.py::IntentOut.
 // Named IntentOut, not Intent -- `Intent` above (line 117) already mirrors
 // the unrelated, already-shipped IntentSource (Box 2 "downward" discovery
-// intent, docs/INTENT_CONTRACT.md); this is a different concept (the two
-// D -- INTENT-LITE intents attached to a WorkSystem row), not a rename of
-// that one. `label` is the function's outcome sentence (Function intent) or
-// the journey's purpose sentence (Work System intent) -- the two intents
-// don't share a field name, so this type names it generically, same as the
-// backend schema's own comment explains. `measure` is populated only for
-// Function intent; Work System intent always carries null.
+// intent, docs/INTENT_CONTRACT.md); this is a different concept (the three
+// intents attached to a WorkSystem row), not a rename of that one. `label`
+// is the function's outcome sentence, the journey's purpose sentence, or
+// the period's one-line focus -- they don't share a field name, so this
+// type names it generically, same as the backend schema's own comment.
+// `measure` is populated only for Function intent; the other two always
+// carry null. Unowned `owner` is the API's em dash, not a blank string.
 export type IntentOut = {
   label: string;
   owner: string;

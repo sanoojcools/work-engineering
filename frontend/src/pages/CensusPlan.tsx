@@ -18,7 +18,7 @@ import { createModerationEntry, listModerationEntries } from "../lib/moderation"
 import { fetchHandoffBundle } from "../lib/handoffReadiness";
 import { GQS_REMINDER_BOLD, GQS_REMINDER_POST, GQS_REMINDER_PRE } from "../lib/censusExport";
 import { DownloadCensusButton } from "../components/census/DownloadCensusButton";
-import { useWorkSystem } from "../lib/workSystem";
+import { confirmStrategyIntent, ownerOrDash, useWorkSystem } from "../lib/workSystem";
 import {
   DUAL_TRACK_COPY,
   measuredLabel,
@@ -27,7 +27,7 @@ import {
   type PlanVerifyRow,
 } from "../lib/planVerify";
 import { APPETITE_STOP_COPY } from "../lib/planEcon";
-import type { HandoffOut, ModerationEntry, Page, Verdict, WorkUnit } from "../types";
+import type { HandoffOut, ModerationEntry, Page, Verdict, WorkSystem, WorkUnit } from "../types";
 
 // The Document check unit's own real code (OfferDeskDocumentCheck.tsx's
 // DOCUMENT_CHECK_CODE, offerDeskEvidencePack.json's WU-OD-02) -- reused here
@@ -372,14 +372,122 @@ function ModerationSection({ units, verdicts }: { units: WorkUnit[]; verdicts: V
   );
 }
 
+/** V10-9: one Plan row — period focus, owner or dash, unowned-lines count.
+ * Not a page, not a dashboard. Canon names live in the i-buttons. Guest
+ * looks only; keyed Confirm as owner POSTs confirm-strategy-intent. */
+function PeriodFocusRow({
+  journey,
+  workSystem,
+  isGuest,
+  loading,
+  error: loadError,
+  onConfirmed,
+}: {
+  journey: WorkSystem;
+  workSystem: WorkSystem | null;
+  isGuest: boolean;
+  loading: boolean;
+  error: string | null;
+  onConfirmed: (ws: WorkSystem) => void;
+}) {
+  const intent = journey.strategy_intent;
+  const owner = ownerOrDash(intent.owner);
+  const [name, setName] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [needsKey, setNeedsKey] = useState(false);
+  const confirmed = intent.status === "confirmed";
+
+  async function confirm() {
+    if (!workSystem || !name.trim()) return;
+    setConfirming(true);
+    setError(null);
+    try {
+      onConfirmed(await confirmStrategyIntent(workSystem.id, name.trim()));
+    } catch (err) {
+      if (err instanceof NeedsApiKeyError) setNeedsKey(true);
+      else setError(err instanceof Error ? err.message : "Could not confirm this period");
+    } finally {
+      setConfirming(false);
+    }
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }} data-testid="plan-period">
+      {needsKey && <ApiKeyBanner onSaved={() => setNeedsKey(false)} />}
+      {(error || loadError) && <div className="banner error">{error || loadError}</div>}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px", alignItems: "baseline" }}>
+        <p style={{ fontSize: 15, margin: 0 }} data-testid="plan-period-focus">
+          <strong>This period:</strong> {intent.label || "Not drafted yet."}{" "}
+          <InfoTooltip
+            term="strategy intent"
+            simple="One line for what this stretch of time is about — not a strategy studio and not a new page."
+            technical="WorkSystem.strategy_intent. POST /work-systems/{id}/confirm-strategy-intent — name + server time, once."
+          />
+        </p>
+        <p style={{ fontSize: 15, margin: 0 }} data-testid="plan-period-owner">
+          {owner}
+        </p>
+        <p style={{ fontSize: 15, margin: 0 }} data-testid="plan-period-unowned">
+          unowned lines: {journey.intent_debt}{" "}
+          <InfoTooltip
+            term="intent debt"
+            simple="How many of the three lines on this journey still have nobody named. One number, not a dashboard."
+            technical="WorkSystemOut.intent_debt — count of function / work-system / strategy intents whose owner is blank."
+          />
+        </p>
+      </div>
+      {isGuest ? (
+        <p className="hint" style={{ marginTop: 10, marginBottom: 0 }} data-testid="plan-period-guest">
+          Guest: looking only — sign in to Confirm as owner. Nothing is saved.
+        </p>
+      ) : confirmed ? (
+        <p className="hint" style={{ marginTop: 10, marginBottom: 0 }} data-testid="plan-period-confirmed">
+          Confirmed by {intent.confirmed_by} at {intent.confirmed_at}. Persisted — survives a refresh.
+        </p>
+      ) : !workSystem ? (
+        <p className="hint" style={{ marginTop: 10, marginBottom: 0 }} data-testid="plan-period-loading">
+          {loadError || (loading ? "Loading this tenant's Work System…" : "Sign in to Confirm as owner.")}
+        </p>
+      ) : (
+        <div className="toolbar" style={{ marginTop: 10 }}>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            aria-label="This period — confirmed by"
+            data-testid="plan-period-confirmed-by"
+          />
+          <button
+            type="button"
+            disabled={confirming || !name.trim()}
+            onClick={() => void confirm()}
+            data-testid="plan-period-confirm"
+          >
+            {confirming ? "Confirming…" : "Confirm as owner"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** CENSUS-v0 Part A, step 6: V10-3 columns + outcome strip stay. V10-6
  * Plan economics: Offer Desk 95 stated / 61.8 defended as two numbers;
  * other desks stated hours only; appetite does not lift the dual-employment
- * stop. No new arithmetic. */
+ * stop. No new arithmetic. V10-9 adds one period-focus row above Hours. */
 export default function CensusPlan() {
   const isGuest = useIsGuest();
   const { keyClientId } = useCompany();
-  const { workSystem, journey, loading: wsLoading, needsKey: wsNeedsKey, setNeedsKey: setWsNeedsKey } = useWorkSystem();
+  const {
+    workSystem,
+    journey,
+    loading: wsLoading,
+    error: wsError,
+    needsKey: wsNeedsKey,
+    setNeedsKey: setWsNeedsKey,
+    setWorkSystem,
+  } = useWorkSystem();
   const unitsApi = useApi<Page<WorkUnit>>(isGuest ? null : withClient("/work-units/", keyClientId));
   const verdictsApi = useApi<Page<Verdict>>(isGuest ? null : withClient("/verdict/", keyClientId));
   const units = unitsApi.data?.items ?? [];
@@ -434,6 +542,15 @@ export default function CensusPlan() {
           <strong>Measured</strong> — {measuredLabel(outcome)}
         </p>
       </div>
+
+      <PeriodFocusRow
+        journey={journey}
+        workSystem={workSystem}
+        isGuest={isGuest}
+        loading={wsLoading}
+        error={wsError}
+        onConfirmed={(ws) => setWorkSystem(ws)}
+      />
 
       <h3 style={{ marginBottom: 4 }}>
         Pieces of work in this journey{" "}
