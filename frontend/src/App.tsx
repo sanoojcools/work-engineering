@@ -35,6 +35,7 @@ import OfferDeskHours from "./pages/OfferDeskHours";
 import OfferDeskHowWeCut from "./pages/OfferDeskHowWeCut";
 import OfferDeskSaveTalkOnly from "./pages/OfferDeskSaveTalkOnly";
 import OfferDeskSheet from "./pages/OfferDeskSheet";
+import OfferDeskSitClose from "./pages/OfferDeskSitClose";
 import OfferDeskSittingRecord from "./pages/OfferDeskSittingRecord";
 import OfferDeskSpecDeny from "./pages/OfferDeskSpecDeny";
 import OfferDeskSubFunctionLead from "./pages/OfferDeskSubFunctionLead";
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="/scout/offer-desk/sub-function-lead" element={<OfferDeskSubFunctionLead />} />
           <Route path="/scout/offer-desk/rashmi" element={<OfferDeskRashmi />} />
           <Route path="/scout/offer-desk/playback" element={<OfferDeskPlayback />} />
+          <Route path="/scout/offer-desk/sit-close" element={<OfferDeskSitClose />} />
           <Route path="/scout/offer-desk/sheet" element={<OfferDeskSheet />} />
           <Route path="/scout/offer-desk/save-talk-only" element={<OfferDeskSaveTalkOnly />} />
           <Route path="/scout/offer-desk/evidence-pack" element={<OfferDeskEvidencePack />} />
