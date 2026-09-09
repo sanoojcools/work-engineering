@@ -619,3 +619,148 @@ test("handoff is refused (not ready) without evidence", async ({ page, request }
   expect(body.bundle).toBeNull();
   expect(body.reasons.join(" ")).toMatch(/no record/i);
 });
+
+/** V10-8 FRONTEND. Sit close lives on Offer Desk after Playback, not as a
+ * seventh census step. Guest 1→6 and Plan 95 / 61.8 stay in the tests above. */
+
+async function ensureDocumentCheckUnit(request: APIRequestContext, apiKey: string): Promise<number> {
+  const headers = { "X-Spec-Key": apiKey };
+  const listed = await request.get("/api/work-units/", { headers });
+  expect(listed.ok(), await listed.text()).toBeTruthy();
+  const items = ((await listed.json()) as { items: { id: number; code: string }[] }).items;
+  const existing = items.find((u) => u.code === "WU-OD-02");
+  if (existing) return existing.id;
+
+  const typeName = `V10-8 Sit Close Object ${Date.now().toString(36)}`;
+  const created = await request.post("/api/ontology/types", {
+    headers,
+    data: { name: typeName, kind: "business_object", description: "", state_machine: '["draft","done"]' },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const typeId = ((await created.json()) as { id: number }).id;
+
+  const unitBody = {
+    code: "WU-OD-02",
+    name: "Verify candidate documents",
+    business_object_type_id: typeId,
+    current_condition: "Documents unchecked",
+    desired_condition: "Accepted or blocked",
+    context: "",
+    trigger: "request arrives",
+    inputs: "form",
+    authority: "Offer Desk SME",
+    actor_constraints: "",
+    acceptance_criteria: "IF dual employment detected in UAN: do NOT release offer (deviation approval required)",
+    evidence_required: "",
+    verification_method: "deterministic_rule",
+    sla_hours: 4,
+    failure_semantics: "hold and notify",
+    owner: "Offer Desk SME",
+  };
+  const wuRes = await request.post("/api/work-units/", { headers, data: unitBody });
+  if (wuRes.status() === 409 || wuRes.status() === 500) {
+    const again = await request.get("/api/work-units/", { headers });
+    const found = ((await again.json()) as { items: { id: number; code: string }[] }).items.find(
+      (u) => u.code === "WU-OD-02",
+    );
+    expect(found, await wuRes.text()).toBeTruthy();
+    return found!.id;
+  }
+  expect(wuRes.status(), await wuRes.text()).toBe(201);
+  return ((await wuRes.json()) as { id: number }).id;
+}
+
+test("census stays six steps; sit close is Offer Desk depth, not a seventh census step", async ({ page }) => {
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+
+  await page.goto("/scout/offer-desk/sit-close");
+  await expect(page.getByTestId("sit-close")).toBeVisible();
+  await expect(page.locator(".progress-count")).toHaveCount(0);
+});
+
+test("guest sit close shows three rows, none yet, and mints no key", async ({ page }) => {
+  await page.goto("/scout/offer-desk/sit-close");
+  await expect(page.getByTestId("sit-close")).toBeVisible();
+  await expect(page.getByText("Looking only — nothing is saved")).toBeVisible();
+
+  await expect(page.getByTestId("sit-close-row-goal")).toBeVisible();
+  await expect(page.getByTestId("sit-close-row-authority")).toBeVisible();
+  await expect(page.getByTestId("sit-close-row-acceptance")).toBeVisible();
+
+  await expect(page.getByTestId("sit-close-quote-goal")).toContainText("Checks all documents uploaded");
+  await expect(page.getByTestId("sit-close-draft-goal")).toHaveText("Accepted or blocked");
+  await expect(page.getByTestId("sit-close-quote-authority")).toContainText("handles ALL hire types");
+  await expect(page.getByTestId("sit-close-draft-authority")).toHaveText("Offer Desk SME");
+  await expect(page.getByTestId("sit-close-quote-acceptance")).toContainText(/dual employment/i);
+  await expect(page.getByTestId("sit-close-draft-acceptance")).toContainText("do NOT release offer");
+
+  await expect(page.getByTestId("sit-close-confirm-goal")).toBeDisabled();
+  await expect(page.getByTestId("sit-close-correct-goal")).toBeDisabled();
+  await expect(page.getByTestId("sit-close-guest-goal")).toContainText(/looking only/i);
+
+  await expect(page.getByTestId("sit-close-cards-empty")).toHaveText("none yet");
+  await expect(page.getByTestId("sit-close-card")).toHaveCount(0);
+
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+test("keyed sit close Confirm persists; cards are real or none yet", async ({ page, request }) => {
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+  const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
+  await ensureDocumentCheckUnit(request, apiKey);
+
+  await page.goto("/scout/offer-desk/sit-close");
+  await expect(page.getByTestId("sit-close")).toBeVisible();
+
+  const nameField = page.getByTestId("sit-close-confirmed-by");
+  await expect(nameField).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
+  await nameField.fill("QA Sit Close");
+
+  const confirmGoal = page.getByTestId("sit-close-confirm-goal");
+  const settledGoal = page.getByTestId("sit-close-settled-goal");
+  await expect(async () => {
+    if ((await settledGoal.count()) > 0) return;
+    expect(await confirmGoal.isEnabled()).toBeTruthy();
+  }).toPass({ timeout: 20_000 });
+
+  if (await confirmGoal.isEnabled()) {
+    await confirmGoal.click();
+    await expect(settledGoal).toContainText(/confirmed — QA Sit Close/);
+  } else {
+    await expect(settledGoal).toBeVisible();
+  }
+
+  const confirmAuth = page.getByTestId("sit-close-confirm-authority");
+  const lineAuth = page.getByTestId("sit-close-line-authority");
+  const settledAuth = page.getByTestId("sit-close-settled-authority");
+  if ((await lineAuth.count()) > 0 && (await confirmAuth.count()) > 0 && (await settledAuth.count()) === 0) {
+    await lineAuth.fill("HR Ops lead signs this, not the draft owner");
+    const correctAuth = page.getByTestId("sit-close-correct-authority");
+    await expect(correctAuth).toBeEnabled();
+    await correctAuth.click();
+    await expect(settledAuth).toContainText(/corrected — QA Sit Close/);
+  }
+
+  await page.reload();
+  await expect(page.getByTestId("sit-close-confirmed-by")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("sit-close-settled-goal")).toContainText(/confirmed|corrected/, { timeout: 20_000 });
+
+  const empty = page.getByTestId("sit-close-cards-empty");
+  const card = page.getByTestId("sit-close-card");
+  await expect(empty.or(card.first())).toBeVisible();
+  if ((await empty.count()) > 0) {
+    await expect(empty).toHaveText("none yet");
+    await expect(card).toHaveCount(0);
+  } else {
+    await expect(card.first().getByTestId("sit-close-card-human")).not.toHaveText("");
+  }
+});

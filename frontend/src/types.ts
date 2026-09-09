@@ -624,3 +624,29 @@ export type ConsentReceipt = {
   revoked_at: string | null;
   purged_at: string | null;
 };
+
+// V10-8. Mirrors backend/app/schemas/field_ratification.py.
+export type FieldRatificationField = "desired_condition" | "authority" | "acceptance_criteria";
+export type FieldRatificationStatus = "drafted" | "confirmed" | "corrected";
+
+export type FieldRatification = {
+  id: number;
+  work_unit_id: number;
+  field_name: FieldRatificationField;
+  sitting_quote: string;
+  drafted_value: string;
+  confirmed_value: string | null;
+  status: FieldRatificationStatus;
+  confirmed_by: string | null;
+  confirmed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DecisionCard = {
+  gap_id: number;
+  kind: string;
+  description: string;
+  named_human: string;
+  action: "confirm_or_correct";
+};

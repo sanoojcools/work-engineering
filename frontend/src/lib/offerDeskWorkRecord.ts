@@ -10,6 +10,11 @@ import { OFFER_DESK_META, OFFER_DESK_STEPS, OFFER_DESK_TOTAL_SAVINGS } from "./o
  * and independentChecker are new (Slice TIGHT-WEDGE T3): the record has no
  * second checker today, which is Exception 9 in offerDeskData.ts
  * (OFFER_DESK_EXCEPTIONS), not an invented gap. */
+
+/** Evidence-pack code for this same cut (`WU-OD-02`). Sit close and Document
+ * check both hang on this piece of work once a genome exists for the tenant. */
+export const DOCUMENT_CHECK_CODE = "WU-OD-02";
+
 export const DOCUMENT_CHECK_RECORD = {
   sheetStep: 2,
   name: "Check candidate documents before offer release",

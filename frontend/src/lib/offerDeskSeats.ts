@@ -8,6 +8,7 @@ export const OFFER_DESK_SEAT_PATHS = [
   { to: "/scout/offer-desk/sub-function-lead", label: "2. Sub-function lead", seat: "sub_function_lead" },
   { to: "/scout/offer-desk/rashmi", label: "3. Offer Desk SME", seat: "sme" },
   { to: "/scout/offer-desk/playback", label: "Playback", seat: null },
+  { to: "/scout/offer-desk/sit-close", label: "Sit close", seat: null },
   { to: "/scout/offer-desk/sheet", label: "Spreadsheet", seat: null },
   { to: "/scout/offer-desk/save-talk-only", label: "Save talk-only", seat: null },
   { to: "/scout/offer-desk/evidence-pack", label: "With evidence (sample)", seat: null },

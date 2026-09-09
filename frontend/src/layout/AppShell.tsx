@@ -28,6 +28,7 @@ const SECTIONS = [
       ["/scout/offer-desk/sub-function-lead", "2. Sub-function lead"],
       ["/scout/offer-desk/rashmi", "3. Offer Desk SME"],
       ["/scout/offer-desk/playback", "Playback"],
+      ["/scout/offer-desk/sit-close", "Sit close"],
       ["/scout/offer-desk/sheet", "Spreadsheet"],
       ["/scout/offer-desk/save-talk-only", "Save talk-only"],
       ["/scout/offer-desk/how-we-cut", "How we cut it"],
