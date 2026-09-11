@@ -50,13 +50,28 @@ import json
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from ..models.pointers import FieldPointer, PointerStatus
 from ..models.verdict import VerdictScore
 from ..models.verification_design import IndependenceKind, VerificationDesign, VerificationDesignMethod
 from ..models.workunit import WorkUnit
-from ..schemas.handoff import HandoffOut
+from ..schemas.handoff import (
+    ActorPolicyOut,
+    HandoffBundleOut,
+    HandoffOut,
+    ProvenanceOut,
+    ScenarioOut,
+    ValidatorSpecOut,
+)
 from . import admissibility as admissibility_svc
+from . import verdict as verdict_svc
 from . import work_units as wu_svc
 from .work_system import desk_of
+
+# The two views V10-14 (docs/contracts/v10-14-handoff.md) puts on this same
+# route. `governor` is the default so today's callers keep working.
+GOVERNOR_VIEW = "governor"
+PERFORMER_VIEW = "performer"
+VALID_VIEWS = frozenset({GOVERNOR_VIEW, PERFORMER_VIEW})
 
 # V10-3's 5th gate id (docs/contracts/v10-3-verify.md, verbatim), surfaced
 # in HandoffOut.gates alongside VERDICT's own gate1_regulatory..
@@ -100,7 +115,45 @@ def _dual_employment_text_present(wu: WorkUnit) -> bool:
     return "dual employ" in haystack
 
 
-def check_readiness(db: Session, code: str) -> HandoffOut:
+def _build_bundle(db: Session, wu: WorkUnit, verdict: VerdictScore, gates: list[str], view: str) -> HandoffBundleOut:
+    """Only called when `ready` is True, so `verdict` is guaranteed (rule 2
+    above: no score -> not ready -> no bundle). `view=performer` withholds
+    scores per the contract: scenario ints all null, and `record` -- which
+    never carried recommended_level or raw VERDICT properties to begin
+    with -- is otherwise identical between the two views."""
+    design = db.query(VerificationDesign).filter(VerificationDesign.work_unit_id == wu.id).one_or_none()
+    method = design.method.value if design else VerificationDesignMethod.none.value
+    independent = design.independent.value if design else IndependenceKind.not_stated.value
+
+    pointers = db.query(FieldPointer).filter(FieldPointer.work_unit_id == wu.id).all()
+    composed = any(p.status == PointerStatus.composed for p in pointers)
+
+    if view == PERFORMER_VIEW:
+        scenario = ScenarioOut()
+    else:
+        applied_gates = json.loads(verdict.applied_gates)
+        scores = verdict_svc.scores_from_orm(verdict)
+        levels = verdict_svc.scenario_levels(
+            scores, recommended_level=verdict.recommended_level, applied_gates=applied_gates,
+        )
+        scenario = ScenarioOut(**levels)
+
+    return HandoffBundleOut(
+        record=wu_svc.to_out(wu),
+        actor_policy=ActorPolicyOut(cap=verdict.allocation, owner=wu.owner),
+        gates=gates,
+        validator_spec=ValidatorSpecOut(method=method, independent=independent),
+        scenario=scenario,
+        provenance=ProvenanceOut(source=wu.provenance.value, composed=composed),
+    )
+
+
+def check_readiness(db: Session, code: str, view: str = GOVERNOR_VIEW) -> HandoffOut:
+    if view not in VALID_VIEWS:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Unknown view {view!r}; expected one of {sorted(VALID_VIEWS)}",
+        )
     wu = db.query(WorkUnit).filter(WorkUnit.code == code).one_or_none()
     if wu is None:
         return HandoffOut(
@@ -155,5 +208,5 @@ def check_readiness(db: Session, code: str) -> HandoffOut:
         gates=gates,
         dual_employment_stop_required=dual_required,
         independent_check_required=needs_independence,
-        bundle=wu_svc.to_out(wu) if ready else None,
+        bundle=_build_bundle(db, wu, verdict, gates or [], view) if ready else None,
     )

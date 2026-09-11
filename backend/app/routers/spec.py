@@ -28,15 +28,21 @@ def get_spec(code: str, db: TenantDbDep, _key: OrgKeyDep) -> WorkUnitOut:
 
 
 @router.get("/handoff/{code}", response_model=HandoffOut)
-def handoff(code: str, db: TenantDbDep, _key: OrgKeyDep) -> HandoffOut:
+def handoff(code: str, db: TenantDbDep, _key: OrgKeyDep, view: str = "governor") -> HandoffOut:
     """P2 (docs/BUILD_PROGRAM.md CENSUS-PACK): refuse a bundle if the unit
     is not ready -- same 200-with-the-verdict-in-the-body idiom POST
     /spec/check already uses for allow/deny, not a 4xx. A code with no
     record on this tenant is a legitimate "not ready" answer, not a 404:
     Plan needs to render that inline for a unit that was never imported,
     the same way every other honest-empty-state on this walk renders
-    rather than erroring."""
-    return handoff_svc.check_readiness(db, code)
+    rather than erroring.
+
+    V10-14 (docs/contracts/v10-14-handoff.md): `?view=governor|performer`
+    on the same route -- governor is the default so existing callers keep
+    working; performer withholds VERDICT scores from the bundle. Unknown
+    view -> 422, raised inside check_readiness (checked before admissibility
+    /gates so a bad view never masquerades as a real refusal reason)."""
+    return handoff_svc.check_readiness(db, code, view=view)
 
 
 @router.post("/check", response_model=SpecCheckOut)
