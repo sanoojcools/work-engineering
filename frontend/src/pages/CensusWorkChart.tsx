@@ -11,15 +11,17 @@ import { useApi } from "../hooks";
 import { withClient } from "../lib/withClient";
 import { DOCUMENT_CHECK_RECORD } from "../lib/offerDeskWorkRecord";
 import { HIRE_LEAVES } from "../lib/hireLeaves";
+import {
+  CHART_SCENARIOS,
+  GUEST_CAPACITY,
+  GUEST_LOOKING_ONLY,
+  firesFromSimulation,
+  scenarioToApi,
+  simulationsPath,
+  type ChartScenario,
+} from "../lib/offerDay1Simulation";
 import { confirmFunctionIntent, confirmWorkSystemIntent, ratifyWorkSystem, useWorkSystem } from "../lib/workSystem";
-import type { IntentOut, Page, Verdict, WorkUnit } from "../types";
-
-type ScenarioKey = "careful" | "as-calculated" | "ambitious";
-const SCENARIOS: { key: ScenarioKey; label: string }[] = [
-  { key: "careful", label: "Careful" },
-  { key: "as-calculated", label: "As calculated" },
-  { key: "ambitious", label: "Ambitious" },
-];
+import type { IntentOut, Page, SimulationOut, Verdict, WorkUnit } from "../types";
 
 /** D -- INTENT-LITE. One intent's card: label (outcome or purpose) + owner +
  * (Function intent only) measure, a draft/confirmed badge that never looks
@@ -79,22 +81,27 @@ function IntentCard({
 }
 
 /** Work Chart (hero). Purpose strip + V10-4's 18-leaf seed in four bands
- * including external, under the composite “the hire is complete”. No new
- * math: careful / as calculated / ambitious still replay scenarioStrip()
- * when a real WU-HIRE-* VERDICT exists; otherwise every leaf reads not
- * scored. Guest sees the declared seed with stand-in names — never Rashmi
- * or Zwayam. Plan (CensusPlan.tsx) is untouched this slice. */
+ * including external, under the composite “the hire is complete”. Careful /
+ * as calculated / ambitious load GET /simulations/offer-day1 when keyed.
+ * Guest: looking only, same 18 yaml leaves, never calls the API. Plan
+ * (CensusPlan.tsx) is untouched this slice. */
 export default function CensusWorkChart() {
   const { isGuest, workSystem, journey, loading: wsLoading, error: wsError, needsKey, setNeedsKey, setWorkSystem, setError: setWsError } =
     useWorkSystem();
-  const { keyClientId } = useCompany();
+  const { keyClientId, firstLoadPending } = useCompany();
 
   const unitsApi = useApi<Page<WorkUnit>>(isGuest ? null : withClient("/work-units/", keyClientId));
   const verdictsApi = useApi<Page<Verdict>>(isGuest ? null : withClient("/verdict/", keyClientId));
   const units = unitsApi.data?.items ?? [];
   const verdicts = verdictsApi.data?.items ?? [];
 
-  const [scenario, setScenario] = useState<ScenarioKey>("as-calculated");
+  const [scenario, setScenario] = useState<ChartScenario>("as-calculated");
+  const apiScenario = scenarioToApi(scenario);
+  const skipSim = isGuest || firstLoadPending;
+  const simApi = useApi<SimulationOut>(skipSim ? null : simulationsPath(apiScenario));
+  const simMatches = simApi.data?.scenario === apiScenario;
+  const firesById = firesFromSimulation(isGuest || !simMatches ? null : simApi.data, apiScenario);
+  const capacity = isGuest || !simMatches || !simApi.data ? GUEST_CAPACITY : simApi.data.capacity;
   const [ratifierName, setRatifierName] = useState("");
   const [ratifying, setRatifying] = useState(false);
   const [confirmingFn, setConfirmingFn] = useState(false);
@@ -150,7 +157,7 @@ export default function CensusWorkChart() {
         Work Chart{" "}
         <InfoTooltip
           term="Work Chart"
-          simple="One journey, drawn as 18 pieces of work in four bands — including work outside this desk. Toggling careful / as calculated / ambitious replays the same score Document check already uses — no new arithmetic."
+          simple="One journey, drawn as 18 pieces of work in four bands — including work outside this desk. Careful / as calculated / ambitious says which pieces fire, which sit outside, where a person must still touch, and where the stop blocks."
         />
       </h2>
       <p className="lede">
@@ -246,9 +253,15 @@ export default function CensusWorkChart() {
         </p>
       </div>
 
-      <div className="tabs" style={{ marginBottom: 4 }}>
-        {SCENARIOS.map((s) => (
-          <button key={s.key} type="button" aria-selected={scenario === s.key} onClick={() => setScenario(s.key)}>
+      <div className="tabs" style={{ marginBottom: 4 }} data-testid="chart-scenarios">
+        {CHART_SCENARIOS.map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            aria-selected={scenario === s.key}
+            data-testid={`chart-scenario-${s.key}`}
+            onClick={() => setScenario(s.key)}
+          >
             {s.label}
           </button>
         ))}
@@ -257,17 +270,29 @@ export default function CensusWorkChart() {
         Careful / as calculated / ambitious{" "}
         <InfoTooltip
           term="S1 / S2 / S3"
-          simple="Three ways to read the same score: careful is the floor, as calculated is what VERDICT derived, ambitious is the ceiling. Appetite does not lift a stop."
-          technical="Same scenarioStrip() as Document check — S1 floor / S2 derived / S3 ceiling. No second scoring engine."
+          simple="Three ways to read the same hire: careful is the floor, as calculated is what the record already says, ambitious is the ceiling. Appetite does not lift a stop."
+          technical="GET /api/simulations/offer-day1?scenario=careful|as_calculated|ambitious. Guest never calls this. S1 floor still on Document check via scenarioStrip(); this toggle does not lift dual employment."
         />{" "}
-        — "Not scored" means no real score exists yet for that piece on this tenant.
+        — each piece: fires, outside, human must touch, or blocked.
       </p>
+      {isGuest && !firstLoadPending && (
+        <p className="hint" data-testid="chart-sim-guest" style={{ marginTop: 0, marginBottom: 12 }}>
+          {GUEST_LOOKING_ONLY}
+        </p>
+      )}
+      {!isGuest && simApi.error && <div className="banner error">{simApi.error}</div>}
 
-      {!isGuest && (unitsApi.loading || verdictsApi.loading) && (
-        <p className="hint">Loading this tenant's real Work Units and VERDICT scores…</p>
+      {!isGuest && (unitsApi.loading || verdictsApi.loading || simApi.loading) && (
+        <p className="hint">Loading this tenant's real Work Units, VERDICT scores, and this case…</p>
       )}
 
-      <HireLeavesChart units={units} verdicts={verdicts} scenario={scenario} />
+      <HireLeavesChart
+        units={units}
+        verdicts={verdicts}
+        scenario={scenario}
+        firesById={firesById}
+        capacity={capacity}
+      />
 
       <div className="card" style={{ marginBottom: 16, borderColor: "var(--danger)" }}>
         <p style={{ fontSize: 13, margin: 0 }}>
@@ -278,11 +303,11 @@ export default function CensusWorkChart() {
 
       <IoPanes
         given="Gap: the declared-vs-sitting disagreement, already named."
-        understood="A chart is the hire, drawn as 18 pieces in four bands including work outside this desk. Careful / as calculated / ambitious replay the same score Document check already uses — not a fresh number. Purpose is two sentences, not a strategy document."
+        understood="A chart is the hire, drawn as 18 pieces in four bands including work outside this desk. Careful / as calculated / ambitious says which pieces fire, which sit outside, where a person must still touch, and where the stop blocks. Capacity is not live. Purpose is two sentences, not a strategy document."
         processed={
           isGuest
-            ? "Guest schematic: 18 leaves from the declared hire-leaves seed, stand-in names, no backend call. Every piece reads not scored. Purpose shown as drafted, unconfirmed."
-            : "18 leaves from the same declared seed. Real GET /work-units/ + GET /verdict/ matched only when a WU-HIRE-* row exists; otherwise not scored. Work System (incl. both intents) via GET+POST /work-systems; Confirm as owner via POST /work-systems/{id}/confirm-*-intent."
+            ? "Guest schematic: 18 leaves from the declared hire-leaves seed, stand-in names, looking only, no GET /simulations. Dual employment stays blocked. Purpose shown as drafted, unconfirmed."
+            : "18 leaves from the same declared seed. Keyed GET /simulations/offer-day1 for the selected scenario. Real GET /work-units/ + GET /verdict/ matched only when a WU-HIRE-* row exists; otherwise not scored. Work System (incl. both intents) via GET+POST /work-systems; Confirm as owner via POST /work-systems/{id}/confirm-*-intent."
         }
         output={`${HIRE_LEAVES.length} leaves, 4 bands including external, composite “the hire is complete”, journey ${status}, intents ${journey.function_intent.status}/${journey.work_system_intent.status}.`}
       />

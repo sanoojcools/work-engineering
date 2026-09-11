@@ -210,6 +210,10 @@ function chartSection(units: WorkUnit[], verdicts: Verdict[]): string {
     }
     blocks.push("");
   }
+  blocks.push(
+    `**Capacity — not live.** ${DOCUMENT_CHECK_RECORD.declaredHours} stated / ${DOCUMENT_CHECK_RECORD.defendedHours} defended (hrs/mo). Same two numbers as Plan. Not printed on a leaf.`,
+  );
+  blocks.push("");
   blocks.push(PARENT_HOURS_NOTE);
   return blocks.join("\n").trim();
 }
