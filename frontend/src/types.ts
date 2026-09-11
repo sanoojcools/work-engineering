@@ -211,6 +211,15 @@ export type AdmissibilityOut = {
   refusals: JourneyRefusal[];
 };
 
+// V10-12. Mirrors backend/app/schemas/scout.py::DelinquencyOut.
+// API keys stay canon; customer words are applied in the Capture UI.
+export type DelinquencyOut = {
+  invention: number;
+  omission: number;
+  distortion: number;
+  flattery: number;
+};
+
 export type VerificationRun = {
   id: number;
   work_unit_id: number;

@@ -284,6 +284,17 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await expect(page).toHaveURL(/\/census\/capture$/);
   await expect(stepCount(page)).toContainText("2 of 6");
   await expect(page.getByRole("heading", { name: "Capture", exact: false }).first()).toBeVisible();
+  await expect(page.getByTestId("extract-counts")).toBeVisible();
+  await expect(page.getByTestId("extract-count-invented-value")).toHaveText("0");
+  await expect(page.getByTestId("extract-count-left-out-value")).toHaveText("0");
+  await expect(page.getByTestId("extract-count-twisted-value")).toHaveText("0");
+  await expect(page.getByTestId("extract-count-flattered-value")).toHaveText("0");
+  await expect(page.getByTestId("extract-counts-guest")).toHaveText(/looking only/i);
+  await expect(page.getByTestId("extract-counts")).toContainText("invented");
+  await expect(page.getByTestId("extract-counts")).toContainText("left out");
+  await expect(page.getByTestId("extract-counts")).toContainText("twisted");
+  await expect(page.getByTestId("extract-counts")).toContainText("flattered");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 
   await page.getByRole("link", { name: "Next: Evidence →" }).click();
   await expect(page).toHaveURL(/\/census\/evidence$/);
@@ -1023,6 +1034,44 @@ test("keyed Gap shows a refusal when the API returns one; Plan still 95 and 61.8
   await expect(page.getByTestId(`journey-refusal-reason-${usedCode}`)).not.toHaveText("no_exit");
   await expect(page.getByTestId("named-states-offer")).toContainText("documents checked");
   await expect(page.getByTestId("named-states-offer")).toContainText("before and after");
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+});
+
+/** V10-12 FRONTEND. Four counts live on Capture, not as a seventh census
+ * step. Guest 1→6 and Plan 95 / 61.8 stay in the tests above. */
+
+test("guest Capture shows four zeros, looking only, and mints no key", async ({ page }) => {
+  await page.goto("/census/capture");
+  await expect(stepCount(page)).toContainText("2 of 6");
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+  await expect(page.getByTestId("extract-count-invented-value")).toHaveText("0", { timeout: 15_000 });
+  await expect(page.getByTestId("extract-count-left-out-value")).toHaveText("0");
+  await expect(page.getByTestId("extract-count-twisted-value")).toHaveText("0");
+  await expect(page.getByTestId("extract-count-flattered-value")).toHaveText("0");
+  await expect(page.getByTestId("extract-counts-guest")).toHaveText(/looking only/i);
+  await expect(page.getByTestId("extract-counts")).not.toContainText("delinquency");
+  await expect(page.getByTestId("extract-counts")).not.toContainText("invention");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+test("keyed Capture shows zeros for a fresh demo key; Plan still 95 and 61.8", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+  await page.goto("/census/capture");
+  await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
+  await expect(page.getByTestId("extract-counts")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("extract-counts-guest")).toHaveCount(0);
+  await expect(page.getByTestId("extract-count-invented-value")).toHaveText("0", { timeout: 20_000 });
+  await expect(page.getByTestId("extract-count-left-out-value")).toHaveText("0");
+  await expect(page.getByTestId("extract-count-twisted-value")).toHaveText("0");
+  await expect(page.getByTestId("extract-count-flattered-value")).toHaveText("0");
 
   await page.goto("/census/plan");
   await expect(stepCount(page)).toContainText("6 of 6");

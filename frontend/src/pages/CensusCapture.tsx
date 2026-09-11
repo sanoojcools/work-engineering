@@ -3,6 +3,7 @@ import { CensusStepper } from "../components/census/CensusStepper";
 import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
 import { OFFER_DESK_SEATS } from "../lib/offerDeskSeats";
+import { ExtractCounts } from "../components/census/ExtractCounts";
 
 const SEAT_ORDER: (keyof typeof OFFER_DESK_SEATS)[] = ["function_head", "sub_function_lead", "sme"];
 const SEAT_LABELS: Record<keyof typeof OFFER_DESK_SEATS, string> = {
@@ -12,9 +13,11 @@ const SEAT_LABELS: Record<keyof typeof OFFER_DESK_SEATS, string> = {
 };
 
 /** CENSUS-v0 Part A, step 2: Capture. Three seats, and — per the build
- * doc's own rule — Offer Desk is linked FROM here, not from Home. Nothing
- * new: this page is a shell over the existing three-seat walk
- * (SeatStepper / OFFER_DESK_SEAT_PATHS), not a second capture mechanism. */
+ * doc's own rule — Offer Desk is linked FROM here, not from Home. V10-12
+ * adds four counts (invented / left out / twisted / flattered) on this
+ * same step — not a seventh census step. Nothing new as a capture
+ * mechanism: this page is a shell over the existing three-seat walk
+ * (SeatStepper / OFFER_DESK_SEAT_PATHS). */
 export default function CensusCapture() {
   return (
     <>
@@ -43,6 +46,8 @@ export default function CensusCapture() {
         })}
       </div>
 
+      <ExtractCounts />
+
       <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent-edge)" }}>
         <h3>Offer Desk — this census's worked example</h3>
         <p style={{ fontSize: 13, marginBottom: 10 }}>
@@ -61,8 +66,10 @@ export default function CensusCapture() {
       <IoPanes
         given="Scope: which functions and sub-functions are in play."
         understood="One seat's voice is not a census. Function leader, sub-function lead, and SME each answer for themselves; playback lines them up without merging them."
-        processed="This page links to the existing three-seat Offer Desk walk (SeatStepper) — no second capture mechanism, no new store."
-        output="Three seats named. Offer Desk reachable from here, not from Home."
+        processed="This page links to the existing three-seat Offer Desk walk (SeatStepper) and reads this tenant's four counts. Guest never calls that. No second capture mechanism, no new store."
+        output={
+          "Three seats named. Offer Desk reachable from here, not from Home. Four counts: invented / left out / twisted / flattered."
+        }
       />
 
       <p style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>
