@@ -37,28 +37,53 @@ def mean_score(scores: dict[str, int]) -> float:
     return sum(clamp_score(scores[p]) for p in PROPERTIES) / 7.0
 
 
-def base_level(scores: dict[str, int]) -> int:
-    """Map the 1–5 mean onto L1–L5. L6 requires a deterministic special case."""
-    mean = mean_score(scores)
-    if mean < 2.0:
-        level = 1
-    elif mean < 2.75:
-        level = 2
-    elif mean < 3.5:
-        level = 3
-    elif mean < 4.25:
-        level = 4
+def _band_for_value(value: float) -> int:
+    if value < 2.0:
+        return 1
+    elif value < 2.75:
+        return 2
+    elif value < 3.5:
+        return 3
+    elif value < 4.25:
+        return 4
     else:
-        level = 5
-    # L6 is fully deterministic automation (no LLM): high D, V, T and a high mean.
+        return 5
+
+
+def _level_at(scores: dict[str, int], value: float) -> int:
+    """Map a single 1-5 value (a mean, or -- for V10-14's scenario floor/
+    ceiling -- a min/max across the seven properties) onto L1-L5, with L6's
+    deterministic special case. The one place this arithmetic lives --
+    base_level() and scenario_levels() both call it, so there is no second
+    engine between VERDICT's own derivation and the scenario strip."""
+    level = _band_for_value(value)
+    # L6 is fully deterministic automation (no LLM): high D, V, T and a high value.
     if (
         scores["determinism"] == 5
         and scores["verifiability"] >= 4
         and scores["tacitness"] >= 4
-        and mean >= 4.5
+        and value >= 4.5
     ):
         level = 6
     return level
+
+
+def base_level(scores: dict[str, int]) -> int:
+    """Map the 1–5 mean onto L1–L5. L6 requires a deterministic special case."""
+    return _level_at(scores, mean_score(scores))
+
+
+# The cap each hard gate imposes when it fires -- shared by apply_hard_gates
+# (computed from live scores at score time) and cap_from_applied_gates
+# (replayed from an already-persisted applied_gates list, e.g. V10-14's
+# scenario strip, which has no access to requires_licensed_human /
+# evidence_path_exists and must not re-derive them).
+GATE_CAPS: dict[str, int] = {
+    "gate1_regulatory": 2,
+    "gate2_reversibility": 3,
+    "gate3_impact": 3,
+    "gate4_evidence": 2,
+}
 
 
 def apply_hard_gates(
@@ -72,18 +97,59 @@ def apply_hard_gates(
     gates: list[str] = []
     cap = 6
     if scores["compliance"] == 1 or requires_licensed_human:
-        cap = min(cap, 2)
+        cap = min(cap, GATE_CAPS["gate1_regulatory"])
         gates.append("gate1_regulatory")
     if scores["reversibility"] == 1:
-        cap = min(cap, 3)
+        cap = min(cap, GATE_CAPS["gate2_reversibility"])
         gates.append("gate2_reversibility")
     if scores["impact_scope"] == 1:
-        cap = min(cap, 3)
+        cap = min(cap, GATE_CAPS["gate3_impact"])
         gates.append("gate3_impact")
     if (not evidence_path_exists) or scores["evidence"] == 1:
-        cap = min(cap, 2)
+        cap = min(cap, GATE_CAPS["gate4_evidence"])
         gates.append("gate4_evidence")
     return min(level, cap), gates
+
+
+def cap_from_applied_gates(applied_gates: list[str]) -> int:
+    """Replay GATE_CAPS against an already-persisted applied_gates list
+    (VerdictScore.applied_gates) instead of re-deriving requires_licensed_human
+    / evidence_path_exists, which are not available after the fact. Mirrors
+    frontend/src/lib/offerDeskScenarios.ts::capFromAppliedGates exactly."""
+    cap = 6
+    for gate in applied_gates:
+        if gate in GATE_CAPS:
+            cap = min(cap, GATE_CAPS[gate])
+    return cap
+
+
+def scenario_levels(
+    scores: dict[str, int],
+    *,
+    recommended_level: int,
+    applied_gates: list[str],
+) -> dict[str, int]:
+    """V10-14 (docs/contracts/v10-14-handoff.md): careful / as_calculated /
+    ambitious -- the same S1 floor / S2 derived / S3 ceiling arithmetic
+    frontend/src/lib/offerDeskScenarios.ts::scenarioStrip already runs,
+    ported here so the governor bundle and any other backend caller read it
+    off one engine, not a second one. S2 (as_calculated) is not recomputed
+    -- it is the real, already-persisted recommended_level, exactly as
+    scenarioStrip treats verdict.recommended_level. S1 (careful) and S3
+    (ambitious) replay _level_at against the minimum/maximum of the seven
+    real scores instead of their mean. The same cap (replayed from
+    applied_gates, not re-derived) applies to all three, so a hard gate
+    that fired caps ambitious exactly like it caps careful and
+    as_calculated."""
+    cleaned = {p: clamp_score(scores[p]) for p in PROPERTIES}
+    values = [cleaned[p] for p in PROPERTIES]
+    cap = cap_from_applied_gates(applied_gates)
+    return {
+        "careful": min(_level_at(cleaned, min(values)), cap),
+        "as_calculated": min(recommended_level, cap),
+        "ambitious": min(_level_at(cleaned, max(values)), cap),
+        "cap": cap,
+    }
 
 
 def derive_autonomy(

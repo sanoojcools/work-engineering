@@ -157,7 +157,7 @@ def test_ready_once_scored_with_no_dual_employment_requirement(real_client, tena
     assert isinstance(body["gates"], list)
     assert body["dual_employment_stop_required"] is False
     assert body["bundle"] is not None
-    assert body["bundle"]["code"] == "WU-TEST-HANDOFF-B"
+    assert body["bundle"]["record"]["code"] == "WU-TEST-HANDOFF-B"
 
 
 @pg_skip

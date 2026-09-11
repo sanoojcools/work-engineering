@@ -69,6 +69,9 @@ jobs:
       - name: Run tests
         run: pytest -q
 
+      - name: Handoff invariants (V10-14)
+        run: pytest -q tests/test_v10_14_invariants.py
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
