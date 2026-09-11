@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { apiFetch, NeedsApiKeyError } from "../../lib/apiFetch";
+import { V10 } from "../../lib/v10Terms";
 import { INTERVIEW_TYPE_LABELS, INTERVIEW_TYPES } from "../../types";
 import type { ScoutSession } from "../../types";
+import { InfoTooltip } from "../InfoTooltip";
+import type { StoryChunk } from "./StoryToStructure";
 
 type Track = (typeof INTERVIEW_TYPES)[number];
 
@@ -27,6 +31,8 @@ const QUESTION_BANK: Record<Track, Question[]> = {
     { id: "s5", text: "Who do you hand this off to, or receive it from?", why: "Maps to handoffs." },
   ],
 };
+
+type Extracted = { used_llm: boolean; chunks: StoryChunk[]; note: string };
 
 function useSpeechRecognition(onResult: (text: string) => void) {
   const [supported] = useState(
@@ -69,19 +75,50 @@ function useSpeechRecognition(onResult: (text: string) => void) {
   };
 }
 
-export function DiscoveryPartner({ session }: { session: ScoutSession }) {
+export function DiscoveryPartner({
+  session,
+  onNeedsKey,
+  onAdd,
+}: {
+  session: ScoutSession;
+  onNeedsKey: () => void;
+  onAdd?: (chunk: StoryChunk) => Promise<void> | void;
+}) {
   const [track, setTrack] = useState<Track>(session.type);
   const [qIndex, setQIndex] = useState(0);
   const [notes, setNotes] = useState("");
   const [mode, setMode] = useState<"voice" | "type">("type");
+  const [busy, setBusy] = useState(false);
+  const [extractNote, setExtractNote] = useState<string | null>(null);
   const speech = useSpeechRecognition(setNotes);
+  const q = V10.questions;
 
   const questions = QUESTION_BANK[track];
   const question = questions[qIndex];
 
+  async function turnNotesIntoRows() {
+    if (!notes.trim() || !onAdd) return;
+    setBusy(true);
+    setExtractNote(null);
+    try {
+      const r = await apiFetch.post<Extracted>("/scout/extract-from-story", { transcript_chunk: notes });
+      setExtractNote(r.note);
+      for (const chunk of r.chunks) {
+        await onAdd(chunk);
+      }
+    } catch (err) {
+      if (err instanceof NeedsApiKeyError) onNeedsKey();
+      else setExtractNote("Could not turn notes into rows. Nothing was invented.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="card">
-      <h3>AI Discovery Partner</h3>
+      <h3>
+        {q.label} <InfoTooltip term={q.term} simple={q.simple} technical={q.technical} />
+      </h3>
 
       <div className="tabs" style={{ marginBottom: 12 }}>
         {INTERVIEW_TYPES.map((t) => (
@@ -138,13 +175,18 @@ export function DiscoveryPartner({ session }: { session: ScoutSession }) {
         rows={5}
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        placeholder="Notes from this question — structure the answer into the Work Capture Grid on the right when you're done."
+        placeholder="Notes from this question — then Turn these notes into rows, or type a row on the right."
         style={{ width: "100%", marginBottom: 8 }}
       />
-      <div className="hint" style={{ marginBottom: 12 }}>
-        These notes aren't saved on their own — Scout doesn't have a live text→work-unit extractor yet (needs an
-        LLM key that isn't configured). Use them as a scratchpad, then fill the grid row yourself.
+      <div className="toolbar" style={{ marginBottom: 8 }}>
+        <button type="button" className="primary" disabled={busy || !notes.trim() || !onAdd} onClick={() => void turnNotesIntoRows()}>
+          {busy ? "Turning notes into rows…" : "Turn these notes into rows"}
+        </button>
       </div>
+      <div className="hint" style={{ marginBottom: 12 }}>
+        Only words actually said are kept. If no model is configured, you get an honest note — not invented steps.
+      </div>
+      {extractNote && <div className="banner warn" style={{ marginBottom: 12 }}>{extractNote}</div>}
 
       <div style={{ display: "flex", gap: 8 }}>
         <button type="button" disabled={qIndex === 0} onClick={() => { setQIndex((i) => i - 1); setNotes(""); }}>

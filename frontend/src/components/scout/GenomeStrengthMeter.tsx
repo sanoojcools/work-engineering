@@ -1,4 +1,6 @@
 import type { ScoutSession } from "../../types";
+import { InfoTooltip } from "../InfoTooltip";
+import { V10 } from "../../lib/v10Terms";
 
 const RADIUS = 46;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -10,10 +12,14 @@ export function GenomeStrengthMeter({ session }: { session: ScoutSession }) {
     .filter((d) => d.computed)
     .sort((a, b) => a.pct - b.pct)
     .slice(0, 3);
+  const t = V10.sittingComplete;
 
   return (
     <div className="card">
-      <h3>Genome Strength</h3>
+      <h3>
+        {t.label}{" "}
+        <InfoTooltip term={t.term} simple={t.simple} technical={t.technical} />
+      </h3>
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
         <svg width="112" height="112" viewBox="0 0 112 112">
           <circle cx="56" cy="56" r={RADIUS} fill="none" stroke="var(--line)" strokeWidth="10" />
@@ -38,8 +44,8 @@ export function GenomeStrengthMeter({ session }: { session: ScoutSession }) {
         </svg>
         <div className="muted" style={{ fontSize: 13 }}>
           {pct >= 100
-            ? "Genome strength is at 100% — see the future preview when it ships."
-            : `${(100 - pct).toFixed(0)} points to go. Averaged across the 7 dimensions Scout can measure today.`}
+            ? "This sitting grid is full. That is not the same as a pass in the files."
+            : `${(100 - pct).toFixed(0)} points to go on this sitting grid.`}
         </div>
       </div>
 
@@ -73,10 +79,9 @@ export function GenomeStrengthMeter({ session }: { session: ScoutSession }) {
       {weakest.length > 0 && pct < 100 && (
         <div className="nudge info" style={{ marginTop: 14, marginBottom: 0 }}>
           <div className="nudge-body">
-            <div className="nudge-title">What gets me to 100%?</div>
+            <div className="nudge-title">What fills the grid?</div>
             <div className="nudge-msg" style={{ marginBottom: 0 }}>
-              Weakest dimensions right now: {weakest.map((d) => d.label).join(", ")}. Add or fill out a few more
-              rows in the Work Capture Grid covering those fields.
+              Weakest now: {weakest.map((d) => d.label).join(", ")}. Add one Offer Desk row at a time, or fill a blank cell.
             </div>
           </div>
         </div>

@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { errorMessage } from "../../api";
 import { apiFetch, NeedsApiKeyError } from "../../lib/apiFetch";
+import { V10 } from "../../lib/v10Terms";
 import type { ScoutSession } from "../../types";
 import { Banner } from "../../ui";
+import { InfoTooltip } from "../InfoTooltip";
 import { ConsentGate } from "./ConsentGate";
 
 type Preview = {
@@ -17,7 +19,6 @@ type Preview = {
 type GenerateResult = {
   accepted: boolean;
   version_id: number;
-  /** Tenant-scoped version number; version_id is the global key used in URLs. */
   sequence: number;
   gqs: number;
   work_unit_count: number;
@@ -62,14 +63,7 @@ export function FuturePreview({
       setResult(r);
     } catch (err) {
       if (err instanceof NeedsApiKeyError) onNeedsKey();
-      else {
-        // The server refuses outright (4xx) when this session has no consent
-        // record attached -- shouldn't happen through this screen (the
-        // ConsentGate below runs first), but stays a plain-language message
-        // rather than a raw error if it ever does (a stale tab, a second
-        // interviewer racing this one).
-        setGenError(errorMessage(err));
-      }
+      else setGenError(errorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -82,9 +76,18 @@ export function FuturePreview({
   }
 
   const locked = !preview.unlocked;
+  const save = V10.saveDraft;
+  const sit = V10.sittingComplete;
+  const gate = V10.filesNotEnough;
+  const rec = V10.workRecord;
+  const prev = V10.draftPreview;
 
   return (
     <div>
+      <p className="lede" style={{ marginTop: 0 }}>
+        {prev.label}{" "}
+        <InfoTooltip term={prev.term} simple={prev.simple} technical={prev.technical} />
+      </p>
       <div
         style={{
           filter: locked ? "blur(4px)" : "none",
@@ -96,11 +99,11 @@ export function FuturePreview({
         <div className="metrics" style={{ marginBottom: 16 }}>
           <div className="metric">
             <div className="n">{preview.unit_count}</div>
-            <div className="l">Work units captured</div>
+            <div className="l">Pieces captured</div>
           </div>
           <div className="metric">
             <div className="n">{preview.business_objects_preview.length}</div>
-            <div className="l">Business objects</div>
+            <div className="l">Things this work is about</div>
           </div>
           <div className="metric">
             <div className="n">{(preview.time_saved_min_per_day / 60).toFixed(1)}h</div>
@@ -108,7 +111,9 @@ export function FuturePreview({
           </div>
           <div className="metric">
             <div className="n">{preview.completeness_pct.toFixed(0)}%</div>
-            <div className="l">Genome strength</div>
+            <div className="l">
+              {sit.label} <InfoTooltip term={sit.term} simple={sit.simple} technical={sit.technical} />
+            </div>
           </div>
         </div>
 
@@ -119,8 +124,9 @@ export function FuturePreview({
         </div>
 
         <button type="button" className="primary" disabled={busy || locked} onClick={generate}>
-          Generate V8 Work Units
+          {save.label}
         </button>
+        <InfoTooltip term={save.term} simple={save.simple} technical={save.technical} />
 
         {genError && <Banner kind="error">{genError}</Banner>}
 
@@ -128,18 +134,18 @@ export function FuturePreview({
           <div className={`banner ${result.accepted ? "ok" : "warn"}`} style={{ marginTop: 12 }}>
             {result.accepted ? (
               <>
-                Genome version v{result.sequence} created — GQS {result.gqs.toFixed(1)}, {result.work_unit_count}{" "}
-                work unit(s).{" "}
+                {rec.label} v{result.sequence} saved.{" "}
+                <InfoTooltip term={rec.term} simple={rec.simple} technical={rec.technical} />{" "}
+                {result.work_unit_count} piece(s).{" "}
               </>
             ) : (
               <>
-                Blocked by the quality gate: GQS {result.gqs.toFixed(1)} (needs 90). This session's captured units
-                are missing several of the 18 required attributes (trigger, acceptance criteria, evidence,
-                failure semantics) that Scout's interview screens don't ask for yet — the gate is telling the
-                truth about that gap, not a bug.{" "}
+                {gate.label} Score {result.gqs.toFixed(1)}.{" "}
+                <InfoTooltip term={gate.term} simple={gate.simple} technical={gate.technical} />{" "}
+                This is not a broken screen.{" "}
               </>
             )}
-            <Link to={`/genome/${result.version_id}`}>View genome version v{result.sequence} →</Link>
+            <Link to={`/genome/${result.version_id}`}>Open work record v{result.sequence} →</Link>
           </div>
         )}
       </div>
@@ -147,19 +153,12 @@ export function FuturePreview({
       {locked && (
         <div style={{ textAlign: "center", marginTop: -90, position: "relative", zIndex: 1 }}>
           <div style={{ background: "#fff", border: "1px solid var(--line)", display: "inline-block", padding: "14px 20px" }}>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Reach 100% to unlock</div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>Fill this sitting grid to unlock</div>
             <div className="muted" style={{ fontSize: 13 }}>
-              {(100 - preview.completeness_pct).toFixed(0)} points to go — fill in the Work Capture Grid above.
+              {(100 - preview.completeness_pct).toFixed(0)} points to go on the pieces captured table.
             </div>
           </div>
         </div>
-      )}
-
-      {!locked && !result && (
-        <p className="hint" style={{ marginTop: 4 }}>
-          100% reached — this genome section is unlocked. (Confetti omitted deliberately: this build keeps motion
-          minimal, matching the app's existing style.)
-        </p>
       )}
     </div>
   );

@@ -9,7 +9,9 @@ import { PainHeatmap } from "../components/scout/PainHeatmap";
 import { StoryToStructure, type StoryChunk } from "../components/scout/StoryToStructure";
 import { TimeTravelReplay } from "../components/scout/TimeTravelReplay";
 import { WorkCaptureGrid } from "../components/scout/WorkCaptureGrid";
+import { InfoTooltip } from "../components/InfoTooltip";
 import { apiFetch, NeedsApiKeyError } from "../lib/apiFetch";
+import { V10 } from "../lib/v10Terms";
 import { INTERVIEW_TYPE_LABELS, INTERVIEW_TYPES } from "../types";
 import type { ScoutSession } from "../types";
 import { Banner, Loading } from "../ui";
@@ -27,7 +29,7 @@ function NewSessionForm({
 }) {
   return (
     <div className="card" style={{ maxWidth: 520 }}>
-      <h3>Start a Scout interview</h3>
+      <h3>Start a sitting</h3>
       {error && <Banner kind="error">{error}</Banner>}
       <div className="stack">
         <label>
@@ -48,12 +50,11 @@ function NewSessionForm({
           />
         </label>
         <button type="button" className="primary" disabled={busy || !name.trim()} onClick={onSubmit}>
-          {busy ? "Starting…" : "Start interview →"}
+          {busy ? "Starting…" : "Start sitting →"}
         </button>
       </div>
       <p className="hint" style={{ marginTop: 12 }}>
-        Consent is confirmed later, right before you generate a genome from this session — not required to start
-        capturing work here.
+        Consent is confirmed later, right before you save a draft of the work record — not required to start capturing work here.
       </p>
     </div>
   );
@@ -68,18 +69,8 @@ export default function ScoutInterview() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(sessionId !== "new");
 
-  // The Function Scope grid's "Start interview" button navigates here with
-  // this state to hand off a sub-function's assigned owner into the create
-  // form -- a pre-fill, not an automatic cascade (nothing is created until
-  // the interviewer presses Start below).
   const prefill = location.state as { prefillType?: string; prefillName?: string } | null;
 
-  // Lifted out of NewSessionForm so a key-banner retry can re-submit the
-  // same track/name the interviewer already typed, instead of clearing the
-  // form or making them click Start a second time.
-  // Defaults to function_head: the natural first session in the top-down
-  // flow (CHRO/function head -> sub-function lead -> SME) this three-layer
-  // model exists to support.
   const [type, setType] = useState<(typeof INTERVIEW_TYPES)[number]>(
     (prefill?.prefillType as (typeof INTERVIEW_TYPES)[number] | undefined) ?? "function_head"
   );
@@ -122,11 +113,27 @@ export default function ScoutInterview() {
     if (sessionId && sessionId !== "new") void load(sessionId);
   }, [sessionId]);
 
+  async function addExtracted(chunk: StoryChunk) {
+    if (!session) return;
+    const created = await apiFetch.post<ScoutSession>(`/scout/sessions/${session.id}/units`, {
+      name: chunk.suggested_name || chunk.text.slice(0, 80),
+      inputs: chunk.inputs ?? "",
+      outputs: chunk.outputs ?? "",
+      systems: chunk.systems ?? "",
+      frequency: chunk.frequency ?? "",
+      pain: chunk.pain ?? "",
+      handoffs: chunk.handoffs ?? "",
+      decision_rule: chunk.decision_rule ?? "",
+      time_minutes: chunk.time_minutes ?? null,
+    });
+    setSession(created);
+  }
+
   if (sessionId === "new" && !session) {
     return (
       <div>
-        <h2>Scout Interview</h2>
-        <p className="lede">Elevated discovery interview — Function Head, Sub-function Lead, or SME track, live capture, completeness meter.</p>
+        <h2>Sitting</h2>
+        <p className="lede">Function Head, Sub-function Lead, or SME — live capture, completeness of this sitting.</p>
         {needsKey && <ApiKeyBanner onSaved={createSession} />}
         <NewSessionForm
           type={type} setType={setType}
@@ -141,7 +148,7 @@ export default function ScoutInterview() {
   if (needsKey) {
     return (
       <div>
-        <h2>Scout Interview</h2>
+        <h2>Sitting</h2>
         <ApiKeyBanner onSaved={() => (sessionId ? load(sessionId) : Promise.resolve())} />
       </div>
     );
@@ -150,6 +157,8 @@ export default function ScoutInterview() {
   if (loading) return <Loading />;
   if (error) return <Banner kind="error">{error}</Banner>;
   if (!session) return <Banner kind="error">Session not found.</Banner>;
+
+  const sit = V10.sittingComplete;
 
   return (
     <div>
@@ -165,13 +174,14 @@ export default function ScoutInterview() {
           {INTERVIEW_TYPE_LABELS[session.type]} track &middot; {session.status.replace("_", " ")}
         </span>
         <span className="scout-completeness-summary" style={{ marginLeft: "auto", fontSize: 12, color: "var(--muted)" }}>
-          You are {session.completeness_pct.toFixed(0)}% to a complete genome
-          {session.completeness_pct < 100 && ` — keep filling the grid to close the gap`}
+          {sit.label}: {session.completeness_pct.toFixed(0)}%{" "}
+          <InfoTooltip term={sit.term} simple={sit.simple} technical={sit.technical} />
+          {session.completeness_pct < 100 && " — not the same as a pass in the files"}
         </span>
       </div>
 
       <div className="split" style={{ gridTemplateColumns: "1.1fr 1.4fr 1fr", gap: 16 }}>
-        <DiscoveryPartner session={session} />
+        <DiscoveryPartner session={session} onNeedsKey={() => setNeedsKey(true)} onAdd={addExtracted} />
         <WorkCaptureGrid session={session} onChange={setSession} onNeedsKey={() => setNeedsKey(true)} />
         <GenomeStrengthMeter session={session} />
       </div>
@@ -189,25 +199,20 @@ const ELEVATIONS = [
   "Future Preview",
 ] as const;
 
-/** One plain-language sentence per elevation, shown the same way in the same
- * place every time -- so "what is this and why should I care" never depends
- * on reading the more technical copy each panel already has below it. */
 const ELEVATION_EXPLAINERS: Record<(typeof ELEVATIONS)[number], string> = {
   "Time-Travel Replay":
     "Lays out everything captured so far on a clock for a normal working day, so you can see at a glance " +
     "which hours are accounted for and which are still empty.",
   "Contradiction Resolver":
-    "When two people describe the same work unit differently, this shows both answers side by side so a " +
+    "When two people describe the same piece of work differently, this shows both answers side by side so a " +
     "human — not the app — decides which one is true.",
   "Pain Heatmap":
-    "Ranks the systems mentioned in the interview by how much frustration and time they cost, so the worst " +
+    "Ranks the systems mentioned in the sitting by how much frustration and time they cost, so the worst " +
     "offenders are obvious before you go looking for them.",
   "Story to Structure":
-    "Turns a paragraph of someone describing their day into individual rows for the grid above, so a real " +
-    "interview doesn't have to be manually broken apart by hand.",
+    "Turns a paragraph of someone describing their day into individual rows for the table above. Only words actually said are kept.",
   "Future Preview":
-    "A locked look at what this session would add to the Genome once it's complete — a taste of the payoff, " +
-    "held back until there's enough real detail captured to earn it.",
+    "A locked look at what this sitting would add to the work record once the grid is full — held back until there is enough detail.",
 };
 
 function ElevationModules({
@@ -221,10 +226,6 @@ function ElevationModules({
 }) {
   const [open, setOpen] = useState<(typeof ELEVATIONS)[number] | null>(null);
 
-  /** An extracted span becomes a real captured unit through the same endpoint
-   * the grid uses — so it is subject to the same completeness recomputation,
-   * and carries no marker claiming it was machine-derived beyond what the
-   * fields themselves say. */
   async function addExtracted(chunk: StoryChunk) {
     const created = await apiFetch.post<ScoutSession>(`/scout/sessions/${session.id}/units`, {
       name: chunk.suggested_name || chunk.text.slice(0, 80),
@@ -240,18 +241,28 @@ function ElevationModules({
     onChange(created);
   }
 
+  const prev = V10.draftPreview;
+
   return (
     <div style={{ marginTop: 20 }}>
       <div className="tabs">
         {ELEVATIONS.map((name) => (
           <button key={name} aria-selected={open === name} onClick={() => setOpen(open === name ? null : name)}>
-            {name}
+            {name === "Future Preview" ? prev.label : name}
           </button>
         ))}
       </div>
       {open && (
         <div className="card">
-          <h3 style={{ marginBottom: 4 }}>{open}</h3>
+          <h3 style={{ marginBottom: 4 }}>
+            {open === "Future Preview" ? prev.label : open}
+            {open === "Future Preview" && (
+              <>
+                {" "}
+                <InfoTooltip term={prev.term} simple={prev.simple} technical={prev.technical} />
+              </>
+            )}
+          </h3>
           <p className="lede" style={{ marginTop: 0, marginBottom: 14 }}>{ELEVATION_EXPLAINERS[open]}</p>
           {open === "Time-Travel Replay" && <TimeTravelReplay sessionId={session.id} onNeedsKey={onNeedsKey} />}
           {open === "Contradiction Resolver" && (
