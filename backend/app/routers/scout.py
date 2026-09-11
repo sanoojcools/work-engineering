@@ -13,7 +13,8 @@ import json
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import text
 
-from ..dependencies import OrgKeyDep, TenantDbDep
+from ..dependencies import DbDep, OrgKeyDep, TenantDbDep
+from ..models.client import Client
 from ..models.scout import (
     ContradictionStatus,
     InterviewStatus,
@@ -28,6 +29,7 @@ from ..schemas.common import Page
 from ..schemas.scout import (
     BlastRadiusOut,
     BlastRadiusSelectionUpdate,
+    DelinquencyOut,
     ContradictionOut,
     ContradictionResolve,
     FuturePreviewOut,
@@ -304,11 +306,50 @@ def get_pain_heatmap(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> PainHe
 
 
 @router.post("/extract-from-story", response_model=StoryExtractOut)
-def extract_from_story(payload: StoryExtractIn, key: OrgKeyDep) -> StoryExtractOut:
-    """Tenant-scoped like everything else here (needs a valid X-Spec-Key),
-    but doesn't touch the database -- it's a pure text transform, real
-    LLM extraction or the deterministic fallback (see services/scout_story.py)."""
-    return StoryExtractOut(**story_svc.extract_from_story(payload.transcript_chunk))
+def extract_from_story(payload: StoryExtractIn, db: DbDep, key: OrgKeyDep) -> StoryExtractOut:
+    """Tenant-scoped like everything else here (needs a valid X-Spec-Key).
+    Same route as before (V10-12 extends it, no second extract URL): real
+    LLM extraction or the deterministic fallback (services/scout_story.py),
+    plus the performer contract -- cap, counters, golden=False.
+
+    Plain DbDep, not TenantDbDep: `clients` carries no RLS policy (same as
+    services/pointers.py's fabrication_count bump), and every write here
+    targets exactly key.client_id -- the row a validated org key already
+    proves the caller owns -- so app.current_client_id buys nothing. Kept
+    off TenantDbDep on purpose so this route still needs no Postgres-only
+    `SET`, same as test_demo_bootstrap.py's SQLite auth-check depends on.
+
+    Counters are always returned but only added to this tenant's running
+    delinquency totals (GET /delinquency) when the extraction actually used
+    a live model, or the caller posts commit=true. Default commit=false so
+    looking does not pollute totals -- this is the one place this route
+    touches the database."""
+    result = story_svc.extract_with_delinquency(payload.transcript_chunk)
+    if result["used_llm"] or payload.commit:
+        client = db.get(Client, key.client_id)
+        counters = result["counters"]
+        client.invention_count += counters["invention"]
+        client.omission_count += counters["omission"]
+        client.distortion_count += counters["distortion"]
+        client.flattery_count += counters["flattery"]
+        db.commit()
+    return StoryExtractOut(**result)
+
+
+@router.get("/delinquency", response_model=DelinquencyOut)
+def get_delinquency(db: DbDep, key: OrgKeyDep) -> DelinquencyOut:
+    """This tenant's running delinquency totals (V10-12). Zeros for a new
+    tenant -- Client's four counters default to 0 and are never decremented.
+    Plain DbDep, not TenantDbDep -- see extract_from_story's docstring;
+    scoped by key.client_id directly, `clients` has no RLS policy to lean on
+    anyway."""
+    client = db.get(Client, key.client_id)
+    return DelinquencyOut(
+        invention=client.invention_count,
+        omission=client.omission_count,
+        distortion=client.distortion_count,
+        flattery=client.flattery_count,
+    )
 
 
 @router.get("/sessions/{session_id}/future-preview", response_model=FuturePreviewOut)

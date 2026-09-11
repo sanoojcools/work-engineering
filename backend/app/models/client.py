@@ -21,5 +21,16 @@ class Client(Base):
     # counter, incremented by services/pointers.py whenever a field pointer
     # claiming observed/reconstructed fails to resolve. Never decremented.
     fabrication_count: Mapped[int] = mapped_column(Integer, default=0)
+    # V10-12 (docs/contracts/v10-12-discovery.md): four delinquency counters
+    # -- invention, omission, distortion, flattery -- for extraction as a
+    # performer, not a silent author. Not a 12-counter table: four, same
+    # "not a dashboard" restraint as fabrication_count above. Bumped by
+    # services/scout_story.py's scoring pass, only when the caller posts
+    # commit=true or the extraction actually used a live model. Never
+    # decremented.
+    invention_count: Mapped[int] = mapped_column(Integer, default=0)
+    omission_count: Mapped[int] = mapped_column(Integer, default=0)
+    distortion_count: Mapped[int] = mapped_column(Integer, default=0)
+    flattery_count: Mapped[int] = mapped_column(Integer, default=0)
 
     work_units: Mapped[list["WorkUnit"]] = relationship(back_populates="client")
