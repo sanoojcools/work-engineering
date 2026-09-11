@@ -261,6 +261,11 @@ async function startKeyedCensus(page: Page): Promise<void> {
 }
 
 test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 leaves and an external band", async ({ page }) => {
+  const simulationRequests: string[] = [];
+  page.on("request", (req) => {
+    if (req.url().includes("/api/simulations/")) simulationRequests.push(req.url());
+  });
+
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Scope", exact: false }).first()).toBeVisible();
   await expect(stepCount(page)).toContainText("1 of 6");
@@ -362,9 +367,38 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   const chart = page.getByTestId("hire-leaves");
   await expect(chart).not.toContainText("Rashmi");
   await expect(chart).not.toContainText("Zwayam");
-  // Guest: declared seed only, every piece reads not scored.
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+  await expect(page.getByTestId("chart-scenarios")).toBeVisible();
+  await expect(page.getByTestId("chart-sim-guest")).toHaveText(/looking only/i, { timeout: 15_000 });
+  await expect(page.getByTestId("chart-capacity")).toContainText("not live");
+  await expect(page.getByTestId("chart-capacity-stated")).toHaveText("95");
+  await expect(page.getByTestId("chart-capacity-defended")).toHaveText("61.8");
+  await expect(page.locator('[data-testid="hire-leaf"]', { hasText: "61.8" })).toHaveCount(0);
+  await expect(page.locator('[data-testid="hire-leaf"][data-leaf-id="WU-HIRE-05"]').getByTestId("hire-leaf-fires")).toHaveText(
+    "blocked",
+  );
+  await expect(page.locator('[data-testid="hire-leaf"][data-leaf-id="WU-HIRE-01"]').getByTestId("hire-leaf-fires")).toHaveText(
+    "outside",
+  );
+  await expect(page.locator('[data-testid="hire-leaf"][data-leaf-id="WU-HIRE-03"]').getByTestId("hire-leaf-fires")).toHaveText(
+    "fires",
+  );
+  await page.getByTestId("chart-scenario-careful").click();
+  await expect(page.locator('[data-testid="hire-leaf"][data-leaf-id="WU-HIRE-03"]').getByTestId("hire-leaf-fires")).toHaveText(
+    "human must touch",
+  );
+  await expect(page.locator('[data-testid="hire-leaf"][data-leaf-id="WU-HIRE-05"]').getByTestId("hire-leaf-fires")).toHaveText(
+    "blocked",
+  );
+  await page.getByTestId("chart-scenario-ambitious").click();
+  await expect(page.locator('[data-testid="hire-leaf"][data-leaf-id="WU-HIRE-05"]').getByTestId("hire-leaf-fires")).toHaveText(
+    "blocked",
+  );
+  await page.getByTestId("chart-scenario-as-calculated").click();
+  // Guest: declared seed only, every piece reads not scored. Never calls the simulator API.
   await expect(page.getByText("not scored").first()).toBeVisible();
   await expect(page.getByText("Guest: shown as candidate")).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 
   await page.getByRole("link", { name: "Next: Plan →" }).click();
   await expect(page).toHaveURL(/\/census\/plan$/);
@@ -393,6 +427,7 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await expect(page.getByTestId("plan-how-sure-(step 1 — not imported)").first()).toHaveText("not stated");
   await expect(page.getByText(/~30\/90 is not a pass/)).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+  expect(simulationRequests, "guest Chart must never call GET /api/simulations").toEqual([]);
 });
 
 test("keyed Start census persists across a refresh", async ({ page, request }) => {
@@ -1078,4 +1113,55 @@ test("keyed Capture shows zeros for a fresh demo key; Plan still 95 and 61.8", a
   await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
   await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
 });
+
+/** V10-13 FRONTEND. Case overlay on Work Chart (step 5), not a seventh
+ * census step. Guest 1→6 and Plan 95 / 61.8 stay in the tests above. */
+
+test("guest Chart shows 18 leaves, looking only, mints no key, never calls simulations", async ({ page }) => {
+  const simulationRequests: string[] = [];
+  page.on("request", (req) => {
+    if (req.url().includes("/api/simulations/")) simulationRequests.push(req.url());
+  });
+  await page.goto("/census/chart");
+  await expect(stepCount(page)).toContainText("5 of 6");
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+  await expect(page.getByTestId("hire-leaf")).toHaveCount(18);
+  await expect(page.getByTestId("chart-sim-guest")).toHaveText(/looking only/i, { timeout: 15_000 });
+  await expect(page.getByTestId("hire-leaves")).not.toContainText("simulator");
+  await expect(page.getByTestId("chart-scenarios")).not.toContainText("S1");
+  await expect(page.locator('[data-testid="hire-leaf"][data-leaf-id="WU-HIRE-05"]').getByTestId("hire-leaf-fires")).toHaveText(
+    "blocked",
+  );
+  await expect(page.locator('[data-testid="hire-leaf"]', { hasText: "61.8" })).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+  expect(simulationRequests, "guest Chart must never call GET /api/simulations").toEqual([]);
+});
+
+test("keyed Chart ambitious still shows dual-employment leaf blocked; Plan still 95 and 61.8", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+  await page.goto("/census/chart");
+  await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
+  await expect(page.getByTestId("hire-leaf")).toHaveCount(18, { timeout: 20_000 });
+  await expect(page.getByTestId("chart-sim-guest")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+
+  await page.getByTestId("chart-scenario-ambitious").click();
+  const dual = page.locator('[data-testid="hire-leaf"][data-leaf-id="WU-HIRE-05"]');
+  await expect(dual.getByTestId("hire-leaf-fires")).toHaveText("blocked", { timeout: 20_000 });
+  await expect(dual).toContainText("Stop — dual employment");
+  await expect(page.locator('[data-testid="hire-leaf"]', { hasText: "61.8" })).toHaveCount(0);
+  await expect(page.getByTestId("chart-capacity")).toContainText("not live");
+  await expect(page.getByTestId("chart-capacity-stated")).toHaveText("95");
+  await expect(page.getByTestId("chart-capacity-defended")).toHaveText("61.8");
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+});
+
 

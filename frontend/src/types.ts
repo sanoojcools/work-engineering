@@ -220,6 +220,38 @@ export type DelinquencyOut = {
   flattery: number;
 };
 
+// V10-13. Mirrors backend/app/schemas/simulator.py. Customer words
+// (fires / outside / human must touch / blocked) are applied on Chart.
+export type SimulationFires = "yes" | "no" | "outside" | "human_must_touch" | "blocked";
+
+export type SimulatedLeaf = {
+  id: string;
+  name: string;
+  band: string;
+  fires: SimulationFires;
+  blocked_reason: string | null;
+  expected: string;
+  actual: string;
+  stop: boolean;
+};
+
+export type SimulationOut = {
+  work_system: string;
+  composite: string;
+  scenario: "careful" | "as_calculated" | "ambitious";
+  leaf_count: number;
+  leaves: SimulatedLeaf[];
+  human_must_touch: string[];
+  spec_blocks: { id: string; reason: string }[];
+  capacity: {
+    labelled: string;
+    stated_hours_mo: number;
+    defended_hours_mo: number;
+    if_we_ran_this: string;
+    peak_fte_stated: number;
+  };
+};
+
 export type VerificationRun = {
   id: number;
   work_unit_id: number;
