@@ -5,6 +5,7 @@ import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
 import { ContradictionResolver } from "../components/scout/ContradictionResolver";
+import { NamedStatesAndRefusals } from "../components/census/NamedStatesAndRefusals";
 import { GAP_ROWS } from "../lib/offerDeskWorkRecord";
 import {
   CANNOT_SEE_CONNECTOR_BODY,
@@ -169,10 +170,11 @@ function TierBucket({
 
 /** CENSUS-v0 Part A, step 4, rebuilt for V10-5b: three buckets from the
  * live `conformance_gaps.tier` column (this desk / handoff to the next
- * desk / promised vs not measured). Offer Desk Gap (OfferDeskGap.tsx)
- * stays reachable and unmodified. No new detector, no fake
- * measured-vs-declared KPI. Guest never calls the API and never mints
- * `we-spec-key`. */
+ * desk / promised vs not measured). V10-11 adds named before/after for
+ * Offer and Employee, and this journey's refusals, on this same step —
+ * not a seventh census step. Offer Desk Gap (OfferDeskGap.tsx) stays
+ * reachable and unmodified. No new detector, no fake measured-vs-declared
+ * KPI. Guest never calls the API and never mints `we-spec-key`. */
 export default function CensusGap() {
   const isGuest = useIsGuest();
   const { keyClientId } = useCompany();
@@ -206,6 +208,8 @@ export default function CensusGap() {
           error={!isGuest && Boolean(error)}
         />
       ))}
+
+      <NamedStatesAndRefusals />
 
       <HeadVsDoer />
 
@@ -245,11 +249,11 @@ export default function CensusGap() {
       <IoPanes
         given="Evidence: what's been uploaded or checked so far, journey-wide."
         understood="Declared upstairs is not the same record as declared at the desk — on either desk, and not the same as what one interview session says versus another."
-        processed="GET /discovery/gaps, grouped by the live three-bucket column, and GET /scout/contradictions (no session filter). Guest never calls these."
+        processed="GET /discovery/gaps, grouped by the live three-bucket column; GET /objects/{offer|employee}/states; GET /work-systems then this journey's refusals; GET /scout/contradictions (no session filter). Guest never calls these."
         output={
           isGuest
-            ? "Three buckets (this desk walk-only; handoff and promised-vs-not-measured honestly empty). No key minted."
-            : `${realGaps.length} real genome-import gap(s) for this tenant in three buckets, plus whatever the Contradiction Resolver above found.`
+            ? "Three buckets (this desk walk-only; handoff and promised-vs-not-measured honestly empty). No states in this walk. This journey's refusals: none yet. No key minted."
+            : `${realGaps.length} real genome-import gap(s) for this tenant in three buckets, plus named before/after and this journey's refusals, plus whatever the Contradiction Resolver above found.`
         }
       />
 

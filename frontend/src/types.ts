@@ -181,6 +181,36 @@ export type EvidenceCatalogueOut = {
   items: EvidenceCatalogueItem[];
 };
 
+// V10-11. Mirrors backend/app/schemas/objects.py::ObjectStatesOut and
+// schemas/admissibility.py::AdmissibilityOut. kind/reason stay API values;
+// customer words are applied in the Gap UI, not here.
+export type ObjectStateKind = "before" | "after" | "both";
+
+export type ObjectStateItem = {
+  name: string;
+  kind: ObjectStateKind;
+};
+
+export type ObjectStatesOut = {
+  object: "offer" | "employee";
+  states: ObjectStateItem[];
+  empty: boolean;
+};
+
+export type RefusalReason = "no_exit" | "two_owners" | "unaffordable_check";
+
+export type JourneyRefusal = {
+  work_unit_id: number;
+  code: string;
+  reason: RefusalReason;
+  detail: string;
+};
+
+export type AdmissibilityOut = {
+  work_system_id: number;
+  refusals: JourneyRefusal[];
+};
+
 export type VerificationRun = {
   id: number;
   work_unit_id: number;
