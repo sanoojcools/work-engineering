@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from . import (
     admin,
+    admissibility,
     census,
     censuses,
     clients,
@@ -14,6 +15,7 @@ from . import (
     genome,
     health,
     moderation,
+    objects,
     ontology,
     org,
     outcome,
@@ -57,4 +59,6 @@ api_router.include_router(consent.router, prefix="/consent", tags=["consent"])
 api_router.include_router(scout.router, prefix="/scout", tags=["scout"])
 api_router.include_router(work_systems.router, prefix="/work-systems", tags=["work-systems"])
 api_router.include_router(outcome.router, prefix="/work-systems", tags=["outcome"])
+api_router.include_router(admissibility.router, prefix="/work-systems", tags=["admissibility"])
 api_router.include_router(moderation.router, prefix="/moderation", tags=["moderation"])
+api_router.include_router(objects.router, prefix="/objects", tags=["objects"])
