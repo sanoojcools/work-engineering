@@ -27,15 +27,65 @@ function stepCount(page: Page) {
 
 const CLAIMS_XLSX = join(process.cwd(), "e2e", "fixtures", "offer-pack-claims.xlsx");
 
+const PDF_PAGE_TEXT = "Board approved the FY24 budget on March 3.";
+const PDF_PAGE_QUOTE = "FY24 budget";
+
+/** Minimal one-page PDF pypdf can extract, same shape as backend
+ * tests/test_pointers.py::_real_pdf. */
+function realPdfWithText(text: string): Buffer {
+  const contentStream = Buffer.from(`BT /F1 24 Tf 72 712 Td (${text}) Tj ET`);
+  const objects = [
+    Buffer.from("<< /Type /Catalog /Pages 2 0 R >>"),
+    Buffer.from("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
+    Buffer.from(
+      "<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 612 792] /Contents 5 0 R >>",
+    ),
+    Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"),
+    Buffer.concat([
+      Buffer.from(`<< /Length ${contentStream.length} >>\nstream\n`),
+      contentStream,
+      Buffer.from("\nendstream"),
+    ]),
+  ];
+  const chunks: Buffer[] = [Buffer.from("%PDF-1.4\n")];
+  let length = chunks[0].length;
+  const offsets: number[] = [];
+  objects.forEach((obj, i) => {
+    offsets.push(length);
+    const wrapped = Buffer.concat([
+      Buffer.from(`${i + 1} 0 obj\n`),
+      obj,
+      Buffer.from("\nendobj\n"),
+    ]);
+    chunks.push(wrapped);
+    length += wrapped.length;
+  });
+  const xrefOffset = length;
+  let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const off of offsets) {
+    xref += `${String(off).padStart(10, "0")} 00000 n \n`;
+  }
+  xref += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  chunks.push(Buffer.from(xref));
+  return Buffer.concat(chunks);
+}
+
 /** Seed one Work Unit + an XLSX pointer (and a broken / composed / binding
  * sibling) through the real API so Evidence can click them. Unique code so
  * a warm Client A tenant from an earlier run does not 409. Unique type so
- * we do not reuse types.items[0] after a V10-2 evidence-pack genome import. */
+ * we do not reuse types.items[0] after a V10-2 evidence-pack genome import.
+ * V10-10 also seeds a PDF page pointer (connected) and an unused file (not). */
 async function seedEvidencePointers(request: APIRequestContext, apiKey: string): Promise<{
   code: string;
   wuId: number;
   fileName: string;
+  fileId: number;
   cell: string;
+  pdfFileName: string;
+  pdfFileId: number;
+  unusedFileName: string;
+  unusedFileId: number;
+  page: number;
 }> {
   const headers = { "X-Spec-Key": apiKey };
   const typeName = `V10-2 Evidence UI Object ${Date.now().toString(36)}`;
@@ -132,7 +182,63 @@ async function seedEvidencePointers(request: APIRequestContext, apiKey: string):
   expect(bindingBody.status).toBe("declared");
   expect(bindingBody.resolved).toBe(true);
 
-  return { code: usedCode, wuId, fileName, cell };
+  const stamp = Date.now().toString(36);
+  const pdfFileName = `v10-10-policy-${stamp}.pdf`;
+  const pdfUp = await request.post("/api/files/upload", {
+    headers,
+    multipart: {
+      file: {
+        name: pdfFileName,
+        mimeType: "application/pdf",
+        buffer: realPdfWithText(PDF_PAGE_TEXT),
+      },
+    },
+  });
+  expect(pdfUp.status(), await pdfUp.text()).toBe(201);
+  const pdfFileId = Number(((await pdfUp.json()) as { file_id: string }).file_id);
+  const page = 1;
+  const pdfPointer = await request.post(`/api/work-units/${wuId}/pointers`, {
+    headers,
+    data: {
+      field_name: "desired_condition",
+      status: "observed",
+      file_id: pdfFileId,
+      page,
+      quote: PDF_PAGE_QUOTE,
+    },
+  });
+  expect(pdfPointer.ok(), await pdfPointer.text()).toBeTruthy();
+  const pdfBody = (await pdfPointer.json()) as { status: string; resolved: boolean; page: number | null };
+  expect(pdfBody.status).toBe("observed");
+  expect(pdfBody.resolved).toBe(true);
+  expect(pdfBody.page).toBe(page);
+
+  const unusedFileName = `v10-10-unused-${stamp}.csv`;
+  const unusedUp = await request.post("/api/files/upload", {
+    headers,
+    multipart: {
+      file: {
+        name: unusedFileName,
+        mimeType: "text/csv",
+        buffer: Buffer.from("Name,Value\nAlpha,100\n"),
+      },
+    },
+  });
+  expect(unusedUp.status(), await unusedUp.text()).toBe(201);
+  const unusedFileId = Number(((await unusedUp.json()) as { file_id: string }).file_id);
+
+  return {
+    code: usedCode,
+    wuId,
+    fileName,
+    fileId,
+    cell,
+    pdfFileName,
+    pdfFileId,
+    unusedFileName,
+    unusedFileId,
+    page,
+  };
 }
 
 /** Whoami first (guest Start is a no-op). If this tenant already has a
@@ -186,6 +292,9 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   // (empty, honestly, for a guest) and three registers with counts, all
   // rendered with no key ever minted just by looking.
   await expect(page.getByText("No files in this walk")).toBeVisible();
+  await expect(page.getByTestId("evidence-catalogue")).toBeVisible();
+  await expect(page.getByTestId("evidence-catalogue-empty")).toContainText("No files in this walk");
+  await expect(page.locator("[data-testid^='evidence-catalogue-row-']")).toHaveCount(0);
   await expect(page.getByText("Missing").first()).toBeVisible();
   await expect(page.getByText("Uncertain").first()).toBeVisible();
   await expect(page.getByText("Contradictory").first()).toBeVisible();
@@ -440,18 +549,17 @@ test("Spec deny without a file still denies", async ({ page, request }) => {
   await expect(page.getByText("evidence_ref required by contract").first()).toBeVisible();
 });
 
-test("keyed Evidence lists this tenant's real uploaded files and what each one backs", async ({ page, request }) => {
-  // V10-2 Evidence file-list walk — kept alongside the pointer test below
-  // and the V10-4 Chart 18-leaf / external-band assertions.
+test("keyed Evidence lists this tenant's files as connected or not", async ({ page, request }) => {
+  // V10-10 catalogue walk — GET /api/evidence/catalogue, not a demo pack.
   // 7 sequential real file uploads + a genome import comfortably exceed the
   // suite's default 30s per-test budget.
   test.setTimeout(60_000);
   await signInWithFreshDemoKey(page, request);
 
   // Real upload + real genome import -- the one path in this walk that
-  // clears the quality gate (see OfferDeskEvidencePack.tsx). 9 of its 11
-  // Work Units cite one of the 7 uploaded files; uan-service-history-sample.csv
-  // is uploaded but cited by none, on purpose (offerDeskEvidencePack.json).
+  // clears the quality gate (see OfferDeskEvidencePack.tsx). Files land
+  // on this tenant either way; catalogue then says connected or not from
+  // resolved field pointers, not from provenance "backs".
   await page.goto("/scout/offer-desk/evidence-pack");
   await page.getByRole("button", { name: "Load the evidence pack & import" }).click();
   const importBanner = page.locator(".banner").first();
@@ -468,20 +576,18 @@ test("keyed Evidence lists this tenant's real uploaded files and what each one b
 
   await page.goto("/census/evidence");
   await expect(page.getByRole("heading", { name: "Evidence", exact: false }).first()).toBeVisible();
+  await expect(page.getByTestId("evidence-catalogue")).toBeVisible();
+  await expect(page.getByTestId("evidence-catalogue-empty")).toHaveCount(0);
 
-  const filesTable = page.locator(".table-wrap").first();
+  const filesTable = page.getByTestId("evidence-catalogue");
   // This run's own 7 uploads are real either way.
   await expect(filesTable.getByText("zwayam-candidate-export.csv").first()).toBeVisible();
-  // Some file on this tenant backs a real Offer Desk unit with a real code +
-  // plain-word claim -- from this run if the import was freshly accepted,
-  // or from whichever earlier run first seeded this tenant otherwise.
-  await expect(filesTable.getByText(/WU-OD-\d+/).first()).toBeVisible();
-  // uan-service-history-sample.csv is never cited by this fixture's own
-  // provenance map, on every run -- says so, honestly, instead of a blank
-  // cell (.first() only guards against a warm tenant holding one such row
-  // per earlier run; the property being checked is the same on all of them).
+  // uan-service-history-sample.csv is never cited by a resolved field
+  // pointer in this fixture — connected would be a lie.
   const orphanRow = filesTable.locator("tr", { has: page.getByText("uan-service-history-sample.csv") }).first();
-  await expect(orphanRow.getByText("Backs nothing yet.")).toBeVisible();
+  await expect(orphanRow.getByText("not", { exact: true })).toBeVisible();
+  await expect(filesTable).not.toContainText("%");
+  await expect(filesTable).not.toContainText("coverage %");
 
   // Real conformance-gap counts, not the guest's illustrative four rows.
   await expect(page.getByText(/Read from this tenant's own conformance gaps/)).toBeVisible();
@@ -505,8 +611,16 @@ test("keyed Evidence click shows a real XLSX cell; a broken pointer is not a fac
       res.url().includes(`/work-units/${seeded.wuId}/pointers`),
     { timeout: 45_000 },
   );
+  const catalogueLoaded = page.waitForResponse(
+    (res) =>
+      res.request().method() === "GET" &&
+      res.ok() &&
+      res.url().includes("/evidence/catalogue"),
+    { timeout: 45_000 },
+  );
   await page.goto("/census/evidence");
   await pointersLoaded;
+  await catalogueLoaded;
   await expect(page.getByTestId("evidence-claims")).toHaveAttribute("aria-busy", "false", {
     timeout: 45_000,
   });
@@ -541,6 +655,23 @@ test("keyed Evidence click shows a real XLSX cell; a broken pointer is not a fac
   await expect(page.getByTestId("evidence-claim-detail")).not.toContainText("predicted by a model");
   await expect(page.getByTestId("evidence-pointer-cell")).toHaveText(seeded.cell);
   await expect(page.getByTestId("evidence-pointer-quote")).toContainText("Offer pack waiting");
+
+  // V10-10: PDF page opens when the backend resolved it; catalogue is
+  // connected or not for this tenant's own files, never an invented pack.
+  await page.getByTestId(`evidence-claim-status-${seeded.code}-desired_condition`).click();
+  await expect(page.getByTestId("evidence-pointer")).toBeVisible();
+  await expect(page.getByTestId("evidence-pointer-page")).toHaveText(String(seeded.page));
+  await expect(page.getByTestId("evidence-pointer-file")).toHaveText(seeded.pdfFileName);
+  await expect(page.getByTestId("evidence-cannot-open")).toHaveCount(0);
+  await expect(page.getByTestId("evidence-detail-status")).toHaveText("seen in records");
+
+  await expect(page.getByTestId("evidence-catalogue")).toBeVisible();
+  await expect(page.getByTestId(`evidence-catalogue-coverage-${seeded.fileId}`)).toHaveText("connected", {
+    timeout: 15_000,
+  });
+  await expect(page.getByTestId(`evidence-catalogue-coverage-${seeded.pdfFileId}`)).toHaveText("connected");
+  await expect(page.getByTestId(`evidence-catalogue-coverage-${seeded.unusedFileId}`)).toHaveText("not");
+  await expect(page.getByTestId("evidence-catalogue")).not.toContainText("%");
 });
 
 /** CENSUS-PACK (docs/BUILD_PROGRAM.md P1/P2). */
@@ -561,6 +692,7 @@ test("guest census download contains 95, 61.8, and 'not a pass'", async ({ page 
   expect(content).toMatch(/not a pass/);
   expect(content).toContain("The hire is complete");
   expect(content).toContain("Outside this desk");
+  expect(content).toContain("No files in this walk");
   expect(content).not.toMatch(/WU-HIRE-19/);
   // V10-5b Gap buckets in the export, same headings as census step 4.
   expect(content).toContain("### This desk");

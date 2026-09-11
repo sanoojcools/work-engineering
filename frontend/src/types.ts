@@ -161,6 +161,26 @@ export type UploadedFileOut = {
   backs: FileBacking[];
 };
 
+// V10-10. Mirrors backend/app/schemas/evidence.py::EvidenceCatalogueOut.
+// JSON key `not` is the serialization alias of not_connected. coverage is
+// connected | not — never a percentage.
+export type EvidenceCoverage = "connected" | "not";
+
+export type EvidenceCatalogueItem = {
+  id: number;
+  file_name: string;
+  coverage: EvidenceCoverage;
+  pointer_count: number;
+  resolved_count: number;
+};
+
+export type EvidenceCatalogueOut = {
+  total: number;
+  connected: number;
+  not: number;
+  items: EvidenceCatalogueItem[];
+};
+
 export type VerificationRun = {
   id: number;
   work_unit_id: number;
