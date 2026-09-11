@@ -193,7 +193,7 @@ export function EvidenceClaims() {
       <p className="hint" style={{ marginBottom: 0, marginTop: 12 }}>
         {isGuest
           ? "Guest: walk-only claims, not Client A's files. Clicking does not mint a key."
-          : "Read from this tenant's own field pointers. An unopened pointer is not shown as a fact."}
+          : "Read from this tenant's own files. An unopened location is not shown as a fact."}
       </p>
     </div>
   );

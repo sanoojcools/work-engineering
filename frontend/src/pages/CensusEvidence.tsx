@@ -9,75 +9,70 @@ import { useApi } from "../hooks";
 import { useIsGuest } from "../lib/guestMode";
 import { withClient } from "../lib/withClient";
 import { useCompany } from "../company";
-import type { Gap, Page, UploadedFileOut } from "../types";
+import type { EvidenceCatalogueOut, Gap, Page } from "../types";
 
 function FilesSection() {
   const isGuest = useIsGuest();
-  const { data, loading, error } = useApi<Page<UploadedFileOut>>(isGuest ? null : "/files");
-  const files = data?.items ?? [];
+  const { firstLoadPending } = useCompany();
+  const { data, loading, error } = useApi<EvidenceCatalogueOut>(
+    isGuest || firstLoadPending ? null : "/evidence/catalogue",
+  );
+  const items = data?.items ?? [];
+  const waiting = firstLoadPending || (!isGuest && loading);
 
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
+    <div className="card" data-testid="evidence-catalogue" style={{ marginBottom: 16 }}>
       <h3 style={{ marginTop: 0 }}>
         Files this tenant actually has{" "}
         <InfoTooltip
-          term="Uploaded file"
-          simple="Every file this tenant has sent through the real upload endpoint (server-computed sha256) -- not a link out, the list itself."
-          technical="GET /files, reads the same UploadedFile rows POST /files/upload writes. No second store."
+          term="Connected or not"
+          simple="A file is connected when at least one claim on this tenant really opens in it. Otherwise it is not. This is not a percentage, and looking does not invent a pack."
+          technical="GET /api/evidence/catalogue. coverage=connected when a field_pointers row for this file has resolved=true; else not. Empty tenant returns items=[]. Guest never calls this."
         />
       </h3>
-      {isGuest ? (
-        <p className="hint" style={{ marginBottom: 0 }}>
+      {isGuest && !firstLoadPending ? (
+        <p className="hint" data-testid="evidence-catalogue-empty" style={{ marginBottom: 0 }}>
           No files in this walk — a guest has no tenant to upload into. Sign in (Home → Set up the demo) to see this
           tenant's own uploads, or try{" "}
           <Link to="/scout/offer-desk/evidence-pack">With evidence (sample)</Link> to upload real files and come
           back.
         </p>
-      ) : loading ? (
-        <p className="hint">Loading this tenant's uploaded files…</p>
+      ) : waiting ? (
+        <p className="hint">Loading this tenant's files…</p>
       ) : error ? (
         <div className="banner error">{error}</div>
-      ) : files.length === 0 ? (
-        <p className="hint" style={{ marginBottom: 0 }}>
+      ) : items.length === 0 ? (
+        <p className="hint" data-testid="evidence-catalogue-empty" style={{ marginBottom: 0 }}>
           No files uploaded yet for this tenant — a true empty state, not a placeholder. Try{" "}
           <Link to="/scout/offer-desk/evidence-pack">With evidence (sample)</Link> to upload real files, or{" "}
           <Link to="/scout/offer-desk/document-check">Document check</Link> to upload one by hand.
         </p>
       ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>File</th>
-                <th>sha256</th>
-                <th>What it backs</th>
-              </tr>
-            </thead>
-            <tbody>
-              {files.map((f) => (
-                <tr key={f.id}>
-                  <td>{f.file_name}</td>
-                  <td>
-                    <code>{f.sha256.slice(0, 12)}…</code>
-                  </td>
-                  <td>
-                    {f.backs.length === 0 ? (
-                      <span className="hint">Backs nothing yet.</span>
-                    ) : (
-                      <ul style={{ margin: 0, paddingLeft: 16 }}>
-                        {f.backs.map((b, i) => (
-                          <li key={i}>
-                            <code>{b.work_unit_code}</code> — {b.claim}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </td>
+        <>
+          <p className="hint" data-testid="evidence-catalogue-totals" style={{ marginTop: 0 }}>
+            {data?.connected ?? 0} connected · {data?.not ?? 0} not
+          </p>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>File</th>
+                  <th>Connected or not</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {items.map((f) => (
+                  <tr key={f.id} data-testid={`evidence-catalogue-row-${f.id}`}>
+                    <td>{f.file_name}</td>
+                    <td data-testid={`evidence-catalogue-coverage-${f.id}`}>
+                      {f.coverage === "connected" ? "connected" : "not"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
@@ -128,12 +123,9 @@ function RegistersSection() {
   );
 }
 
-/** CENSUS-v0 Part A, step 3, rebuilt for EVIDENCE-GAP (F1): a real screen,
- * not a link farm. Files this tenant actually has, what each one backs,
- * three named registers with real counts, and a repair list -- everything
- * here reads an existing table (UploadedFile, WorkUnitProvenanceDetail,
- * ConformanceGap) through an existing or newly-read endpoint. No second
- * evidence store, no invented coverage percentage, no Darwinbox/Zwayam API. */
+/** CENSUS-v0 Part A, step 3. V10-10: this tenant's files as connected or
+ * not (GET /evidence/catalogue). Click a claim: file + cell/page, or cannot
+ * open. Guest: "No files in this walk." Never invent a pack. No coverage %. */
 export default function CensusEvidence() {
   const rec = DOCUMENT_CHECK_RECORD;
   return (
@@ -172,8 +164,8 @@ export default function CensusEvidence() {
       <IoPanes
         given="Capture: three seats, Offer Desk as the worked example."
         understood="A claim is not a fact until its pointer opens. Guest looking does not mint a key."
-        processed="GET /work-units/{id}/pointers (click a claim), GET /files, GET /discovery/gaps. Guest never calls these. No new table, no resolver in this UI."
-        output="Click a claim: file + cell/page/line, or cannot open. Composed is a badge. Binding fields are said by a person."
+        processed="GET /work-units/{id}/pointers (click a claim), GET /evidence/catalogue (connected or not), GET /discovery/gaps. Guest never calls these. No new table, no resolver in this UI."
+        output="Click a claim: file + cell/page, or cannot open. Each file is connected or not. Composed is a badge. Binding fields are said by a person."
       />
 
       <p style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>

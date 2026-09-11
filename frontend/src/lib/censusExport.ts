@@ -22,7 +22,7 @@ import { CANNOT_SEE_CONNECTOR_NOTE, CANNOT_SEE_JUDGMENT_NOTE, GATE_KINDS, isGate
 import { GAP_TIERS, TIER_COPY, gapsInTier } from "./gapTiers";
 import { unitReadiness } from "./handoffReadiness";
 import { ensureOfferToOnboardingWorkSystem, GUEST_JOURNEY, ownerOrDash } from "./workSystem";
-import type { Gap, Page, UploadedFileOut, Verdict, WorkSystem, WorkUnit } from "../types";
+import type { EvidenceCatalogueItem, EvidenceCatalogueOut, Gap, Page, Verdict, WorkSystem, WorkUnit } from "../types";
 
 // Reused verbatim by CensusPlan.tsx's own "Quality gate reminder" card, so
 // the on-screen sentence and the exported one never drift apart.
@@ -57,7 +57,7 @@ export type CensusExportInput =
       units: WorkUnit[];
       verdicts: Verdict[];
       gaps: Gap[];
-      files: UploadedFileOut[];
+      files: EvidenceCatalogueItem[];
     };
 
 /** On-demand gather -- called from a click handler, not eagerly loaded by
@@ -78,7 +78,7 @@ export async function gatherCensusExportInput(
     apiFetch.get<Page<WorkUnit>>(unitsPath),
     apiFetch.get<Page<Verdict>>(verdictsPath),
     apiFetch.get<Page<Gap>>(gapsPath),
-    apiFetch.get<Page<UploadedFileOut>>("/files"),
+    apiFetch.get<EvidenceCatalogueOut>("/evidence/catalogue"),
   ]);
 
   return {
@@ -120,7 +120,7 @@ function scopeSection(journey: WorkSystem): string {
 
 function evidenceSection(
   isGuest: boolean,
-  files: UploadedFileOut[] | null,
+  files: EvidenceCatalogueItem[] | null,
   gaps: Gap[] | null,
 ): string {
   const counts = isGuest ? GUEST_REGISTER_COUNTS : countRegisters(gaps ?? []);
@@ -134,10 +134,8 @@ function evidenceSection(
   } else {
     filesBlock = files
       .map((f) => {
-        const backs = f.backs.length === 0
-          ? "backs nothing yet"
-          : f.backs.map((b) => `${b.work_unit_code} (${b.claim})`).join("; ");
-        return `- \`${escapeCell(f.file_name)}\` (sha256 ${f.sha256.slice(0, 12)}…) -- ${escapeCell(backs)}`;
+        const coverage = f.coverage === "connected" ? "connected" : "not";
+        return `- \`${escapeCell(f.file_name)}\` — ${coverage}`;
       })
       .join("\n");
   }
