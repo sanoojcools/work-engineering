@@ -322,6 +322,13 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   // no-coverage-percentage statement (never a fake measured-vs-declared KPI).
   await expect(page.getByText("Head vs doer")).toBeVisible();
   await expect(page.getByText(/There is no "coverage" number on this page/)).toBeVisible();
+  await expect(page.getByTestId("named-states")).toBeVisible();
+  await expect(page.getByTestId("named-states-guest")).toHaveText("No states in this walk.");
+  await expect(page.getByTestId("named-states-offer")).toHaveCount(0);
+  await expect(page.getByTestId("named-states-employee")).toHaveCount(0);
+  await expect(page.getByTestId("journey-refusals")).toBeVisible();
+  await expect(page.getByTestId("journey-refusals-empty")).toHaveText("none yet");
+  await expect(page.locator("[data-testid^='journey-refusal-WU-']")).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 
   await page.getByRole("link", { name: "Next: Work Chart →" }).click();
@@ -938,3 +945,88 @@ test("keyed Confirm as owner on Plan this-period row persists", async ({ page, r
   await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
   await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
 });
+
+/** V10-11 FRONTEND. Named before/after + this journey's refusals live on
+ * Gap, not as a seventh census step. Guest 1→6 and Plan 95 / 61.8 stay in
+ * the tests above. */
+
+test("guest Gap shows no states in this walk and none yet refusals, mints no key", async ({ page }) => {
+  await page.goto("/census/gap");
+  await expect(stepCount(page)).toContainText("4 of 6");
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+  await expect(page.getByTestId("named-states-guest")).toHaveText("No states in this walk.");
+  await expect(page.getByTestId("journey-refusals-empty")).toHaveText("none yet");
+  await expect(page.getByTestId("named-states")).not.toContainText("admissibility");
+  await expect(page.getByTestId("journey-refusals")).not.toContainText("no_exit");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+test("keyed Gap shows a refusal when the API returns one; Plan still 95 and 61.8", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+  const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
+  const headers = { "X-Spec-Key": apiKey };
+
+  const ensured = await request.post("/api/work-systems", {
+    headers,
+    data: {
+      code: "WS-OFFER-ONBOARD",
+      name: "Recruiter asks for offer → offer released → Day-1 ready",
+    },
+  });
+  expect(ensured.ok(), await ensured.text()).toBeTruthy();
+
+  const typeName = `Offer V10-11 UI ${Date.now().toString(36)}`;
+  const created = await request.post("/api/ontology/types", {
+    headers,
+    data: { name: typeName, kind: "business_object", description: "", state_machine: '["draft","done"]' },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const typeId = ((await created.json()) as { id: number }).id;
+
+  const code = `WU-OD-V11${Date.now().toString(36)}${Math.floor(Math.random() * 46656).toString(36)}`.slice(0, 40);
+  const unitBody = {
+    code,
+    name: "Two-owner fixture for this journey's refusals",
+    business_object_type_id: typeId,
+    current_condition: "documents checked",
+    desired_condition: "documents checked",
+    context: "",
+    trigger: "request arrives",
+    inputs: "form",
+    authority: "",
+    actor_constraints: "",
+    acceptance_criteria: "",
+    evidence_required: "",
+    verification_method: "deterministic_rule",
+    sla_hours: 4,
+    failure_semantics: "hold and notify",
+    owner: "QA Cursor and Fixture",
+  };
+  let wuRes = await request.post("/api/work-units/", { headers, data: unitBody });
+  if (wuRes.status() === 500) {
+    unitBody.code = `${code}R`.slice(0, 40);
+    wuRes = await request.post("/api/work-units/", { headers, data: unitBody });
+  }
+  expect(wuRes.status(), await wuRes.text()).toBe(201);
+  const usedCode = unitBody.code;
+
+  await page.goto("/census/gap");
+  await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
+  await expect(page.getByTestId("named-states")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("named-states-guest")).toHaveCount(0);
+  await expect(page.getByTestId(`journey-refusal-${usedCode}`)).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId(`journey-refusal-reason-${usedCode}`)).toHaveText("two owners");
+  await expect(page.getByTestId(`journey-refusal-reason-${usedCode}`)).not.toHaveText("no_exit");
+  await expect(page.getByTestId("named-states-offer")).toContainText("documents checked");
+  await expect(page.getByTestId("named-states-offer")).toContainText("before and after");
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+});
+
