@@ -1,0 +1,24 @@
+# V10-12 golden set — discovery as performer + four delinquency counters
+# (docs/contracts/v10-12-discovery.md section 3). Offer Desk seed, Rashmi-
+# shaped notes. Loaded by services/scout_story.py::run_golden_set and
+# backend/tests/test_v10_12_discovery.py -- no live LLM, this runs the
+# deterministic sentence-split path only.
+
+transcript: >
+  Last Tuesday I checked for dual employment before proceeding.
+  I verify candidate documents against the signed offer.
+  Then I upload the signed offer into the HRIS.
+
+# Substrings a non-inventing extract should keep somewhere in its returned
+# chunks. Checked case-insensitively, as a substring of a chunk's span --
+# not required to equal a whole chunk.
+must_span:
+  - "dual employment"
+  - "verify candidate documents"
+
+# An invented phrase that must never appear in returned chunks if pasted
+# into a stubbed chunk list -- exercised directly in
+# test_v10_12_discovery.py's invention test, not by the runner itself
+# (the deterministic path never invents by construction).
+forbidden_span:
+  - "fabricate the candidate's employment history"

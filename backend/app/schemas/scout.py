@@ -122,12 +122,30 @@ class PainHeatmapOut(BaseModel):
 
 class StoryExtractIn(BaseModel):
     transcript_chunk: str = Field(min_length=1)
+    # V10-12: default false so looking does not pollute the tenant's
+    # delinquency totals -- see services/scout_story.py.
+    commit: bool = False
 
 
 class StoryExtractOut(BaseModel):
     used_llm: bool
     chunks: list[dict]
     note: str
+    # V10-12 (docs/contracts/v10-12-discovery.md): extraction is a
+    # performer, not a silent author -- always this string for extracted
+    # binding fields, never auto-elevated.
+    cap: str = "execute_with_approval"
+    counters: dict[str, int]
+    # true only on the golden-set runner (services/scout_story.py::
+    # run_golden_set), never on a live caller's transcript.
+    golden: bool = False
+
+
+class DelinquencyOut(BaseModel):
+    invention: int
+    omission: int
+    distortion: int
+    flattery: int
 
 
 class FuturePreviewOut(BaseModel):

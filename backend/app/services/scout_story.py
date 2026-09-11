@@ -23,6 +23,9 @@ from __future__ import annotations
 import json
 import logging
 import re
+from pathlib import Path
+
+import yaml
 
 from . import llm
 
@@ -182,4 +185,104 @@ def extract_from_story(text: str) -> dict:
             "you said; turn the ones that describe real work into Work Capture Grid rows "
             "yourself."
         ),
+    }
+
+
+DUAL_EMPLOYMENT_PHRASE = "dual employment"
+
+
+def score_delinquency(chunks: list[dict], transcript: str) -> tuple[list[dict], dict[str, int]]:
+    """V10-12 (docs/contracts/v10-12-discovery.md): discovery is a
+    *performer*, not a silent author. Deterministic, no extra model call --
+    runs on whatever chunks extract_from_story already produced (LLM or
+    deterministic path alike) and never trusts them further:
+
+    - invention: a chunk's span is not a case-insensitive substring of the
+      transcript -> +1, the chunk is dropped entirely (never returned).
+    - distortion: a structured field on a surviving chunk is non-empty and
+      is not a substring of that chunk's own span -> +1, the field is
+      blanked (the chunk itself is kept).
+    - flattery: the transcript names `dual employment` but no surviving
+      chunk's span does -> +1. This does not invent a stop row; it only
+      counts the omission (the dual-employment stop itself lives in
+      services/handoff.py and is untouched here).
+
+    omission is NOT computed here -- section 3 of the contract: a live
+    caller's transcript has no hidden "expected" list to compare against.
+    See run_golden_set() for the one place omission is honest to compute."""
+    counters = {"invention": 0, "omission": 0, "distortion": 0, "flattery": 0}
+    transcript_lower = (transcript or "").lower()
+
+    survivors: list[dict] = []
+    for chunk in chunks:
+        span = str(chunk.get("text", ""))
+        if not span or span.lower() not in transcript_lower:
+            counters["invention"] += 1
+            continue
+
+        kept = dict(chunk)
+        for field in GRID_FIELDS:
+            value = kept.get(field)
+            if isinstance(value, str) and value and value not in span:
+                counters["distortion"] += 1
+                kept[field] = ""
+        survivors.append(kept)
+
+    if DUAL_EMPLOYMENT_PHRASE in transcript_lower:
+        if not any(DUAL_EMPLOYMENT_PHRASE in str(c.get("text", "")).lower() for c in survivors):
+            counters["flattery"] += 1
+
+    return survivors, counters
+
+
+def extract_with_delinquency(text: str) -> dict:
+    """The route's entry point (V10-12): same `extract_from_story` above,
+    plus the performer contract -- `cap` always `execute_with_approval`
+    (extracted binding fields are never auto-elevated), and the four
+    delinquency counters from `score_delinquency`. `golden` is always
+    False here; only `run_golden_set` sets it True."""
+    result = extract_from_story(text)
+    chunks, counters = score_delinquency(result["chunks"], text or "")
+    return {
+        "used_llm": result["used_llm"],
+        "chunks": chunks,
+        "note": result["note"],
+        "cap": "execute_with_approval",
+        "counters": counters,
+        "golden": False,
+    }
+
+
+def run_golden_set(pack_path: str | Path) -> dict:
+    """Section 3's golden runner: Offer Desk seed, deterministic path only
+    (no live key in tests -- see tests/conftest.py's autouse `_no_live_llm`).
+    `omission` is only ever honest here, never on a live caller's
+    transcript: each `must_span` item the pack declares is checked against
+    every surviving chunk's span; a `must_span` item not found anywhere is
+    +1 omission. If the deterministic path returns no chunks at all,
+    omission is simply len(must_span) -- not a fake zero."""
+    with open(pack_path, encoding="utf-8") as f:
+        pack = yaml.safe_load(f)
+
+    transcript = pack["transcript"]
+    must_span = pack.get("must_span", [])
+
+    result = extract_with_delinquency(transcript)
+    spans_lower = [str(c.get("text", "")).lower() for c in result["chunks"]]
+
+    omission = sum(
+        1 for item in must_span
+        if not any(str(item).lower() in span for span in spans_lower)
+    )
+
+    counters = dict(result["counters"])
+    counters["omission"] = omission
+
+    return {
+        "used_llm": result["used_llm"],
+        "chunks": result["chunks"],
+        "note": result["note"],
+        "cap": result["cap"],
+        "counters": counters,
+        "golden": True,
     }
