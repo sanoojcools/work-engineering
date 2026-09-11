@@ -165,9 +165,15 @@ def test_dual_employment_unit_not_ready_without_the_stop_stated(real_client, ten
     # WU-OD-02 is the one code this rule actually checks -- created here
     # WITHOUT the sheet's own dual-employment language, so a real (scored)
     # record can still be honestly refused.
+    # V10-11 (docs/contracts/v10-11-states.md): WU-OD-02 sits on the Offer
+    # Desk journey, so it is now also scored for admissibility -- current =
+    # desired (self-satisfying exit) and a real sla_hours keep this unit
+    # admissible so the dual-employment gate under test here is the only
+    # thing that can refuse it.
     wu = _make_work_unit(
         real_client, tenant["headers"], tenant["client_id"], "WU-OD-02", "c",
         acceptance_criteria="All documents present", evidence_required="Zwayam event",
+        current_condition="checked", sla_hours=4,
     )
     scored = real_client.put(
         f"/api/verdict/{wu['id']}",
@@ -187,9 +193,12 @@ def test_dual_employment_unit_not_ready_without_the_stop_stated(real_client, ten
 
 @pg_skip
 def test_dual_employment_unit_ready_once_the_stop_is_stated_and_scored(real_client, tenant):
+    # V10-11: self-satisfying exit (current = desired) keeps this journey
+    # unit admissible -- see the sibling test above.
     wu = _make_work_unit(
         real_client, tenant["headers"], tenant["client_id"], "WU-OD-02", "d",
         failure_semantics="If dual employment detected in UAN: do NOT release offer -- deviation approval required.",
+        current_condition="checked",
     )
     scored = real_client.put(
         f"/api/verdict/{wu['id']}",
@@ -250,7 +259,11 @@ def test_offer_release_not_ready_without_independent_check(real_client, tenant):
     handoff not ready.' WU-OD-05 is sheet step 5, the offer's actual
     release (services/handoff.py's OFFER_RELEASE_CODES) -- a real method is
     recorded so only the missing independent check is under test here."""
-    wu = _make_work_unit(real_client, tenant["headers"], tenant["client_id"], "WU-OD-05", "relnoind")
+    # V10-11: self-satisfying exit keeps this journey unit admissible.
+    wu = _make_work_unit(
+        real_client, tenant["headers"], tenant["client_id"], "WU-OD-05", "relnoind",
+        current_condition="checked",
+    )
     scored = real_client.put(f"/api/verdict/{wu['id']}", headers=tenant["headers"], json=_SCORE)
     assert scored.status_code == 200, scored.text
 
@@ -273,7 +286,11 @@ def test_offer_release_not_ready_without_independent_check(real_client, tenant):
 
 @pg_skip
 def test_offer_release_ready_once_independent_check_recorded(real_client, tenant):
-    wu = _make_work_unit(real_client, tenant["headers"], tenant["client_id"], "WU-OD-05", "relok")
+    # V10-11: self-satisfying exit keeps this journey unit admissible.
+    wu = _make_work_unit(
+        real_client, tenant["headers"], tenant["client_id"], "WU-OD-05", "relok",
+        current_condition="checked",
+    )
     scored = real_client.put(f"/api/verdict/{wu['id']}", headers=tenant["headers"], json=_SCORE)
     assert scored.status_code == 200, scored.text
 
@@ -316,9 +333,12 @@ def test_moderation_toward_ambitious_does_not_lift_dual_employment_stop(real_cli
     (S3, L6) is an opinion (models/moderation.py), never a write to
     verdict_scores/work_units -- handoff must stay exactly as refused as it
     was before the moderation entry existed."""
+    # V10-11: self-satisfying exit and a real sla_hours keep this journey
+    # unit admissible -- see the two dual-employment tests above.
     wu = _make_work_unit(
         real_client, tenant["headers"], tenant["client_id"], "WU-OD-02", "modstop",
         acceptance_criteria="All documents present", evidence_required="Zwayam event",
+        current_condition="checked", sla_hours=4,
     )
     scored = real_client.put(f"/api/verdict/{wu['id']}", headers=tenant["headers"], json=_SCORE)
     assert scored.status_code == 200, scored.text

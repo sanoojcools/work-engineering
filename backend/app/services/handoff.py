@@ -15,7 +15,15 @@ A Work Unit is Ready to hand off only if:
      regress after being true: an edit to the record could silently drop
      the stop language, and this check exists to catch exactly that drift,
      not to restate a rule that can never fail.
-  4. V10-3's 5th gate, `intent_guardrail` (docs/contracts/v10-3-verify.md,
+  4. V10-11 (docs/contracts/v10-11-states.md): for a unit on the Offer Desk
+     -> Onboarding journey (work_system.py::desk_of), admissibility is a
+     hard refusal, not a reason string in a 200 body -- no_exit,
+     two_owners, and unaffordable_check each 422 with that same reason,
+     checked before any of the gates below and before the dual-employment
+     stop, so an inadmissible unit is never evaluated for readiness at
+     all. A unit off this journey is unaffected (services/admissibility.py
+     only scores journey units).
+  5. V10-3's 5th gate, `intent_guardrail` (docs/contracts/v10-3-verify.md,
      verbatim): `method=none` (no verification_designs row at all reads
      identically to one whose row still says so) OR `independent` is
      `no`/`not_stated` while this unit is one that always needs
@@ -39,13 +47,16 @@ from __future__ import annotations
 
 import json
 
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from ..models.verdict import VerdictScore
 from ..models.verification_design import IndependenceKind, VerificationDesign, VerificationDesignMethod
 from ..models.workunit import WorkUnit
 from ..schemas.handoff import HandoffOut
+from . import admissibility as admissibility_svc
 from . import work_units as wu_svc
+from .work_system import desk_of
 
 # V10-3's 5th gate id (docs/contracts/v10-3-verify.md, verbatim), surfaced
 # in HandoffOut.gates alongside VERDICT's own gate1_regulatory..
@@ -97,6 +108,15 @@ def check_readiness(db: Session, code: str) -> HandoffOut:
             ready=False,
             reasons=[f"No record for '{code}' on this tenant -- nothing to hand off yet."],
         )
+
+    if desk_of(wu.code) is not None:
+        refusals = admissibility_svc.refusals_for_unit(db, wu)
+        if refusals:
+            first = refusals[0]
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"work_unit_code": wu.code, "reason": first.reason, "detail": first.detail},
+            )
 
     reasons: list[str] = []
 

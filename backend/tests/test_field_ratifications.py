@@ -277,9 +277,15 @@ def test_confirm_of_authority_does_not_lift_dual_employment_stop(real_client, tw
     type_id = _type(real_client)
     # WU-OD-02 is a dual-employment code (services/handoff.py) with NO stop
     # language in failure_semantics -- the stop is missing by construction.
+    # V10-11 (docs/contracts/v10-11-states.md): WU-OD-02 sits on the Offer
+    # Desk journey, so it is now also scored for admissibility --
+    # current_condition = desired_condition is a self-satisfying exit that
+    # keeps this unit admissible so the dual-employment gate under test
+    # here is the only thing that can refuse it.
     wu_id = _work_unit(
         real_client, headers, type_id, code="WU-OD-02",
         failure_semantics="hold and notify", acceptance_criteria="", evidence_required="", context="",
+        current_condition="approved",
     )
 
     before = real_client.get("/api/spec/handoff/WU-OD-02", headers=headers)
