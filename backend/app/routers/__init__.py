@@ -23,6 +23,7 @@ from . import (
     projections,
     regulatory,
     scout,
+    simulations,
     spec,
     verification,
     verification_design,
@@ -57,6 +58,7 @@ api_router.include_router(projections.router, prefix="/projections", tags=["proj
 api_router.include_router(org.router, prefix="/org", tags=["org"])
 api_router.include_router(consent.router, prefix="/consent", tags=["consent"])
 api_router.include_router(scout.router, prefix="/scout", tags=["scout"])
+api_router.include_router(simulations.router, prefix="/simulations", tags=["simulations"])
 api_router.include_router(work_systems.router, prefix="/work-systems", tags=["work-systems"])
 api_router.include_router(outcome.router, prefix="/work-systems", tags=["outcome"])
 api_router.include_router(admissibility.router, prefix="/work-systems", tags=["admissibility"])
