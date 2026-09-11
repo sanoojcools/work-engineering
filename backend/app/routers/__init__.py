@@ -8,6 +8,7 @@ from . import (
     consent,
     discovery,
     economics,
+    evidence,
     field_ratifications,
     files,
     genome,
@@ -47,6 +48,7 @@ api_router.include_router(verdict.router, prefix="/verdict", tags=["verdict"])
 api_router.include_router(economics.router, prefix="/economics", tags=["economics"])
 api_router.include_router(regulatory.router, prefix="/regulatory", tags=["regulatory"])
 api_router.include_router(discovery.router, prefix="/discovery", tags=["discovery"])
+api_router.include_router(evidence.router, prefix="/evidence", tags=["evidence"])
 api_router.include_router(verification.router, prefix="/verification", tags=["verification"])
 api_router.include_router(spec.router, prefix="/spec", tags=["spec"])
 api_router.include_router(projections.router, prefix="/projections", tags=["projections"])

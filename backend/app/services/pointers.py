@@ -27,18 +27,24 @@ if a pointer cannot be opened, the field it backs is NOT a fact.
   never saved in a downgraded form: a binding field silently downgraded to
   "predicted" would still look bindable to a naive reader.
 
-- PDF (or any format this PR has no parser for) resolves file-only: no
-  page/line parser exists this PR, so the strongest honest claim is "this
-  file exists and has content" -- never a verified quote. A binding field
-  therefore cannot be satisfied by a PDF-sourced pointer this PR; it can
-  still back a non-binding field as file-level evidence.
+- PDF now has a page-level parser (V10-10, pypdf): a pointer that cites a
+  `page` (1-based) is resolved against that page's extracted text, and a
+  quote is checked as a literal substring exactly like a CSV/XLSX cell --
+  so a binding field CAN now be satisfied by a PDF pointer, provided the
+  page opens, has extractable text, and the quote is really on it. A PDF
+  pointer with no page/line/cell cited still resolves file-only, same as
+  before: "this file exists and has content," never a verified quote.
+  Any other format this PR has no parser for (or a PDF cited by line/cell
+  instead of page) stays file-only for the same reason.
 """
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from io import BytesIO
 
 from fastapi import HTTPException, status
+from pypdf import PdfReader
 from sqlalchemy.orm import Session
 
 from ..models.client import Client
@@ -138,10 +144,32 @@ def resolve_pointer(
             return ResolveResult(True, f"opened {cell}; quote verified", matched_text=value, quote_verified=True)
         return ResolveResult(True, f"opened {cell}", matched_text=value)
 
-    # Everything else (PDF included): file-only honesty. No page/line parser
-    # exists this PR (V10_BUILD.md: "PDF this PR = file-only, HONESTY if no
-    # line parser") -- the strongest resolvable claim is "this file exists
-    # and has content," never a specific page, line, or verified quote.
+    if ext == ".pdf" and page is not None:
+        if not file.content.startswith(b"%PDF-"):
+            return ResolveResult(False, "file is named .pdf but is not a valid PDF")
+        try:
+            reader = PdfReader(BytesIO(file.content))
+            num_pages = len(reader.pages)
+        except Exception as exc:  # genuinely corrupt/unparseable PDF bytes
+            return ResolveResult(False, f"could not open PDF: {exc}")
+        if page < 1 or page > num_pages:
+            return ResolveResult(False, f"page {page} is out of range for {file.file_name} ({num_pages} pages)")
+        try:
+            text = reader.pages[page - 1].extract_text() or ""
+        except Exception as exc:
+            return ResolveResult(False, f"could not extract text from page {page}: {exc}")
+        if not text.strip():
+            return ResolveResult(False, f"page {page} has no extractable text")
+        if quote and quote.strip():
+            if quote.strip() not in text:
+                return ResolveResult(False, f"quote not found on page {page}", matched_text=text)
+            return ResolveResult(True, f"opened page {page}; quote verified", matched_text=text, quote_verified=True)
+        return ResolveResult(True, f"opened page {page}", matched_text=text)
+
+    # Everything else (PDF file-only, PDF cited by line/cell, or any other
+    # unparsed format): file-only honesty -- the strongest resolvable claim
+    # is "this file exists and has content," never a specific page, line,
+    # or verified quote.
     if page is not None or line is not None or cell is not None:
         return ResolveResult(
             False, f"{ext or 'this file type'} has no page/line parser this PR — pointer must be file-only",
@@ -190,7 +218,7 @@ def upsert_field_pointer(
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 f"{field_name} is a binding field: quote must be verified against an opened pointer "
-                f"(CSV/XLSX only this PR) — {result.note}",
+                f"(CSV/XLSX cell or PDF page only) — {result.note}",
             )
         final_status = PointerStatus.declared
     else:
