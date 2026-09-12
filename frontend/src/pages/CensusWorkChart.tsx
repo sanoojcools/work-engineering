@@ -248,8 +248,8 @@ export default function CensusWorkChart() {
         )}
         <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
           Pieces of this journey stay labelled candidate / not governed until this Work System is ratified. Viewing
-          is never blocked either way — the 18 leaves below are not deleted for being a candidate. {DOCUMENT_CHECK_RECORD.declaredHours}{" "}
-          declared / {DOCUMENT_CHECK_RECORD.defendedHours} defended stay the Offer Desk totals, not numbers on a leaf.
+          is never blocked either way — the 18 pieces below are not deleted for being a candidate. {DOCUMENT_CHECK_RECORD.declaredHours}{" "}
+          declared / {DOCUMENT_CHECK_RECORD.defendedHours} defended stay the Offer Desk totals, not numbers on a piece.
         </p>
       </div>
 
@@ -306,10 +306,10 @@ export default function CensusWorkChart() {
         understood="A chart is the hire, drawn as 18 pieces in four bands including work outside this desk. Careful / as calculated / ambitious says which pieces fire, which sit outside, where a person must still touch, and where the stop blocks. Capacity is not live. Purpose is two sentences, not a strategy document."
         processed={
           isGuest
-            ? "Guest schematic: 18 leaves from the declared hire-leaves seed, stand-in names, looking only, no GET /simulations. Dual employment stays blocked. Purpose shown as drafted, unconfirmed."
-            : "18 leaves from the same declared seed. Keyed GET /simulations/offer-day1 for the selected scenario. Real GET /work-units/ + GET /verdict/ matched only when a WU-HIRE-* row exists; otherwise not scored. Work System (incl. both intents) via GET+POST /work-systems; Confirm as owner via POST /work-systems/{id}/confirm-*-intent."
+            ? "Guest schematic: 18 pieces from the declared hire seed, stand-in names, no live case. Dual employment stays blocked. Purpose shown as drafted, unconfirmed."
+            : "18 pieces from the same declared seed. Signed-in visitors load this case for the selected reading. Real work units and scores match only when a row exists for that code; otherwise not scored."
         }
-        output={`${HIRE_LEAVES.length} leaves, 4 bands including external, composite “the hire is complete”, journey ${status}, intents ${journey.function_intent.status}/${journey.work_system_intent.status}.`}
+        output={`${HIRE_LEAVES.length} pieces, 4 bands including work outside this desk, composite “the hire is complete”, journey ${status}, intents ${journey.function_intent.status}/${journey.work_system_intent.status}.`}
       />
 
       <p style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>

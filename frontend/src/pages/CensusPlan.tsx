@@ -73,8 +73,8 @@ function UnitsLane({
               <>
                 How sure we are{" "}
                 <InfoTooltip
-                  term="Certification"
-                  simple="A person's stated confidence in this piece — sure, mostly sure, reported but not seen, or cannot define. A model guess cannot display as sure."
+                  term="How sure we are"
+                  simple="How confident a person said they are. A model guess cannot show as sure."
                   technical="GET /work-units/{id}/certification. class=sure is hidden when any field pointer stands at predicted or composed — the same rule that 422s a sure write."
                 />
               </>
@@ -90,8 +90,8 @@ function UnitsLane({
               <>
                 Checked by{" "}
                 <InfoTooltip
-                  term="Verification design"
-                  simple="How this piece is supposed to be checked, when someone has said so. Not stated means no check is recorded yet — not a pass."
+                  term="Checked by"
+                  simple={"Who or what is supposed to check this. “Not stated” means nobody recorded a check yet — not a pass."}
                   technical="GET /work-units/{id}/verification-design · method."
                 />
               </>
@@ -104,8 +104,8 @@ function UnitsLane({
               <>
                 Independent?{" "}
                 <InfoTooltip
-                  term="Independence"
-                  simple="Whether the check is independent of the person who did the work. Not stated until someone records it. Offer-release and dual-employment pieces need a real independent check before handoff can be ready."
+                  term="Independent?"
+                  simple="Whether the checker is not the person who did the work. Not stated until someone records it."
                   technical="GET /work-units/{id}/verification-design · independent. Offer-release and dual-employment units are not ready when independent is no or not_stated."
                 />
               </>

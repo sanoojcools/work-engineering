@@ -261,6 +261,7 @@ async function startKeyedCensus(page: Page): Promise<void> {
 }
 
 test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 leaves and an external band", async ({ page }) => {
+  test.setTimeout(60_000);
   const simulationRequests: string[] = [];
   page.on("request", (req) => {
     if (req.url().includes("/api/simulations/")) simulationRequests.push(req.url());
@@ -289,16 +290,26 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await expect(page).toHaveURL(/\/census\/capture$/);
   await expect(stepCount(page)).toContainText("2 of 6");
   await expect(page.getByRole("heading", { name: "Capture", exact: false }).first()).toBeVisible();
+  await expect(page.locator(".lede")).toContainText("Offer Desk is the worked example");
+  await expect(page.getByText("not from Home")).toHaveCount(0);
+  await expect(page.getByText("SeatStepper")).toHaveCount(0);
   await expect(page.getByTestId("extract-counts")).toBeVisible();
   await expect(page.getByTestId("extract-count-invented-value")).toHaveText("0");
   await expect(page.getByTestId("extract-count-left-out-value")).toHaveText("0");
   await expect(page.getByTestId("extract-count-twisted-value")).toHaveText("0");
   await expect(page.getByTestId("extract-count-flattered-value")).toHaveText("0");
-  await expect(page.getByTestId("extract-counts-guest")).toHaveText(/looking only/i);
+  await expect(page.getByTestId("extract-counts-guest")).toHaveText(
+    "You are browsing. Counts stay at zero until someone is signed in and notes are saved.",
+  );
+  await expect(page.getByTestId("extract-counts-guest")).not.toContainText(/looking only/i);
   await expect(page.getByTestId("extract-counts")).toContainText("invented");
   await expect(page.getByTestId("extract-counts")).toContainText("left out");
   await expect(page.getByTestId("extract-counts")).toContainText("twisted");
   await expect(page.getByTestId("extract-counts")).toContainText("flattered");
+  await expect(page.getByRole("button", { name: "Info about invented" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Info about left out" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Info about twisted" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Info about flattered" })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 
   await page.getByRole("link", { name: "Next: Evidence →" }).click();
@@ -350,7 +361,9 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await page.getByRole("link", { name: "Next: Work Chart →" }).click();
   await expect(page).toHaveURL(/\/census\/chart$/);
   await expect(stepCount(page)).toContainText("5 of 6");
-  await expect(page.getByRole("heading", { name: /The hire is complete/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /18 pieces that make the hire complete/ })).toBeVisible();
+  await expect(page.getByTestId("hire-leaves")).not.toContainText(/\bleaf\b/i);
+  await expect(page.getByTestId("hire-leaves")).not.toContainText(/\bleaves\b/i);
   await expect(page.getByTestId("hire-leaf")).toHaveCount(18);
   await expect(page.getByTestId("hire-band-external")).toBeVisible();
   await expect(page.getByTestId("hire-band-external")).toContainText("Outside this desk");
@@ -424,6 +437,21 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await expect(page.getByTestId("plan-outcome-measured")).toHaveText(/not measured/);
   await expect(page.getByTestId("plan-outcome")).not.toContainText("62%");
   await expect(page.getByText("Independent?").first()).toBeVisible();
+  const independentInfo = page.getByRole("button", { name: "Info about Independent?" }).first();
+  await independentInfo.scrollIntoViewIfNeeded();
+  await independentInfo.hover();
+  const independentPop = page.getByTestId("info-pop");
+  await expect(independentPop).toBeVisible();
+  await expect(independentPop.locator(".info-pop-title")).toHaveText("Independent?");
+  const popBox = await independentPop.boundingBox();
+  const viewport = page.viewportSize();
+  expect(popBox, "Independent i-button popover must have a box").toBeTruthy();
+  expect(viewport, "viewport must be known").toBeTruthy();
+  expect(popBox!.x).toBeGreaterThanOrEqual(0);
+  expect(popBox!.y).toBeGreaterThanOrEqual(0);
+  expect(popBox!.x + popBox!.width).toBeLessThanOrEqual(viewport!.width);
+  expect(popBox!.y + popBox!.height).toBeLessThanOrEqual(viewport!.height);
+  await independentPop.screenshot({ path: test.info().outputPath("plan-independent-info-pop.png") });
   await expect(page.getByTestId("plan-how-sure-(step 1 — not imported)").first()).toHaveText("not stated");
   await expect(page.getByText(/~30\/90 is not a pass/)).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
@@ -1079,15 +1107,23 @@ test("keyed Gap shows a refusal when the API returns one; Plan still 95 and 61.8
 /** V10-12 FRONTEND. Four counts live on Capture, not as a seventh census
  * step. Guest 1→6 and Plan 95 / 61.8 stay in the tests above. */
 
-test("guest Capture shows four zeros, looking only, and mints no key", async ({ page }) => {
+test("guest Capture shows four zeros, browsing hint, and mints no key", async ({ page }) => {
   await page.goto("/census/capture");
   await expect(stepCount(page)).toContainText("2 of 6");
   await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+  await expect(page.locator(".lede")).not.toContainText("not from Home");
   await expect(page.getByTestId("extract-count-invented-value")).toHaveText("0", { timeout: 15_000 });
   await expect(page.getByTestId("extract-count-left-out-value")).toHaveText("0");
   await expect(page.getByTestId("extract-count-twisted-value")).toHaveText("0");
   await expect(page.getByTestId("extract-count-flattered-value")).toHaveText("0");
-  await expect(page.getByTestId("extract-counts-guest")).toHaveText(/looking only/i);
+  await expect(page.getByTestId("extract-counts-guest")).toHaveText(
+    "You are browsing. Counts stay at zero until someone is signed in and notes are saved.",
+  );
+  await expect(page.getByTestId("extract-counts-guest")).not.toContainText(/looking only/i);
+  await expect(page.getByRole("button", { name: "Info about invented" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Info about left out" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Info about twisted" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Info about flattered" })).toBeVisible();
   await expect(page.getByTestId("extract-counts")).not.toContainText("delinquency");
   await expect(page.getByTestId("extract-counts")).not.toContainText("invention");
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
@@ -1126,6 +1162,8 @@ test("guest Chart shows 18 leaves, looking only, mints no key, never calls simul
   await expect(stepCount(page)).toContainText("5 of 6");
   await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
   await expect(page.getByTestId("hire-leaf")).toHaveCount(18);
+  await expect(page.getByTestId("hire-leaves")).not.toContainText(/\bleaf\b/i);
+  await expect(page.getByTestId("hire-leaves")).not.toContainText(/\bleaves\b/i);
   await expect(page.getByTestId("chart-sim-guest")).toHaveText(/looking only/i, { timeout: 15_000 });
   await expect(page.getByTestId("hire-leaves")).not.toContainText("simulator");
   await expect(page.getByTestId("chart-scenarios")).not.toContainText("S1");
@@ -1162,6 +1200,30 @@ test("keyed Chart ambitious still shows dual-employment leaf blocked; Plan still
   await expect(stepCount(page)).toContainText("6 of 6");
   await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
   await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+});
+
+test("guest Rashmi step 2 is this walk, not a link", async ({ page }) => {
+  await page.goto("/scout/offer-desk/rashmi");
+  const row = page.getByTestId("rashmi-this-walk");
+  await expect(row).toBeVisible();
+  await expect(row).toContainText("Verify candidate documents");
+  await expect(row).toContainText("this walk");
+  await expect(row.locator("a")).toHaveCount(0);
+  await expect(row).not.toHaveClass(/selected/);
+  const cursor = await row.evaluate((el) => getComputedStyle(el).cursor);
+  expect(cursor).toBe("default");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+test("guest Playback i-button does not mention four panes", async ({ page }) => {
+  await page.goto("/scout/offer-desk/playback");
+  const info = page.getByRole("button", { name: "Info about Playback" });
+  await info.hover();
+  const pop = page.getByTestId("info-pop");
+  await expect(pop).toBeVisible();
+  await expect(pop).not.toContainText("Four panes");
+  await expect(pop).toContainText("three sittings side by side");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 });
 
 

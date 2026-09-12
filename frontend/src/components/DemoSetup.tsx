@@ -102,6 +102,7 @@ export function DemoSetup() {
   }
 
   const ready = Boolean(keys.clientA) || keyClientId !== null;
+  const needsRecovery = result !== null && result.api_key === null;
   const currentName = clients.find((c) => c.id === keyClientId)?.name;
 
   return (
@@ -118,8 +119,15 @@ export function DemoSetup() {
         <button type="button" className="primary" disabled={busy} onClick={() => void run(false)}>
           {busy ? "Setting up…" : ready ? "Re-run setup" : "Set up the demo"}
         </button>
-        {ready && (
-          <button type="button" disabled={busy} onClick={() => void run(true)}>
+        {(ready || needsRecovery) && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              if (!window.confirm("This will sign out anyone else using the current demo key.")) return;
+              void run(true);
+            }}
+          >
             Issue fresh keys
           </button>
         )}
