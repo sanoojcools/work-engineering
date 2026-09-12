@@ -46,7 +46,7 @@ export default function OfferDeskRashmi() {
 
       <div className="card" style={{ marginBottom: 16 }}>
         <h3>The eleven micro-steps from the sheet</h3>
-        <div className="table-wrap" style={{ marginBottom: 0 }}>
+        <div className="table-wrap rashmi-steps" style={{ marginBottom: 0 }}>
           <table>
             <thead>
               <tr>
@@ -62,9 +62,20 @@ export default function OfferDeskRashmi() {
                 const name = OFFER_DESK_SAMPLE_ROWS[i]?.name ?? `Step ${s.step}`;
                 const isStep2 = s.step === 2;
                 return (
-                  <tr key={s.step} className={isStep2 ? "selected" : undefined}>
+                  <tr
+                    key={s.step}
+                    className={isStep2 ? "this-walk" : undefined}
+                    data-testid={isStep2 ? "rashmi-this-walk" : undefined}
+                  >
                     <td>{s.step}</td>
-                    <td>{name.replace(/^\d+\.\s*/, "")}</td>
+                    <td>
+                      {name.replace(/^\d+\.\s*/, "")}
+                      {isStep2 && (
+                        <span className="badge" style={{ marginLeft: 8 }}>
+                          this walk
+                        </span>
+                      )}
+                    </td>
                     <td>{s.timePerCase}</td>
                     <td>{s.system}</td>
                     <td>{s.automationTag}</td>

@@ -4,7 +4,6 @@ import {
   HIRE_BANDS,
   HIRE_BAND_HINT,
   HIRE_BAND_LABEL,
-  HIRE_COMPOSITE,
   PARENT_HOURS_NOTE,
   buildHireLeafRows,
   type HireBand,
@@ -102,15 +101,15 @@ export function HireLeavesChart({
   return (
     <div data-testid="hire-leaves">
       <h3 style={{ marginBottom: 4 }}>
-        {HIRE_COMPOSITE.name}{" "}
+        18 pieces that make the hire complete{" "}
         <InfoTooltip
-          term="Composite"
-          simple="The hire is complete when these 18 pieces are done — including the ones that sit outside this desk. Not a 19th piece."
-          technical="HIRE-COMPLETE in packs/hr/hire_leaves.yaml. Frontend seed this slice; not a persisted Work Unit unless a later slice writes one."
+          term="piece of the hire"
+          simple="A piece is one step on the chart, cut small enough to check. There are 18 for offer-to-Day-1. We do not put the desk’s hours on a single piece."
+          technical="HIRE-COMPLETE in packs/hr/hire_leaves.yaml. Frontend seed; not a persisted Work Unit unless a later slice writes one."
         />
       </h3>
       <p className="hint" style={{ marginTop: 0, marginBottom: 12 }}>
-        18 pieces of work, from the declared seed. Four bands, including work outside this desk. Names on this
+        18 pieces that make the hire complete. Four bands, including work outside this desk. Names on this
         chart are stand-ins, not a live sitting.
       </p>
       <div className="hire-bands">
@@ -120,11 +119,11 @@ export function HireLeavesChart({
       </div>
       <div className="card" style={{ marginBottom: 12 }} data-testid="chart-capacity">
         <h4 style={{ margin: "0 0 4px" }}>
-          Capacity — not live{" "}
+          How many people we would need{" "}
           <InfoTooltip
-            term="simulator"
-            simple="How many people this would take if we ran it — not live. The two numbers are the same as Plan: 95 stated and 61.8 defended. They are not printed on a piece of work."
-            technical="GET /api/simulations/offer-day1 · capacity.labelled=not_live. stated_hours_mo=95, defended_hours_mo=61.8. Guest never calls this. Not Box 6, not Box 4."
+            term="How many people we would need"
+            simple="How many people we would need if we ran this is not live. Offer Desk hours stay 95 stated and 61.8 we will defend — on Plan, not on each piece."
+            technical="GET /api/simulations/offer-day1 · capacity.labelled=not_live. stated_hours_mo=95, defended_hours_mo=61.8. Guest never calls this."
           />
         </h4>
         <div className="split" style={{ gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 8 }}>
@@ -142,7 +141,8 @@ export function HireLeavesChart({
           </div>
         </div>
         <p className="hint" style={{ marginBottom: 0 }}>
-          Same two numbers as Plan. Not a live headcount. Not printed on a piece of work.
+          How many people we would need if we ran this is not live. Offer Desk hours stay 95 stated and 61.8 we will
+          defend — on Plan, not on each piece.
         </p>
       </div>
       <p className="hint" data-testid="hire-hours-note" style={{ marginTop: 0, marginBottom: 16 }}>

@@ -30,7 +30,7 @@ export default function OfferDeskPlayback() {
         Playback · three seats{" "}
         <InfoTooltip
           term="Playback"
-          simple="Four panes on every stage: given, how we understand it, what the platform does, what you can see. Here the three sittings sit in three columns. We do not vote them into one story."
+          simple="Playback puts the three sittings side by side on the same topics. We do not vote them into one story. Why: the leader, the desk lead, and Rashmi often disagree; the product is to see that, not to hide it."
         />
       </h2>
       <p className="lede">We do not vote the rows into one story.</p>

@@ -312,6 +312,21 @@ tbody tr.selected { background: var(--accent-wash); }
 tbody tr.selected:hover { background: #e0ebf5; }
 tbody tr.highlight { animation: pulse-hl 0.7s ease 3; outline: 2px solid var(--accent); outline-offset: -2px; }
 tbody tr[onclick], tbody tr.selected { cursor: pointer; }
+tbody tr.this-walk {
+  background: var(--accent-wash);
+  box-shadow: inset 3px 0 0 var(--accent);
+  cursor: default;
+}
+tbody tr.this-walk:hover {
+  background: var(--accent-wash);
+  cursor: default;
+}
+.rashmi-steps tbody tr,
+.rashmi-steps tbody tr:hover,
+.rashmi-steps tbody tr.this-walk,
+.rashmi-steps tbody tr.this-walk:hover {
+  cursor: default;
+}
 @keyframes pulse-hl {
   0%, 100% { background: var(--accent-wash); }
   50% { background: #c5d8eb; }
@@ -477,12 +492,20 @@ tbody tr[onclick], tbody tr.selected { cursor: pointer; }
   position: absolute;
   z-index: 40;
   left: 0; top: 22px;
-  width: 290px;
+  max-width: 280px;
+  width: 280px;
   background: var(--panel);
   border: 1px solid var(--line-strong);
   padding: 12px;
   font-size: 12.5px;
   box-shadow: var(--lift-3);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.info-pop.info-pop-flip {
+  left: auto;
+  right: 0;
 }
 .info-pop-title { font-weight: 620; margin-bottom: 5px; }
 .info-pop-ex { margin-top: 7px; color: var(--muted); }

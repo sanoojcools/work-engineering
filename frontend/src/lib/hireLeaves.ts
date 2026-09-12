@@ -148,4 +148,4 @@ export const PARENT_HOURS_NOTE =
   "Parent shares of the sitting mix: " +
   PARENT_HOURS_SHOWN.map((key) => `${key.replaceAll("_", "-")} ${PARENT_STATED_HRS_MO[key]}`).join(", ") +
   " hrs/mo. Request and exceptions are 0 (outside the desk / inside docs judgment), so the 95 is not counted twice. " +
-  "The defended total stays on Plan — it is not printed on a leaf.";
+  "The defended total stays on Plan — it is not printed on a piece.";

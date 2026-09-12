@@ -20,9 +20,9 @@ export function ExtractCounts() {
       <h3 style={{ marginTop: 0 }}>
         Four counts{" "}
         <InfoTooltip
-          term="delinquency"
-          simple="Four counts of how the notes were read: invented, left out, twisted, flattered. Empty is zeros — looking does not invent a score."
-          technical="GET /api/scout/delinquency. invention / omission / distortion / flattery on this tenant. Guest never calls this. Looking does not POST commit=true."
+          term="Four counts"
+          simple="Four counts of how the notes were read: invented, left out, twisted, flattered. Empty is zeros until notes are saved."
+          technical="GET /api/scout/delinquency. invention / omission / distortion / flattery on this tenant. Guest never calls this."
         />
       </h3>
       {isGuest && !firstLoadPending ? (
@@ -49,17 +49,8 @@ function CountTiles({ counts }: { counts: DelinquencyOut }) {
       {EXTRACT_COUNT_ROWS.map((row) => (
         <div key={row.key} className="card" style={{ margin: 0 }} data-testid={row.testId}>
           <div className="hint" style={{ marginTop: 0, fontWeight: 700 }}>
-            {row.label}
-            {row.key === "invention" && (
-              <>
-                {" "}
-                <InfoTooltip
-                  term="invention"
-                  simple="A name that was not in the sitting. Looking does not add one to look complete."
-                  technical="GET /api/scout/delinquency · invention. A span that is not a substring of the transcript is dropped and counted."
-                />
-              </>
-            )}
+            {row.label}{" "}
+            <InfoTooltip term={row.label} simple={row.simple} technical={row.technical} />
           </div>
           <p style={{ fontSize: 28, margin: "4px 0" }} data-testid={`${row.testId}-value`}>
             {counts[row.key]}

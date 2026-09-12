@@ -12,23 +12,20 @@ const SEAT_LABELS: Record<keyof typeof OFFER_DESK_SEATS, string> = {
   sme: "3. SME",
 };
 
-/** CENSUS-v0 Part A, step 2: Capture. Three seats, and — per the build
- * doc's own rule — Offer Desk is linked FROM here, not from Home. V10-12
- * adds four counts (invented / left out / twisted / flattered) on this
- * same step — not a seventh census step. Nothing new as a capture
- * mechanism: this page is a shell over the existing three-seat walk
- * (SeatStepper / OFFER_DESK_SEAT_PATHS). */
+/** Census step 2: Capture. Three seats plus four counts on this same
+ * step — not a seventh census step. Offer Desk is the worked example;
+ * open it from the button on this page. */
 export default function CensusCapture() {
   return (
     <>
       <CensusStepper />
       <p className="hint" style={{ marginBottom: 4 }}>Work Census · guest and keyed</p>
       <h2>
-        Capture <InfoTooltip term="Capture" simple="Three seats sit for the same journey: a function leader, a sub-function lead, and the SME who actually runs the desk. Playback keeps their three answers separate." />
+        Capture <InfoTooltip term="Capture" simple="Three seats sit for the same journey: a function leader, a desk lead, and the person who does the work. Playback keeps their three answers separate." />
       </h2>
       <p className="lede">
-        Every Work Census captures through three seats, not one interview. Offer Desk is this build's real worked
-        example — reached from here, not from Home.
+        We sit with three people for the same journey: the function leader, the desk lead, and the person who does the
+        work. Offer Desk is the worked example. Open it from the button below.
       </p>
 
       <div className="split" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
@@ -65,11 +62,9 @@ export default function CensusCapture() {
 
       <IoPanes
         given="Scope: which functions and sub-functions are in play."
-        understood="One seat's voice is not a census. Function leader, sub-function lead, and SME each answer for themselves; playback lines them up without merging them."
-        processed="This page links to the existing three-seat Offer Desk walk (SeatStepper) and reads this tenant's four counts. Guest never calls that. No second capture mechanism, no new store."
-        output={
-          "Three seats named. Offer Desk reachable from here, not from Home. Four counts: invented / left out / twisted / flattered."
-        }
+        understood="One person's voice is not a census. The function leader, the desk lead, and the person who does the work each answer for themselves; playback lines them up without merging them."
+        processed="We open the three Offer Desk sittings and show four counts for how the notes were read. A guest sees zeros until someone is signed in and notes are saved."
+        output="Three seats named. Offer Desk opens from the button on this page. Four counts: invented, left out, twisted, flattered."
       />
 
       <p style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>
