@@ -34,6 +34,7 @@ from ..schemas.scout import (
     ContradictionResolve,
     FuturePreviewOut,
     GenerateGenomeOut,
+    NextQuestionOut,
     PersistTalkOnlyIn,
     PersistTalkOnlyOut,
     PainHeatmapOut,
@@ -54,6 +55,7 @@ from ..services import scout_blast_radius as blast_radius_svc
 from ..services import scout_contradictions as contradiction_svc
 from ..services import scout_future as future_svc
 from ..services import scout_genome as genome_svc
+from ..services import scout_next_questions as next_questions_svc
 from ..services import scout_pain as pain_svc
 from ..services import scout_story as story_svc
 from ..services import scout_timeline as timeline_svc
@@ -303,6 +305,17 @@ def get_pain_heatmap(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> PainHe
     otherwise dilute an SME session's real pain signal). See HONESTY.md."""
     session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
     return PainHeatmapOut(**pain_svc.build_pain_heatmap(list(session.units)))
+
+
+@router.get("/sessions/{session_id}/next-questions", response_model=list[NextQuestionOut])
+def get_next_questions(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> list[NextQuestionOut]:
+    """SITTING-STEER: this session's seat-locked pack questions for whichever
+    of the three binding fields (authority, acceptance_criteria,
+    desired_condition) are still empty on this tenant's Offer Desk pieces.
+    Empty list is honest -- not a reason to invent a question, and never a
+    talk-only/GQS-triggered one either (see services/scout_next_questions.py)."""
+    session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
+    return [NextQuestionOut(**q) for q in next_questions_svc.build_next_questions(db, session)]
 
 
 @router.post("/extract-from-story", response_model=StoryExtractOut)
