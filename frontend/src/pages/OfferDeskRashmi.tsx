@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { IoPanes } from "../components/IoPanes";
 import { SeatSessionBar, useOfferDeskSeat } from "../components/offerDesk/SeatSessionBar";
 import { SeatStepper } from "../components/offerDesk/SeatStepper";
+import { FacilitatorStrip } from "../components/scout/FacilitatorStrip";
 import { OFFER_DESK_META, OFFER_DESK_SAMPLE_ROWS, OFFER_DESK_STEPS } from "../lib/offerDeskData";
 
 export default function OfferDeskRashmi() {
@@ -27,6 +28,7 @@ export default function OfferDeskRashmi() {
         busy={seat.busy}
         onRetry={seat.retry}
       />
+      <FacilitatorStrip sessionId={seat.session?.id ?? null} />
 
       {step2 && row2 && (
         <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent-edge)" }}>

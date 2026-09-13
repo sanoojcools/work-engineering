@@ -13,9 +13,12 @@ import {
   confirmSitCloseField,
   correctSitCloseField,
   ensureSitCloseDrafts,
+  hasSittingQuote,
   listDecisionCards,
   mergeSitCloseRows,
   pickSitCloseUnit,
+  SIT_CLOSE_ASK_COPY,
+  SIT_CLOSE_SITTING_HREF,
   type SitCloseRowKey,
   type SitCloseRowView,
 } from "../lib/fieldRatify";
@@ -112,7 +115,7 @@ export default function OfferDeskSitClose() {
   }
 
   async function onConfirm(row: SitCloseRowView) {
-    if (!unit || !row.ratification || !confirmedBy.trim()) return;
+    if (!unit || !row.ratification || !confirmedBy.trim() || !hasSittingQuote(row.sitting_quote)) return;
     setBusy(`confirm-${row.key}`);
     setError(null);
     try {
@@ -126,7 +129,7 @@ export default function OfferDeskSitClose() {
   }
 
   async function onCorrect(row: SitCloseRowView) {
-    if (!unit || !row.ratification || !confirmedBy.trim()) return;
+    if (!unit || !row.ratification || !confirmedBy.trim() || !hasSittingQuote(row.sitting_quote)) return;
     const value = lines[row.key].trim();
     if (!value || value === row.drafted_value) return;
     setBusy(`correct-${row.key}`);
@@ -165,7 +168,7 @@ export default function OfferDeskSitClose() {
           technical="POST /work-units/{id}/field-ratifications/{rid}/confirm. Field ratify of a Work Unit. Not Work System ratify, not confirm-function-intent."
         />
       </h2>
-      <p className="lede">What they said, the draft, Confirm or Correct.</p>
+      <p className="lede">Goal, authority, and acceptance beside the quote. Confirm or Correct only when they said it.</p>
       <SeatStepper />
 
       {needsKey && !isGuest && <ApiKeyBanner onSaved={() => void loadLive()} />}
@@ -199,7 +202,8 @@ export default function OfferDeskSitClose() {
           const drafted = row.ratification?.status === "drafted";
           const settled = row.ratification && row.ratification.status !== "drafted";
           const line = lines[row.key];
-          const canWrite = Boolean(!lookOnly && drafted && row.ratification && confirmedBy.trim());
+          const quoted = hasSittingQuote(row.sitting_quote);
+          const canWrite = Boolean(!lookOnly && drafted && row.ratification && confirmedBy.trim() && quoted);
           const canCorrect = canWrite && line.trim().length > 0 && line.trim() !== row.drafted_value;
           return (
             <article
@@ -218,7 +222,7 @@ export default function OfferDeskSitClose() {
                     What they said
                   </div>
                   <p style={{ fontSize: 13, margin: 0 }} data-testid={`sit-close-quote-${row.key}`}>
-                    {row.sitting_quote}
+                    {quoted ? row.sitting_quote : ""}
                   </p>
                 </div>
                 <div>
@@ -235,6 +239,11 @@ export default function OfferDeskSitClose() {
                   {settledLabel(row.ratification)}
                 </span>
               )}
+              {!quoted ? (
+                <p className="hint" style={{ marginBottom: 0 }} data-testid={`sit-close-ask-${row.key}`}>
+                  <Link to={SIT_CLOSE_SITTING_HREF}>{SIT_CLOSE_ASK_COPY}</Link>
+                </p>
+              ) : (
               <div className="toolbar" style={{ marginTop: 8, flexWrap: "wrap" }}>
                 <button
                   type="button"
@@ -263,6 +272,7 @@ export default function OfferDeskSitClose() {
                   {busy === `correct-${row.key}` ? "Saving…" : "Correct"}
                 </button>
               </div>
+              )}
               {lookOnly && (isGuest || !waitingForUnit) && (
                 <p className="hint" style={{ marginBottom: 0 }} data-testid={`sit-close-guest-${row.key}`}>
                   {isGuest

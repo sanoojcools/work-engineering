@@ -3,6 +3,7 @@ import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
 import { SeatSessionBar, useOfferDeskSeat } from "../components/offerDesk/SeatSessionBar";
 import { SeatStepper } from "../components/offerDesk/SeatStepper";
+import { FacilitatorStrip } from "../components/scout/FacilitatorStrip";
 import { HR_OPS_STAND_IN } from "../lib/offerDeskSeats";
 
 export default function OfferDeskSubFunctionLead() {
@@ -29,6 +30,7 @@ export default function OfferDeskSubFunctionLead() {
         busy={seat.busy}
         onRetry={seat.retry}
       />
+      <FacilitatorStrip sessionId={seat.session?.id ?? null} />
 
       <div className="card" style={{ marginBottom: 16 }}>
         <h3>We asked · what the workbook implies for this seat</h3>
