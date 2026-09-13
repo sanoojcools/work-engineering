@@ -209,6 +209,15 @@ class PersistTalkOnlyOut(BaseModel):
     violations: list[dict] = Field(default_factory=list)
 
 
+class NextQuestionOut(BaseModel):
+    field: str
+    seat: str
+    pack_id: str
+    text: str
+    why: str
+    piece_code: str
+
+
 class GenerateGenomeOut(BaseModel):
     # Passes through import_genome()'s real result dict as-is (accepted,
     # version_id, gqs, gate_threshold, breakdown, violations,
