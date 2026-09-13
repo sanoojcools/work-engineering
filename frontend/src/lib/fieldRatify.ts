@@ -69,6 +69,15 @@ export type SitCloseRowView = SitCloseSeed & {
   ratification: FieldRatification | null;
 };
 
+/** Confirm/Reject only when the sitting actually said something.
+ * Empty quote → ask the question on the sitting, not Confirm on blank. */
+export function hasSittingQuote(quote: string): boolean {
+  return quote.trim().length > 0;
+}
+
+export const SIT_CLOSE_SITTING_HREF = "/scout/offer-desk/rashmi";
+export const SIT_CLOSE_ASK_COPY = "ask the question on the sitting";
+
 export function pickSitCloseUnit(units: WorkUnit[]): WorkUnit | null {
   return units.find((u) => u.code === DOCUMENT_CHECK_CODE) ?? null;
 }

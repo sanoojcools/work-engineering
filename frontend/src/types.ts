@@ -534,6 +534,17 @@ export type ScoutSession = {
   updated_at: string;
 };
 
+/** SITTING-STEER. Mirrors backend/app/schemas/scout.py::NextQuestionOut.
+ * `text` is the HR pack line verbatim — never invent a question on the client. */
+export type NextQuestion = {
+  field: string;
+  seat: string;
+  pack_id: string;
+  text: string;
+  why: string;
+  piece_code: string;
+};
+
 // CENSUS-v0 Part B: one named cross-desk journey (this slice ships one --
 // Offer Desk -> Onboarding). Mirrors backend/app/schemas/work_system.py::WorkSystemOut.
 export type WorkSystem = {

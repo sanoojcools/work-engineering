@@ -924,6 +924,10 @@ test("guest sit close shows three rows, none yet, and mints no key", async ({ pa
   await expect(page.getByTestId("sit-close-row-goal")).toBeVisible();
   await expect(page.getByTestId("sit-close-row-authority")).toBeVisible();
   await expect(page.getByTestId("sit-close-row-acceptance")).toBeVisible();
+  await expect(page.locator("[data-testid^='sit-close-row-']")).toHaveCount(3);
+  await expect(page.getByTestId("sit-close-row-trigger")).toHaveCount(0);
+  await expect(page.getByTestId("sit-close-confirm-goal")).toBeVisible();
+  await expect(page.getByTestId("sit-close-ask-goal")).toHaveCount(0);
 
   await expect(page.getByTestId("sit-close-quote-goal")).toContainText("Checks all documents uploaded");
   await expect(page.getByTestId("sit-close-draft-goal")).toHaveText("Accepted or blocked");
@@ -1242,5 +1246,126 @@ test("guest Plan risk block is none named yet, not fake risks; still 95 and 61.8
   await expect(page.getByTestId("plan-risks")).not.toContainText(/GQS/i);
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 });
+
+/** SITTING-STEER FRONTEND. Facilitator lives on the three-seat interview,
+ * not as a seventh census step and not on DeskHrbp. Guest 1→6 and Plan
+ * 95 / 61.8 stay in the tests above. */
+
+function packQuestionText(id: string): string {
+  const yaml = readFileSync(join(process.cwd(), "..", "packs", "hr", "question_bank.yaml"), "utf-8");
+  const match = yaml.match(new RegExp(`id: ${id}\\s+text: "([^"]+)"`));
+  if (!match) throw new Error(`packs/hr/question_bank.yaml must contain ${id}`);
+  return match[1];
+}
+
+test("guest Facilitator is empty line; sit-close Confirm disabled; never writes we-spec-key", async ({
+  page,
+}) => {
+  const nextQuestionRequests: string[] = [];
+  page.on("request", (req) => {
+    if (req.url().includes("/next-questions")) nextQuestionRequests.push(req.url());
+  });
+
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+  await expect(page.getByTestId("facilitator")).toHaveCount(0);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  await expect(page.getByTestId("facilitator")).toHaveCount(0);
+
+  for (const path of [
+    "/scout/offer-desk/function-leader",
+    "/scout/offer-desk/sub-function-lead",
+    "/scout/offer-desk/rashmi",
+  ]) {
+    await page.goto(path);
+    await expect(page.getByTestId("facilitator-guest")).toHaveText("No next questions in this walk.", {
+      timeout: 15_000,
+    });
+    await expect(page.getByTestId("facilitator-ask")).toHaveCount(0);
+    await expect(page.getByTestId("facilitator-guest")).not.toContainText(/pack|interrogation/i);
+    const info = page.getByRole("button", { name: "Info about Facilitator" });
+    await info.hover();
+    const pop = page.getByTestId("info-pop");
+    await expect(pop).toBeVisible();
+    await expect(pop).toContainText(/pack/);
+    await expect(pop).toContainText(/interrogation/);
+    expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+  }
+
+  await page.goto("/hr/hrbp");
+  await expect(page.getByTestId("facilitator")).toHaveCount(0);
+
+  await page.goto("/scout/offer-desk/sit-close");
+  await expect(page.getByTestId("sit-close-confirm-goal")).toBeDisabled();
+  await expect(page.getByTestId("sit-close-confirm-authority")).toBeDisabled();
+  await expect(page.getByTestId("sit-close-confirm-acceptance")).toBeDisabled();
+  await expect(page.locator("[data-testid^='sit-close-row-']")).toHaveCount(3);
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+  expect(nextQuestionRequests, "guest must never call GET /api/scout/sessions/{id}/next-questions").toEqual([]);
+});
+
+test("keyed Facilitator shows pack question verbatim; Plan still 95 and 61.8", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+  const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
+  const headers = { "X-Spec-Key": apiKey };
+
+  const typeName = `SITTING-STEER UI Object ${Date.now().toString(36)}`;
+  const created = await request.post("/api/ontology/types", {
+    headers,
+    data: { name: typeName, kind: "business_object", description: "", state_machine: '["draft","done"]' },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const typeId = ((await created.json()) as { id: number }).id;
+
+  const unitBody = {
+    code: `WU-OD-ST${Date.now().toString(36)}`.slice(0, 40),
+    name: "Offer Desk piece for Facilitator",
+    business_object_type_id: typeId,
+    current_condition: "draft",
+    desired_condition: "approved",
+    context: "",
+    trigger: "request arrives",
+    inputs: "form",
+    authority: "",
+    actor_constraints: "",
+    acceptance_criteria: "filled already",
+    evidence_required: "",
+    verification_method: "deterministic_rule",
+    sla_hours: 4,
+    failure_semantics: "hold and notify",
+    owner: "Ops",
+  };
+  let wuRes = await request.post("/api/work-units/", { headers, data: unitBody });
+  if (wuRes.status() === 500) {
+    unitBody.code = `${unitBody.code}R`.slice(0, 40);
+    wuRes = await request.post("/api/work-units/", { headers, data: unitBody });
+  }
+  expect(wuRes.status(), await wuRes.text()).toBe(201);
+
+  const f3 = packQuestionText("f3");
+  await page.goto("/scout/offer-desk/function-leader");
+  await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
+  await expect(page.getByTestId("facilitator-ask")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("facilitator-question").first()).toHaveText(f3);
+  await expect(page.getByTestId("facilitator")).toContainText("Ask this exact question");
+  await expect(page.getByTestId("facilitator-ask")).not.toContainText(/pack|interrogation/i);
+  await expect(page.getByTestId("facilitator")).not.toContainText(/dual employment/i);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+});
+
 
 

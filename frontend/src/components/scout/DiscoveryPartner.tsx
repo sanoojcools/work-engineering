@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { INTERVIEW_TYPE_LABELS, INTERVIEW_TYPES } from "../../types";
 import type { ScoutSession } from "../../types";
+import { FacilitatorStrip } from "./FacilitatorStrip";
 
 type Track = (typeof INTERVIEW_TYPES)[number];
 
@@ -80,7 +81,9 @@ export function DiscoveryPartner({ session }: { session: ScoutSession }) {
   const question = questions[qIndex];
 
   return (
-    <div className="card">
+    <>
+      <FacilitatorStrip sessionId={session.id} />
+      <div className="card">
       <h3>AI Discovery Partner</h3>
 
       <div className="tabs" style={{ marginBottom: 12 }}>
@@ -160,5 +163,6 @@ export function DiscoveryPartner({ session }: { session: ScoutSession }) {
         </button>
       </div>
     </div>
+    </>
   );
 }
