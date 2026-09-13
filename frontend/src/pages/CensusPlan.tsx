@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CensusStepper } from "../components/census/CensusStepper";
+import { PlanRisks } from "../components/census/PlanRisks";
 import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
@@ -524,6 +525,8 @@ export default function CensusPlan() {
           }}
         />
       )}
+
+      <PlanRisks units={units} workSystem={workSystem} />
 
       <div className="card" style={{ marginBottom: 16 }} data-testid="plan-outcome">
         <h3 style={{ marginTop: 0 }}>
