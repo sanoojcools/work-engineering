@@ -58,6 +58,7 @@ from .security import (  # noqa: F401
     WorkUnitProvenanceDetail,
     WorkUnitRegulatoryLink,
 )
+from .shadow_log import ShadowLog  # noqa: F401
 from .verdict import VerdictScore  # noqa: F401
 from .verification import (  # noqa: F401
     AutonomyChange,
