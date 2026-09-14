@@ -6,7 +6,7 @@ Staff-engineer notes. Not a SOC 2 pack.
 
 **Multi-tenant.** Each customer is a `client_id`. Browser/API auth for tenant-scoped writes is a hashed org key (`X-Spec-Key`). Postgres RLS policy `tenant_isolation` is the isolation mechanism.
 
-The GitHub repository **About** blurb that says “single-tenant” is **wrong**. Isolation is tested in CI against real Postgres (`backend/tests/test_rls_http.py`). A local `pytest` on SQLite **skips** those tests — a green run with skips does **not** prove isolation.
+Isolation is tested in CI against real Postgres (`backend/tests/test_rls_http.py`). A local `pytest` on SQLite **skips** those tests — a green run with skips does **not** prove isolation.
 
 Login (Clerk / WorkOS / SSO) is **not wired**. A `users` table may exist as schema-only scaffolding.
 
@@ -22,7 +22,24 @@ File **pointers** (CSV/XLSX cell, PDF page) are a different path: the backend op
 
 ## Dual-employment stop
 
-The stop is enforced on handoff / simulator paths (a helper pack cannot lift it with “ambitious”). It is not only a frontend banner. Logging self-reported times does not lift it.
+Not a UI banner. Application logic, not a Postgres `CHECK`.
+
+- Codes: `WU-OD-02` / `WU-OD-002` in `services/handoff.py::DUAL_EMPLOYMENT_STOP_CODES`.
+- Handoff: `GET /api/spec/handoff/{code}` returns `dual_employment_stop_required: true` and `ready: false` when the stop language is missing. Ambition / moderation / field confirm / shadow times do not flip that.
+- Simulator: `GET /api/simulations/offer-day1?scenario=ambitious` still reports `WU-HIRE-05` as `fires: blocked`, `blocked_reason: dual_employment`.
+
+**Tests that fail if the stop lifts** (CI Postgres; they skip on SQLite):
+
+| File | Test |
+|---|---|
+| `backend/tests/test_handoff.py` | `dual_employment_stop_required` is True and `ready` is False for WU-OD-02 without the stop language; moderation `to_level: 6` does not clear it |
+| `backend/tests/test_v10_13_simulator.py` | `test_dual_employment_stop_unliftable_on_ambitious_with_real_twin` |
+| `backend/tests/test_v10_14_handoff.py` | `test_dual_employment_unit_stays_unready_on_both_views` |
+| `backend/tests/test_field_ratifications.py` | `test_confirm_of_authority_does_not_lift_dual_employment_stop` |
+| `backend/tests/test_shadow_logs.py` | `test_dual_employment_stop_still_unliftable_after_shadow_logs` |
+| `backend/tests/test_v10_11_states_admissibility.py` | `test_dual_employment_stop_still_blocks_handoff_when_otherwise_admissible` |
+
+`backend/tests/test_v10_14_invariants.py` is the careful ≤ as_calculated ≤ ambitious lint. It is **not** the dual-employment proof. Do not cite it for this stop.
 
 ## Demo bootstrap
 
