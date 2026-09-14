@@ -1,10 +1,7 @@
 name: CI
 
-# Track 2 of the enterprise-readiness roadmap ("make it safe to run"): no CI
-# existed anywhere in this project's history before this workflow. Runs the
-# real Postgres-backed test suite (RLS/tenant-isolation tests self-skip
-# without a real Postgres, so a service container here isn't optional) plus
-# the frontend typecheck/build, on every push to main and every PR.
+# Isolation proof is this Postgres job, not a laptop pytest on SQLite.
+# RLS tests skip without Postgres — a green local run with skips is not isolation.
 
 on:
   push:
@@ -33,14 +30,7 @@ jobs:
         working-directory: backend
     env:
       DATABASE_URL: postgresql+psycopg2://wep_app:wep_app_dev_pw@localhost:5433/wep
-      # wep (superuser): owns the tables, runs migrations. Alembic revision
-      # f198c4aadd2c creates the wep_app role above, so migrations must run
-      # before anything connects as wep_app -- same order docker-compose.yml
-      # already enforces for local/prod.
       SYSTEM_DATABASE_URL: postgresql+psycopg2://wep:wep@localhost:5433/wep
-      # No production data ever touches CI; a fixed per-run value is fine
-      # here specifically because config.py otherwise refuses to start with
-      # no PII_ENCRYPTION_KEY set at all -- see that file's own comment.
       PII_ENCRYPTION_KEY: ci-test-key-not-for-real-data
     steps:
       - uses: actions/checkout@v4
@@ -53,10 +43,6 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Validate HR Function Pack (packs/hr)
-        # BUILD_PROGRAM.md Track 1 slice 1.4's coverage check, now on every
-        # PR instead of run by hand: fails the job if any of the 18 Work
-        # Unit attributes has zero interview questions mapped to it. Needs
-        # no database — same reason this step runs before migrations.
         working-directory: ${{ github.workspace }}
         run: python scout pack validate packs/hr
 
@@ -68,6 +54,15 @@ jobs:
 
       - name: Run tests
         run: pytest -q
+
+      - name: RLS HTTP isolation must execute (not skip)
+        run: |
+          set -e
+          pytest tests/test_rls_http.py -q --tb=short | tee /tmp/rls.txt
+          if grep -E "skipped|SKIPPED" /tmp/rls.txt; then
+            echo "RLS tests skipped — CI Postgres did not prove isolation"
+            exit 1
+          fi
 
       - name: Handoff invariants (V10-14)
         run: pytest -q tests/test_v10_14_invariants.py
@@ -93,10 +88,6 @@ jobs:
         run: npm run build
 
   e2e:
-    # CENSUS-v0's required Playwright coverage (docs/BUILD_PROGRAM.md). Real
-    # Postgres, real backend, real built-and-served frontend -- not a mocked
-    # page. Runs after backend/frontend so a cheap failure there is not paid
-    # for twice.
     runs-on: ubuntu-latest
     needs: [backend, frontend]
     services:
