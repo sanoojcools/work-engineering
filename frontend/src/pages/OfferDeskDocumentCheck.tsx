@@ -12,6 +12,7 @@ import { useApi } from "../hooks";
 import { withClient } from "../lib/withClient";
 import { DOCUMENT_CHECK_RECORD, MISSING_DOC_STARTER, desiredConditionCheckability, step2 } from "../lib/offerDeskWorkRecord";
 import { fieldProvenance, scenarioStrip } from "../lib/offerDeskScenarios";
+import { ShadowTimes } from "../components/census/ShadowTimes";
 import type { Page, Verdict, WorkUnit } from "../types";
 
 type UploadedEvidence = { file_id: string; sha256: string; file_name: string; size: number };
@@ -196,6 +197,11 @@ export default function OfferDeskDocumentCheck() {
           {isGuest ? " Guest: educational only, nothing here is ever sent to the server." : ""}
         </p>
       </div>
+
+      <ShadowTimes
+        workUnitId={matchedUnit?.id ?? null}
+        ready={isGuest || !unitsApi.loading}
+      />
 
       <VerdictCard verdict={matchedVerdict} isGuest={isGuest} />
 

@@ -14,6 +14,8 @@ import { withClient } from "../lib/withClient";
 import { DESKS_BY_ID } from "../lib/desks";
 import { deskHoursSummary } from "../lib/desks/functionHours";
 import { DOCUMENT_CHECK_RECORD } from "../lib/offerDeskWorkRecord";
+import { pickDocumentCheckUnit } from "../lib/shadowLogs";
+import { ShadowTimes } from "../components/census/ShadowTimes";
 import { LANE_DESK_IDS, buildRows, type ChartRow, type LaneDeskId } from "../lib/workSystemUnits";
 import { createModerationEntry, listModerationEntries } from "../lib/moderation";
 import { fetchHandoffBundle } from "../lib/handoffReadiness";
@@ -618,6 +620,10 @@ export default function CensusPlan() {
           <p style={{ fontSize: 13, margin: 0 }}>hrs/mo, after four costing disciplines. Still the sheet, not traces.</p>
         </div>
       </div>
+      <ShadowTimes
+        workUnitId={pickDocumentCheckUnit(units)?.id ?? null}
+        ready={isGuest || !unitsApi.loading}
+      />
       <Link to="/scout/offer-desk/hours" className="card" style={{ textDecoration: "none", color: "inherit", margin: 0, display: "block", marginBottom: 12 }}>
         <h4 style={{ margin: 0 }}>Hours — 95 stated / 61.8 defended</h4>
         <p className="hint" style={{ marginBottom: 0 }}>See the four costing disciplines behind the defended number →</p>

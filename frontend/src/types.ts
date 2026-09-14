@@ -545,6 +545,25 @@ export type NextQuestion = {
   piece_code: string;
 };
 
+/** MANDATE-4. Mirrors backend/app/schemas/shadow_log.py.
+ * These rows are self-reported finish times, not Observed system logs. */
+export type ShadowLog = {
+  id: number;
+  work_unit_id: number;
+  occurred_at: string;
+  duration_minutes: number | null;
+  note: string;
+  created_at: string;
+};
+
+export type ShadowSummary = {
+  count: number;
+  last_five: ShadowLog[];
+  label: "self_reported";
+  confidence: "low";
+  duration_minutes_sum: number | null;
+};
+
 // CENSUS-v0 Part B: one named cross-desk journey (this slice ships one --
 // Offer Desk -> Onboarding). Mirrors backend/app/schemas/work_system.py::WorkSystemOut.
 export type WorkSystem = {

@@ -263,8 +263,12 @@ async function startKeyedCensus(page: Page): Promise<void> {
 test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 leaves and an external band", async ({ page }) => {
   test.setTimeout(60_000);
   const simulationRequests: string[] = [];
+  const shadowRequests: string[] = [];
   page.on("request", (req) => {
     if (req.url().includes("/api/simulations/")) simulationRequests.push(req.url());
+    if (req.url().includes("/shadow-logs") || req.url().includes("/shadow-summary")) {
+      shadowRequests.push(`${req.method()} ${req.url()}`);
+    }
   });
 
   await page.goto("/");
@@ -459,8 +463,13 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await independentPop.screenshot({ path: test.info().outputPath("plan-independent-info-pop.png") });
   await expect(page.getByTestId("plan-how-sure-(step 1 — not imported)").first()).toHaveText("not stated");
   await expect(page.getByText(/~30\/90 is not a pass/)).toBeVisible();
+  await expect(page.getByTestId("shadow-times-guest")).toHaveText("No times in this walk.");
+  await expect(page.getByTestId("shadow-times")).not.toContainText(/shadow log/i);
+  await expect(page.getByTestId("shadow-times")).not.toContainText(/\bobserved\b/i);
+  await expect(page.getByTestId("shadow-times-date")).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
   expect(simulationRequests, "guest Chart must never call GET /api/simulations").toEqual([]);
+  expect(shadowRequests, "guest must never call shadow-logs or shadow-summary").toEqual([]);
 });
 
 test("keyed Start census persists across a refresh", async ({ page, request }) => {
@@ -1308,6 +1317,129 @@ test("guest Facilitator is empty line; sit-close Confirm disabled; never writes 
   await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
   expect(nextQuestionRequests, "guest must never call GET /api/scout/sessions/{id}/next-questions").toEqual([]);
+});
+
+/** MANDATE-4 FRONTEND. Finish times on Document check + a short Plan
+ * block. Guest 1→6 and Plan 95 / 61.8 stay in the tests above. */
+
+test("guest finish times are empty on Plan and Document check; never writes we-spec-key", async ({
+  page,
+}) => {
+  const shadowRequests: string[] = [];
+  page.on("request", (req) => {
+    if (req.url().includes("/shadow-logs") || req.url().includes("/shadow-summary")) {
+      shadowRequests.push(`${req.method()} ${req.url()}`);
+    }
+  });
+
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  await expect(page.getByText("95", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("61.8", { exact: true }).first()).toBeVisible();
+  await expect(page.getByTestId("shadow-times-guest")).toHaveText("No times in this walk.");
+  await expect(page.getByTestId("shadow-times-label")).toHaveCount(0);
+  await expect(page.getByTestId("shadow-times-sum")).toHaveCount(0);
+  await expect(page.getByTestId("shadow-times")).not.toContainText(/shadow log/i);
+  await expect(page.getByTestId("shadow-times")).not.toContainText(/\bobserved\b/i);
+  const planInfo = page.getByRole("button", { name: "Info about Finish times" });
+  await planInfo.hover();
+  const planPop = page.getByTestId("info-pop");
+  await expect(planPop).toBeVisible();
+  await expect(planPop).toContainText(/shadow log/i);
+  await expect(planPop).toContainText(/observed/i);
+
+  await page.goto("/scout/offer-desk/document-check");
+  await expect(page.getByTestId("shadow-times-guest")).toHaveText("No times in this walk.");
+  await expect(page.getByTestId("shadow-times-date")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Release offer — disabled" })).toBeDisabled();
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+  expect(shadowRequests, "guest must never call shadow-logs or shadow-summary").toEqual([]);
+});
+
+test("keyed Document check posts finish times; sixth is the limit; Plan still 95 and 61.8", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+  const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
+  const wuId = await ensureDocumentCheckUnit(request, apiKey);
+  const headers = { "X-Spec-Key": apiKey };
+
+  const listed = await request.get(`/api/work-units/${wuId}/shadow-logs`, { headers });
+  expect(listed.ok(), await listed.text()).toBeTruthy();
+  let count = ((await listed.json()) as { occurred_at: string }[]).length;
+
+  await page.goto("/scout/offer-desk/document-check");
+  await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
+  await expect(page.getByTestId("shadow-times-guest")).toHaveCount(0);
+
+  if (count < 5) {
+    await expect(page.getByTestId("shadow-times-date")).toBeVisible({ timeout: 20_000 });
+    const stamp = Date.now().toString(10).slice(-4);
+    const day = String((Number(stamp) % 28) + 1).padStart(2, "0");
+    const date = `2026-07-${day}`;
+    await page.getByTestId("shadow-times-date").fill(date);
+    await page.getByTestId("shadow-times-minutes").fill("25");
+    await page.getByTestId("shadow-times-submit").click();
+    const added = page.getByTestId("shadow-times-row").filter({ hasText: date });
+    const limited = page.getByTestId("shadow-times-limit");
+    await expect(added.or(limited)).toBeVisible({ timeout: 15_000 });
+    count += 1;
+  }
+
+  let day = 1;
+  const months = ["01", "02", "03", "04", "05"];
+  for (const month of months) {
+    day = 1;
+    while (count < 5 && day <= 28) {
+      const occurredAt = `2026-${month}-${String(day).padStart(2, "0")}T00:00:00.000Z`;
+      const posted = await request.post(`/api/work-units/${wuId}/shadow-logs`, {
+        headers,
+        data: { occurred_at: occurredAt, duration_minutes: 10 },
+      });
+      if (posted.status() === 201) count += 1;
+      day += 1;
+    }
+  }
+  expect(count, "WU-OD-02 must be at the cap of 5 before the sixth POST").toBeGreaterThanOrEqual(5);
+
+  await page.goto("/scout/offer-desk/document-check");
+  await expect(page.getByTestId("shadow-times-date")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("shadow-times-label")).toHaveText(
+    "Self-reported. Low confidence. Not from the company system.",
+  );
+  await expect(page.getByTestId("shadow-times-sum")).toHaveText(/^\d+ minutes$|minutes not entered/);
+  await page.getByTestId("shadow-times-date").fill("2026-08-20");
+  const sixth = page.waitForResponse(
+    (res) =>
+      res.request().method() === "POST" &&
+      res.url().includes(`/work-units/${wuId}/shadow-logs`),
+  );
+  await page.getByTestId("shadow-times-submit").click();
+  expect((await sixth).status()).toBe(422);
+  await expect(page.getByTestId("shadow-times-limit")).toHaveText("five is the limit.");
+  await expect(page.getByRole("button", { name: "Release offer — disabled" })).toBeDisabled();
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  await expect(page.getByText("95", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("61.8", { exact: true }).first()).toBeVisible();
+  await expect(page.getByTestId("shadow-times-guest")).toHaveCount(0);
+  await expect(page.getByTestId("shadow-times-label")).toHaveText(
+    "Self-reported. Low confidence. Not from the company system.",
+  );
+  await expect(page.getByTestId("shadow-times-sum")).toHaveText(/^\d+ minutes$|minutes not entered/);
+  await expect(page.getByTestId("plan-hours-stated")).not.toHaveText(/minutes/);
+  await expect(page.getByTestId("plan-hours-defended")).not.toHaveText(/minutes/);
 });
 
 test("keyed Facilitator shows pack question verbatim; Plan still 95 and 61.8", async ({
