@@ -2,7 +2,7 @@
 
 A specification layer between enterprise intent and execution. It makes work machine-readable, verifiable, and allocatable. It does **not** run the work — execution systems (humans, agents, RPA, BPO) consume a spec.
 
-**Tenancy: multi-tenant.** Each org is a `client_id`. Tenant-scoped routes use a hashed org key (`X-Spec-Key`). Postgres **RLS** (`tenant_isolation`) isolates rows. The GitHub About line that says “single-tenant” is **wrong** — change it in repo Settings.
+**Tenancy: multi-tenant.** Each org is a `client_id`. Tenant-scoped routes use a hashed org key (`X-Spec-Key`). Postgres **RLS** (`tenant_isolation`) isolates rows.
 
 The primitive is the **Work Unit**: an independently accountable commitment to move one business object from a stated current condition to a stated desired condition.
 
@@ -10,7 +10,7 @@ This repository is FastAPI + Postgres + React. Concept papers started as V8; the
 
 - What is true now: [docs/STATUS.md](docs/STATUS.md)
 - Known gaps and non-claims: [docs/HONESTY.md](docs/HONESTY.md)
-- Security boundaries (hashes, RLS, demo keys): [docs/SECURITY_BOUNDARIES.md](docs/SECURITY_BOUNDARIES.md)
+- Security boundaries (hashes, RLS, dual-employment tests, demo keys): [docs/SECURITY_BOUNDARIES.md](docs/SECURITY_BOUNDARIES.md)
 - HTTP API: [docs/API.md](docs/API.md)
 - How the code maps to the V8 paper: [ARCHITECTURE.md](ARCHITECTURE.md)
 - V8 concept paper: [docs/Work-Engineering-V8.md](docs/Work-Engineering-V8.md)
@@ -96,7 +96,7 @@ Alembic uses `SYSTEM_DATABASE_URL` (superuser `wep`). The app uses `DATABASE_URL
 
 ### Tests
 
-**CI** (`.github/workflows/ci.yml`) runs pytest against **real Postgres 16**. That is the isolation proof (`test_rls_http.py`).
+**CI** (`.github/workflows/ci.yml`) runs pytest against **real Postgres 16**. That is the isolation proof (`test_rls_http.py`). Dual-employment stop tests are listed in [docs/SECURITY_BOUNDARIES.md](docs/SECURITY_BOUNDARIES.md).
 
 **Local `pytest` on SQLite:** RLS and tenant-isolation tests **skip** rather than fail. A green run with those skips does **not** prove isolation.
 
@@ -114,12 +114,12 @@ Vite: http://localhost:5173 — proxies `/api` to :8000.
 
 ### Bulk ingest from Excel
 
-There is no bulk HTTP endpoint. From the repo root, API on :8000:
+There is no bulk HTTP endpoint. Local CLI only, API on :8000:
 
 ```bash
 python -m pip install openpyxl
-python bulk_ingest.py --init-template
-python bulk_ingest.py --file HR_Work_Units_Bulk.xlsx --api http://localhost:8000
+python scripts/bulk_ingest.py --init-template
+python scripts/bulk_ingest.py --file HR_Work_Units_Bulk.xlsx --api http://localhost:8000
 ```
 
 ## Repository layout
@@ -128,9 +128,10 @@ python bulk_ingest.py --file HR_Work_Units_Bulk.xlsx --api http://localhost:8000
 backend/app/     FastAPI: models, schemas, services, routers
 backend/tests/   pytest (RLS tests need Postgres)
 frontend/src/     React UI
-docs/             STATUS, HONESTY, API, contracts
+docs/             STATUS, HONESTY, API, contracts, SECURITY_BOUNDARIES
 docs/history/     superseded planning — ignore for review
 packs/hr/         Offer Desk question bank
+scripts/          local CLI (bulk ingest) — not an HTTP API
 ```
 
 ## What this is not
