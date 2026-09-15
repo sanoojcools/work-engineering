@@ -6,7 +6,7 @@ import { errorMessage } from "../../api";
 import { NeedsApiKeyError } from "../../lib/apiFetch";
 import { useCompany } from "../../company";
 import { useIsGuest } from "../../lib/guestMode";
-import { confirmStrategyIntent } from "../../lib/workSystem";
+import { confirmStrategyIntent, ensureOfferToOnboardingWorkSystem } from "../../lib/workSystem";
 import {
   CORE_ANSWER_IDS,
   DRAFT_FOCUS_MIN,
@@ -66,7 +66,6 @@ export function ChroSitting({
   const shownDraft = draftLabel || (lookOnly && liveDraft.length >= DRAFT_FOCUS_MIN ? liveDraft : "");
   const confirmed = draftStatus === "confirmed";
   const given = typedGiven(core);
-  const keyedReady = Boolean(workSystem && sessionId != null);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,12 +109,20 @@ export function ChroSitting({
 
   useEffect(() => {
     if (!workSystem) return;
-    const label = workSystem.strategy_intent.label?.trim() ?? "";
+    const intent = workSystem.strategy_intent;
+    const label = intent.label?.trim() ?? "";
+    if (intent.status === "confirmed" && label) {
+      setDraftLabel(label);
+      setDraftStatus("confirmed");
+      setConfirmedBy(intent.confirmed_by);
+      setConfirmedAt(intent.confirmed_at);
+      return;
+    }
     if (!focusInAnswers(label, joinAnswers(core, anchors))) return;
     setDraftLabel(label);
-    setDraftStatus(workSystem.strategy_intent.status);
-    setConfirmedBy(workSystem.strategy_intent.confirmed_by);
-    setConfirmedAt(workSystem.strategy_intent.confirmed_at);
+    setDraftStatus(intent.status);
+    setConfirmedBy(intent.confirmed_by);
+    setConfirmedAt(intent.confirmed_at);
   }, [workSystem, core, anchors]);
 
   function setCurrentText(value: string) {
@@ -178,14 +185,19 @@ export function ChroSitting({
       setBusy(false);
       return;
     }
-    if (sessionId == null || !workSystem) {
+    if (sessionId == null) {
       setBusy(false);
       setError("Sign in to save this period's line.");
       return;
     }
     try {
       await persist(nextCore, anchors);
-      const ws = await draftStrategyIntent(workSystem.id, sentence, sessionId);
+      let ws = workSystem;
+      if (!ws) {
+        ws = await ensureOfferToOnboardingWorkSystem();
+        onWorkSystem(ws);
+      }
+      ws = await draftStrategyIntent(ws.id, sentence, sessionId);
       onWorkSystem(ws);
       setDraftLabel(ws.strategy_intent.label);
       setDraftStatus(ws.strategy_intent.status);
@@ -317,7 +329,7 @@ export function ChroSitting({
               firstLoadPending ||
               liveDraft.length < DRAFT_FOCUS_MIN ||
               confirmed ||
-              (!lookOnly && !keyedReady)
+              (!lookOnly && sessionId == null)
             }
             onClick={() => void useAsLine()}
             data-testid="sitting-use-as-line"
@@ -330,7 +342,7 @@ export function ChroSitting({
       {shownDraft ? (
         <div className="card" style={{ marginBottom: 16 }} data-testid="this-period-draft">
           <p style={{ fontSize: 15, margin: 0 }}>
-            <strong>{THIS_PERIOD_DRAFT}</strong>{" "}
+            <strong>{confirmed ? "This period" : THIS_PERIOD_DRAFT}</strong>{" "}
             <InfoTooltip
               term={STRATEGY_INTENT_INFO.term}
               simple={STRATEGY_INTENT_INFO.simple}
