@@ -58,7 +58,7 @@ export function ChroSitting({
   const [error, setError] = useState<string | null>(null);
   const [needsKey, setNeedsKey] = useState(false);
 
-  const lookOnly = !firstLoadPending && isGuest;
+  const lookOnly = isGuest || firstLoadPending;
   const stepIndex = SITTING_STEPS.indexOf(step);
   const isCoreStep = (CORE_ANSWER_IDS as readonly string[]).includes(step);
   const currentText = isCoreStep ? core[step as CoreAnswerId] : "";
@@ -174,10 +174,6 @@ export function ChroSitting({
         ? core
         : { ...core, this_period: sentence };
     if (nextCore !== core) setCore(nextCore);
-    if (firstLoadPending) {
-      setBusy(false);
-      return;
-    }
     if (lookOnly) {
       setDraftLabel(sentence);
       setDraftStatus("draft");
