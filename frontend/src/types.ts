@@ -545,6 +545,28 @@ export type NextQuestion = {
   piece_code: string;
 };
 
+/** D-1. Mirrors backend/app/schemas/scout.py::SittingAnswer.
+ * `id` is pain | so_what | this_period | in_out | who_binds | anchor:<key>. */
+export type SittingAnswer = {
+  id: string;
+  text: string;
+};
+
+export type SittingAnswers = {
+  answers: SittingAnswer[];
+};
+
+/** D-1. GET /api/packs/hr/hard-anchors — YAML pack as JSON, not tenant data. */
+export type HardAnchor = {
+  key: string;
+  label: string;
+  prompt: string;
+};
+
+export type HardAnchorsPack = {
+  anchors: HardAnchor[];
+};
+
 /** MANDATE-4. Mirrors backend/app/schemas/shadow_log.py.
  * These rows are self-reported finish times, not Observed system logs. */
 export type ShadowLog = {
