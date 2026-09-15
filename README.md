@@ -1,5 +1,13 @@
 # Work Engineering
 
+**For VCs / CHROs / CTOs.** Work Engineering is a specification layer for AI-native work: Work Units, VERDICT, and a Spec API. It does **not** execute work — people, agents, RPA, and BPO consume the spec. The live wedge is an HR Offer Desk census a guest can walk with no login. This is a colleague demo, **not customer-ready**: no per-user login, no ERP connector. The hosted guest click-through at the live URL has **not** been verified in a browser this cycle; local Playwright covers the walk.
+
+**Live demo:** [https://work-engineering.onrender.com](https://work-engineering.onrender.com) · API: [https://work-engineering-api.onrender.com](https://work-engineering-api.onrender.com). Render’s free tier may take **30–60 seconds** to wake on first request.
+
+Read first: [ARCHITECTURE.md](ARCHITECTURE.md) · [docs/HONESTY.md](docs/HONESTY.md) · [docs/STATUS.md](docs/STATUS.md)
+
+---
+
 A specification layer between enterprise intent and execution. It makes work machine-readable, verifiable, and allocatable. It does **not** run the work — execution systems (humans, agents, RPA, BPO) consume a spec.
 
 **Tenancy: multi-tenant.** Each org is a `client_id`. Tenant-scoped routes use a hashed org key (`X-Spec-Key`). Postgres **RLS** (`tenant_isolation`) isolates rows.
@@ -8,6 +16,7 @@ The primitive is the **Work Unit**: an independently accountable commitment to m
 
 This repository is FastAPI + Postgres + React. Concept papers started as V8; the live wedge is an HR **Offer Desk census** (six steps, guest walk).
 
+- Live demo: [https://work-engineering.onrender.com](https://work-engineering.onrender.com)
 - What is true now: [docs/STATUS.md](docs/STATUS.md)
 - Known gaps and non-claims: [docs/HONESTY.md](docs/HONESTY.md)
 - Security boundaries (hashes, RLS, dual-employment tests, demo keys): [docs/SECURITY_BOUNDARIES.md](docs/SECURITY_BOUNDARIES.md)
