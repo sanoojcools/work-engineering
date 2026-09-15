@@ -40,6 +40,7 @@ Rules:
 5. Does not invent numbers. Store their string as-is.
 6. AuditLog the write.
 7. Existing ensure seed stays for tenants that never call this.
+8. Response is the existing `WorkSystemOut` (so the UI can render `strategy_intent.label` immediately).
 
 ### Hard anchors (pack, not LLM)
 
@@ -58,7 +59,7 @@ Add `packs/hr/hard_anchors.yaml`.
 - Cross-tenant GET/PUT 404.
 - draft-strategy 422 if focus not in answers.
 - draft-strategy 422 if already confirmed.
-- draft-strategy happy path: focus substring stored; confirmed_at still null.
+- draft-strategy happy path: focus substring stored; confirmed_at still null; response includes that focus as `strategy_intent.label`.
 - GET hard-anchors includes `dual_employment` and a string that exists in repo source (test: substring of Document check stop copy or offer-desk sheet text already committed).
 - Full suite green. alembic check: **no new table** unless you prove timeline_json cannot hold this — if you add a table, say why in HONESTY.md.
 
@@ -80,15 +81,18 @@ Replace stand-in theatre on `OfferDeskFunctionLeader.tsx`:
 2. Pain copy (verbatim): *Think of the last hire that went off the rails between offer and Day-1. What broke?*
 3. So-what: *Who owns that? May a helper change it without a named human?*
 4. Do **not** ask s1 / offer steps / Excel vs Zwayam.
-5. Keyed: PUT sitting-answers as they go. “Use as this period’s line” → POST draft-strategy-intent with focus = selected sentence (must be substring). Confirm-as-owner on Plan stays the existing confirm-strategy-intent (do not duplicate Plan).
-6. Guest: type in the walk; answers stay in memory for the session; **never** PUT; never mint `we-spec-key`; banner looking-only. Show their typed draft line on this page only.
-7. Empty stand-in card (`CHRO_STAND_IN` workbook quotes) **removed** from this page once the sitting UI exists. Label: start sitting, not “stand-in.”
-8. FacilitatorStrip may stay; it must not be the only prompt.
-9. Customer words. Canon (strategy intent, function_head) in i-buttons.
-10. IoPanes: given = what they typed; output = draft line or “none yet.”
+5. Keyed: PUT sitting-answers as they go. “Use as this period’s line” → POST draft-strategy-intent with focus = selected sentence (must be substring).
+6. **3-minute loop (do not hide):** Immediately after a successful POST, render the returned `strategy_intent.label` **on this same page**, below the input, as **This period (draft)** — i-button: strategy intent. Controls: **Edit** and **Confirm**. Do not send them to Plan to see the line.
+   - Edit: they change the sentence; POST draft-strategy-intent again (still must be a substring of an answer; 422 stays on screen, no invented paraphrase).
+   - Confirm: existing `POST /work-systems/{id}/confirm-strategy-intent` with a name. Do not invent a second confirm API. After confirm, the line reads confirmed (same status the Plan row already uses). Plan still owns 95 / 61.8; this page does not show those numbers.
+7. Guest: type in the walk; answers stay in memory; **never** PUT/POST; never mint `we-spec-key`; banner looking-only. Still show **This period (draft)** from what they typed on this page (walk-only). Confirm disabled.
+8. Empty stand-in card (`CHRO_STAND_IN` workbook quotes) **removed** from this page once the sitting UI exists. Label: start sitting, not “stand-in.”
+9. FacilitatorStrip may stay; it must not be the only prompt.
+10. Customer words. Canon (strategy intent, function_head) in i-buttons.
+11. IoPanes: given = what they typed; output = draft line or “none yet.”
 
-Do not touch Playback (D-2), Chart 18, Plan 95/61.8, Sit close, backend tables, CensusPlan strategy seed except it will **read** the API after draft.
+Do not touch Playback (D-2), Chart 18, Plan 95/61.8, Sit close, backend tables.
 
-Playwright: guest 1→6; Plan still 95 and 61.8; Function leader shows the pain question; guest types, `we-spec-key` stays null; no invented “47 days.”
+Playwright: guest 1→6; Plan still 95 and 61.8; Function leader shows the pain question; after guest types, **This period (draft)** is visible on that page; `we-spec-key` stays null; no invented “47 days.” Keyed path: after POST, the returned focus is visible on Function leader (CI).
 
 Ready PR → main. Do not merge. Stop. Do not start D-2.
