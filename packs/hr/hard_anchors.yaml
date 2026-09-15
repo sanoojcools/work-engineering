@@ -1,0 +1,7 @@
+# D-1: Hard anchors for CHRO sitting. Pack read, not LLM-invented.
+# Text copied from existing repo source (Document check / Offer Desk).
+
+anchors:
+  - key: dual_employment
+    label: Dual employment / integrity
+    prompt: "UAN service history: mandatory. Gaps or dual employment = offer not released without deviation approval."

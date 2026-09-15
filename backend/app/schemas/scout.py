@@ -233,3 +233,21 @@ class GenerateGenomeOut(BaseModel):
     gqs: float
     work_unit_count: int
     violations: list[dict] = Field(default_factory=list)
+
+
+class SittingAnswer(BaseModel):
+    """One answer from a CHRO sitting: pain, so_what, this_period, in_out,
+    who_binds, or anchor:<key>. Empty text is allowed (they skipped)."""
+    id: str = Field(pattern="^(pain|so_what|this_period|in_out|who_binds|anchor:.+)$")
+    text: str = ""
+
+
+class SittingAnswersIn(BaseModel):
+    """PUT body for sitting answers. Replaces the entire sitting_answers
+    object for that session (idempotent)."""
+    answers: list[SittingAnswer]
+
+
+class SittingAnswersOut(BaseModel):
+    """GET response for sitting answers. Same shape as input."""
+    answers: list[SittingAnswer]
