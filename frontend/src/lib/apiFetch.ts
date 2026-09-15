@@ -26,5 +26,6 @@ export const apiFetch = {
   get: <T>(path: string) => withKey((key) => api.get<T>(path, key)),
   post: <T>(path: string, body?: unknown) => withKey((key) => api.post<T>(path, body, key)),
   postForm: <T>(path: string, form: FormData) => withKey((key) => api.postForm<T>(path, form, key)),
+  put: <T>(path: string, body: unknown) => withKey((key) => api.put<T>(path, body, key)),
   patch: <T>(path: string, body: unknown) => withKey((key) => api.patch<T>(path, body, key)),
 };

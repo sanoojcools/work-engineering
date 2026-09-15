@@ -1499,5 +1499,83 @@ test("keyed Facilitator shows pack question verbatim; Plan still 95 and 61.8", a
   await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
 });
 
+/** D-1 FRONTEND. Pain-to-permit on Function leader. Guest 1→6 and Plan
+ * 95 / 61.8 stay in the tests above. Never invent 47 days. */
+
+const PAIN_QUESTION =
+  "Think of the last hire that went off the rails between offer and Day-1. What broke?";
+const SITTING_LINE = "The backup never saw dual employment on that hire.";
+
+test("guest Function leader shows pain question and This period (draft) after typing; Plan still 95 and 61.8; never writes we-spec-key", async ({
+  page,
+}) => {
+  const sittingWrites: string[] = [];
+  page.on("request", (req) => {
+    const url = req.url();
+    const method = req.method();
+    if (url.includes("/sitting-answers") && (method === "PUT" || method === "POST")) {
+      sittingWrites.push(`${method} ${url}`);
+    }
+    if (url.includes("draft-strategy-intent") || url.includes("confirm-strategy-intent")) {
+      sittingWrites.push(`${method} ${url}`);
+    }
+  });
+
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+
+  await page.goto("/scout/offer-desk/function-leader");
+  await expect(page.getByTestId("sitting-pain")).toHaveText(PAIN_QUESTION, { timeout: 15_000 });
+  await expect(page.getByText("We asked · what we use as the CHRO voice for this demo")).toHaveCount(0);
+  await expect(page.getByText(/47 days/i)).toHaveCount(0);
+  await page.getByTestId("sitting-answer").fill(SITTING_LINE);
+  await expect(page.getByTestId("this-period-draft")).toBeVisible();
+  await expect(page.getByTestId("this-period-label")).toHaveText(SITTING_LINE);
+  await expect(page.getByTestId("this-period-confirm")).toBeDisabled();
+  await expect(page.getByTestId("sitting-guest")).toContainText(/looking only/i);
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+  expect(
+    sittingWrites,
+    "guest must never PUT sitting-answers or POST draft/confirm strategy intent",
+  ).toEqual([]);
+});
+
+test("keyed Function leader POSTs draft line onto the same page; Plan still 95 and 61.8", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+
+  await page.goto("/scout/offer-desk/function-leader");
+  await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
+  await expect(page.getByTestId("sitting-pain")).toHaveText(PAIN_QUESTION, { timeout: 20_000 });
+  await expect(page.getByText(/Open sitting #/)).toBeVisible({ timeout: 20_000 });
+  await page.getByTestId("sitting-answer").fill(SITTING_LINE);
+  await expect(page.getByTestId("sitting-use-as-line")).toBeEnabled({ timeout: 20_000 });
+  const drafted = page.waitForResponse(
+    (res) =>
+      res.request().method() === "POST" && res.url().includes("/draft-strategy-intent"),
+  );
+  await page.getByTestId("sitting-use-as-line").click();
+  const draftedRes = await drafted;
+  expect(draftedRes.ok(), await draftedRes.text()).toBeTruthy();
+  await expect(page.getByTestId("this-period-draft")).toBeVisible();
+  await expect(page.getByTestId("this-period-label")).toHaveText(SITTING_LINE);
+  await expect(page.getByText(/47 days/i)).toHaveCount(0);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  await expect(page.getByTestId("plan-period-focus")).toContainText(SITTING_LINE);
+});
+
 
 
