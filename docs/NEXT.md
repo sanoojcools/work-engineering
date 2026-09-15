@@ -1,9 +1,9 @@
 # NEXT — agents read this and execute their section
 
-Discovery program is unlocked. V10-1…14 are on main. Do not rebuild Chart, Plan 95/61.8, or Gap buckets.
+Discovery program is unlocked. D-1 BACKEND is on `main` (#59). Do not rebuild Chart, Plan 95/61.8, or Gap buckets.
 
 **Cloud factory: LOCKED.** GitHub Actions must not spend Claude credits.
-**Local Sonnet paste: this file’s Claude section is the work order.**
+**Local paste: this file’s section is the work order.**
 
 Canon: `docs/WEP_Discovery_Proposal.md` v2. Roadmap: `docs/DISCOVERY_ROADMAP.md`.
 
@@ -11,27 +11,27 @@ Canon: `docs/WEP_Discovery_Proposal.md` v2. Roadmap: `docs/DISCOVERY_ROADMAP.md`
 
 ## Claude
 
-**UNLOCKED for local paste only.**
-
-Execute `docs/contracts/d1-chro-sitting.md` **Backend section only**.
-
-- Persist CHRO sitting answers on the existing `function_head` session (`timeline_json.sitting_answers` preferred; no new table unless HONESTY says why).
-- `PUT`/`GET /api/scout/sessions/{id}/sitting-answers`
-- `POST /api/work-systems/{id}/draft-strategy-intent` — focus must be a literal substring of an answer; 422 if already confirmed.
-- `packs/hr/hard_anchors.yaml` + `GET /api/packs/hr/hard-anchors` (dual_employment from existing Document-check copy).
-- Tests against real Postgres. HONESTY.md paragraph.
-- Branch `claude/d1-sitting`. Ready PR → main. **Do not merge. Stop.**
-
-No frontend. No Chart. No Plan. No CensusPlan.tsx. No scrape. No scout-v1 import. Do not start D-2 or D-3.
-
-Ignore any leftover V10-10 lock in git history. Founder instruction + this file win.
+**LOCKED.** D-1 backend shipped (#59). Do not start D-2/D-3 until Cursor D-1 UI is on main. If you are a cloud run: stop. No feature PR.
 
 ---
 
 ## Cursor
 
-**LOCKED until D-1 BACKEND is on `main`.**
+**UNLOCKED.**
 
-When `GET /api/scout/sessions/1/sitting-answers` exists on main (not 404), execute `docs/contracts/d1-chro-sitting.md` **Frontend section only**. Branch `cursor/d1-chro-ui`. Ready PR → main. Do not merge. Do not start D-2.
+Execute `docs/contracts/d1-chro-sitting.md` **Frontend section only**.
 
-If that GET is not on this main: reply **BLOCKED — waiting on Claude D-1**. No feature PR.
+D-1 API is on this main: `GET`/`PUT /api/scout/sessions/{id}/sitting-answers`, `POST /api/work-systems/{id}/draft-strategy-intent`, `GET /api/packs/hr/hard-anchors`.
+
+Branch `cursor/d1-chro-ui` off latest `main`.
+
+Replace `OfferDeskFunctionLeader` stand-in with pain-to-permit, one question at a time.
+Keyed: PUT sitting-answers; use as this period’s line → POST draft-strategy-intent.
+Immediately after successful POST, render returned `strategy_intent.label` on THIS page as **This period (draft)** with Edit and Confirm. Do not hide it.
+Edit → POST draft-strategy-intent again (substring or 422 on screen).
+Confirm → existing `POST /work-systems/{id}/confirm-strategy-intent`. No second confirm API.
+Guest: type only, no `we-spec-key`; still show This period (draft) from what they typed; Confirm disabled.
+Do not ask offer steps. Do not invent 47 days. Do not touch Playback, Chart 18, Plan 95/61.8.
+
+Playwright: guest 1→6; Plan still 95 and 61.8; pain question visible; This period (draft) after typing; no key minted.
+Ready PR → main. Do not merge. Stop. Do not start D-2.
