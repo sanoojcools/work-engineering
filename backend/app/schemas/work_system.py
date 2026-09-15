@@ -80,3 +80,10 @@ class WorkSystemIntentConfirmIn(BaseModel):
     Same shape as WorkSystemRatifyIn on purpose: one required name, no other
     field a caller could use to also change the intent's own text."""
     confirmed_by: str = Field(min_length=1, max_length=120)
+
+
+class DraftStrategyIntentIn(BaseModel):
+    """D-1: draft strategy_intent_focus from a verbatim substring of a
+    sitting answer. Does NOT confirm -- just drafts the focus text."""
+    focus: str = Field(min_length=8)
+    source_session_id: int

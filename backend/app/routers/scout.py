@@ -41,6 +41,8 @@ from ..schemas.scout import (
     SessionConsentUpdate,
     SessionCreate,
     SessionOut,
+    SittingAnswersIn,
+    SittingAnswersOut,
     StoryExtractIn,
     StoryExtractOut,
     TimelineOut,
@@ -265,6 +267,39 @@ def update_timeline(session_id: int, payload: TimelineUpdate, db: TenantDbDep, k
     ))
     db.commit()
     return TimelineOut(**payload.timeline)
+
+
+@router.get("/sessions/{session_id}/sitting-answers", response_model=SittingAnswersOut)
+def get_sitting_answers(session_id: int, db: TenantDbDep, key: OrgKeyDep) -> SittingAnswersOut:
+    """D-1: GET sitting answers for a function_head session. Other session
+    types 404. Missing key 401 (guest never hits this). Other tenant 404."""
+    session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
+    if session.type != InterviewType.function_head:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session is not function_head type")
+    stored = json.loads(session.timeline_json)
+    answers = stored.get("sitting_answers", [])
+    return SittingAnswersOut(answers=answers)
+
+
+@router.put("/sessions/{session_id}/sitting-answers", response_model=SittingAnswersOut)
+def update_sitting_answers(
+    session_id: int, payload: SittingAnswersIn, db: TenantDbDep, key: OrgKeyDep
+) -> SittingAnswersOut:
+    """D-1: PUT sitting answers for a function_head session. Replaces the
+    entire sitting_answers object (idempotent). Empty text allowed. Session
+    must be function_head type. Other tenant 404."""
+    session = get_or_404(db, ScoutInterviewSession, session_id, "ScoutInterviewSession")
+    if session.type != InterviewType.function_head:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Session is not function_head type")
+    stored = json.loads(session.timeline_json) if session.timeline_json != "{}" else {}
+    stored["sitting_answers"] = [a.model_dump() for a in payload.answers]
+    session.timeline_json = json.dumps(stored)
+    db.add(AuditLog(
+        client_id=key.client_id, actor=key.label or f"org_api_key:{key.id}",
+        action="scout.sitting_answers.update", resource="scout_interview_session", resource_id=str(session.id),
+    ))
+    db.commit()
+    return SittingAnswersOut(answers=payload.answers)
 
 
 @router.get("/contradictions", response_model=Page[ContradictionOut])

@@ -19,6 +19,7 @@ from ..models.security import AuditLog
 from ..models.work_system import WorkSystem, WorkSystemStatus
 from ..schemas.common import Page
 from ..schemas.work_system import (
+    DraftStrategyIntentIn,
     WorkSystemEnsureIn,
     WorkSystemIntentConfirmIn,
     WorkSystemOut,
@@ -154,6 +155,57 @@ def confirm_strategy_intent(work_system_id: int, payload: WorkSystemIntentConfir
         client_id=key.client_id, actor=key.label or f"org_api_key:{key.id}",
         action="work_system.confirm_strategy_intent", resource="work_system", resource_id=str(row.id),
         detail=f"confirmed_by={payload.confirmed_by}",
+    ))
+    db.commit()
+    _rebind_tenant(db, key)
+    db.refresh(row)
+    return work_system_svc.to_out(row)
+
+
+@router.post("/{work_system_id}/draft-strategy-intent", response_model=WorkSystemOut)
+def draft_strategy_intent(work_system_id: int, payload: DraftStrategyIntentIn, db: TenantDbDep, key: OrgKeyDep) -> WorkSystemOut:
+    """D-1: draft strategy_intent_focus from a verbatim substring of a CHRO
+    sitting answer. 422 if already confirmed, if session missing/not
+    function_head, or if focus is not a literal substring of at least one
+    sitting answer text. Does NOT set confirmed_at/confirmed_by."""
+    from ..models.scout import ScoutInterviewSession, InterviewType
+
+    row: WorkSystem = get_or_404(db, WorkSystem, work_system_id, "WorkSystem")
+    if row.strategy_intent_confirmed_at is not None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Strategy intent already confirmed")
+
+    session = db.query(ScoutInterviewSession).filter(
+        ScoutInterviewSession.id == payload.source_session_id
+    ).one_or_none()
+    if session is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Session not found")
+    if session.type != InterviewType.function_head:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Session is not function_head type")
+
+    # Parse sitting_answers from timeline_json
+    import json
+    stored = json.loads(session.timeline_json) if session.timeline_json != "{}" else {}
+    answers = stored.get("sitting_answers", [])
+
+    # Check if focus is a literal substring of at least one answer text
+    focus_found = False
+    for answer in answers:
+        if isinstance(answer, dict) and "text" in answer:
+            if payload.focus in answer["text"]:
+                focus_found = True
+                break
+
+    if not focus_found:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Focus must be a literal substring of at least one sitting answer"
+        )
+
+    row.strategy_intent_focus = payload.focus
+    db.add(AuditLog(
+        client_id=key.client_id, actor=key.label or f"org_api_key:{key.id}",
+        action="work_system.draft_strategy_intent", resource="work_system", resource_id=str(row.id),
+        detail=f"source_session_id={payload.source_session_id}",
     ))
     db.commit()
     _rebind_tenant(db, key)
