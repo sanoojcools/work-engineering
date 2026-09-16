@@ -4,7 +4,7 @@
 
 **Live demo:** [https://work-engineering.onrender.com](https://work-engineering.onrender.com) · API: [https://work-engineering-api.onrender.com](https://work-engineering-api.onrender.com). Render’s free tier may take **30–60 seconds** to wake on first request.
 
-Read first: [ARCHITECTURE.md](ARCHITECTURE.md) · [docs/HONESTY.md](docs/HONESTY.md) · [docs/STATUS.md](docs/STATUS.md)
+**Read first:** [docs/README.md](docs/README.md) (current vs origin papers) · [ARCHITECTURE.md](ARCHITECTURE.md) · [docs/HONESTY.md](docs/HONESTY.md)
 
 ---
 
@@ -14,16 +14,16 @@ A specification layer between enterprise intent and execution. It makes work mac
 
 The primitive is the **Work Unit**: an independently accountable commitment to move one business object from a stated current condition to a stated desired condition.
 
-This repository is FastAPI + Postgres + React. Concept papers started as V8; the live wedge is an HR **Offer Desk census** (six steps, guest walk).
+This repository is **FastAPI + Postgres + React**. There is one product. **V8 / V9 / V10 are idea labels**, not separate apps and not stamps on the UI.
 
 - Live demo: [https://work-engineering.onrender.com](https://work-engineering.onrender.com)
-- What is true now: [docs/STATUS.md](docs/STATUS.md)
+- What is true now: [docs/HONESTY.md](docs/HONESTY.md) (ledger) and this README (walk)
 - Known gaps and non-claims: [docs/HONESTY.md](docs/HONESTY.md)
 - Security boundaries (hashes, RLS, dual-employment tests, demo keys): [docs/SECURITY_BOUNDARIES.md](docs/SECURITY_BOUNDARIES.md)
 - HTTP API: [docs/API.md](docs/API.md)
-- How the code maps to the V8 paper: [ARCHITECTURE.md](ARCHITECTURE.md)
-- V8 concept paper: [docs/Work-Engineering-V8.md](docs/Work-Engineering-V8.md)
-- Old planning decks: [docs/history/](docs/history/README.md) — **not** current product
+- Stack and data model: [ARCHITECTURE.md](ARCHITECTURE.md)
+- Origin concept paper (not the live walk): [docs/Work-Engineering-V8.md](docs/Work-Engineering-V8.md)
+- Frozen idea notes: [docs/ideas/](docs/ideas/README.md) · superseded decks: [docs/history/](docs/history/README.md)
 
 ## Key concepts
 
@@ -139,6 +139,7 @@ backend/tests/   pytest (RLS tests need Postgres)
 frontend/src/     React UI
 docs/             STATUS, HONESTY, API, contracts, SECURITY_BOUNDARIES
 docs/history/     superseded planning — ignore for review
+docs/ideas/       frozen idea labels (V8/V9/V10) — not separate products
 packs/hr/         Offer Desk question bank
 scripts/          local CLI (bulk ingest) — not an HTTP API
 ```
