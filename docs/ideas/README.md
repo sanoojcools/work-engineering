@@ -1,27 +1,20 @@
 # Idea versions
 
-This repo is the product. V8, V9, V10 are idea labels, not separate apps.
+This repo is **one product**. V8, V9, V10 are **idea labels**, not separate apps and not stamps on the UI.
 
-| Label | Git | What it means |
+**What to run today:** `main` → census walk (README). Do not `git switch idea/v9` for a review.
+
+| Label | Git | What it meant |
 |---|---|---|
-| V8 | `main` today, tag `idea-v8` when you freeze it | Factory we already built |
-| V9 | branch `idea/v9` | Showroom + honesty rules on that factory |
-| V10+ | branch `idea/v10` when needed | Next idea. Same pattern |
+| V8 | origin paper + early factory | Concept in `docs/Work-Engineering-V8.md` |
+| V9 | Offer Desk showroom on that factory | Now folded into `main` |
+| V10 | Census + discovery program | Direction in `docs/V10_BUILD.md` / `docs/WEP_Discovery_Proposal.md` |
 
-Demo V8: `git switch main` then `docker compose up --build` → http://localhost:5173
+Frozen tags (if present): `git tag -l 'idea-*'`.
 
-Demo V9 (after Cursor lands the walk): `git switch idea/v9` → same app, default path is Enterprise → HR Ops → Offer Desk.
-
-To freeze a version:
+To inspect an old idea branch without changing what reviewers see:
 
 ```
-git tag idea-v9
-git push origin idea-v9
-```
-
-To open an old version later:
-
-```
-git switch -c revive/v9 idea/v9
-# or: git switch idea-v9   if you tagged it
+git fetch origin
+git log origin/main --oneline -5
 ```

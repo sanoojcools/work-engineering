@@ -5,14 +5,7 @@ import { DemoSetup } from "../components/DemoSetup";
 import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
 
-/** CENSUS-v0 Part A, step 1: Scope. Home IS this step, guest or keyed --
- * not a separate landing page ahead of the six-step census. Content is the
- * existing Enterprise -> HR map -> Function Scope pages, relabelled: what
- * this build used to call "blast radius" is customer-facing "Scope" here
- * (docs/BUILD_PROGRAM.md CENSUS-v0's own copy rule). V10-1 adds Start
- * census + an honest readiness strip from GET /api/censuses. Offer Desk is
- * deliberately NOT linked from this page: it is Capture depth, reachable
- * from step 2, not from Home. */
+/** Home IS census step 1 (Scope). Offer Desk is Capture depth, not Home. */
 export default function Start() {
   return (
     <>
@@ -63,7 +56,7 @@ export default function Start() {
       />
 
       <p className="hint" style={{ marginTop: 24 }}>
-        V8 Overview, Genome, and VERDICT stay in the nav under Specification / Analysis.
+        Lab pages (Overview, Genome, VERDICT) stay in the nav under Specification / Analysis. They are not the census walk.
       </p>
 
       <p style={{ marginTop: 20 }}>

@@ -1,3 +1,5 @@
+> **SUPERSEDED.** Do not execute this brief. The live walk and agent work orders are `README.md`, `docs/NEXT.md`, and `docs/DISCOVERY_ROADMAP.md`. Kept so history of the V9 Offer Desk walk is recoverable.
+
 # Cursor brief — build V9 on V8
 
 Repo: `sanoojcools/work-engineering`

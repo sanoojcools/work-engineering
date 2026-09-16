@@ -17,9 +17,7 @@ type VersionRow = {
 
 const GATE_THRESHOLD = 90;
 
-/** Index for the delivery side. Until GET /api/genome/versions existed there
- * was no way to find a genome you had already imported — every genome route
- * needs a version_id the caller had to have kept from an import response. */
+/** Index for genome versions. */
 export default function GenomeVersions() {
   const [rows, setRows] = useState<VersionRow[] | null>(null);
   const [needsKey, setNeedsKey] = useState(false);
@@ -67,8 +65,8 @@ export default function GenomeVersions() {
           title="No genome versions yet"
           hint={
             <>
-              Generate one from a Scout interview (Scout Interview → Future Preview → Generate V8 Work
-              Units), or import a genome directly via <code>POST /api/genome/import</code>.
+              Generate one from a Scout interview (Scout Interview → Future Preview → Turn this sitting into
+              pieces of work), or import a genome directly via <code>POST /api/genome/import</code>.
             </>
           }
         />

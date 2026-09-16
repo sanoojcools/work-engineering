@@ -119,7 +119,7 @@ export default function Overview() {
       <p className="hint">
         {catalog
           ? "Catalog is for platform tests. Do not treat mixed functions and industries as one census."
-          : `${client?.name ?? "This company"} · HR & People Ops is the V8 J1 wedge: one function, one employer, draft pack.`}
+          : `${client?.name ?? "This company"} · HR & People Ops: one function, one employer, draft pack.`}
       </p>
 
       <div className="metrics">
@@ -137,7 +137,7 @@ export default function Overview() {
         </div>
         <div className="metric">
           <div className="n">{totals ? totals.fte.toFixed(2) : "—"}</div>
-          <div className="l">FTE after attribution (H5)</div>
+          <div className="l">FTE after attribution</div>
         </div>
       </div>
       {honest?.note && <p className="hint">{honest.note}</p>}
@@ -150,13 +150,13 @@ export default function Overview() {
       ) : null}
 
       <dl className="card">
-        <dt className="muted">Census (J1)</dt>
+        <dt className="muted">Census</dt>
         <dd>One company, one function, ~90 days. Output: inventory, graph, VERDICT, economics, conformance gap.</dd>
-        <dt className="muted">Five projections (C3)</dt>
+        <dt className="muted">Five projections</dt>
         <dd>Inventory, Work Graph, Verification contracts, Allocation, Economics — views of the same records, not a queue.</dd>
-        <dt className="muted">Boundary (C4)</dt>
+        <dt className="muted">Boundary</dt>
         <dd>Produces a specification. Execution systems consume it via the Spec API. This product does not run the work.</dd>
-        <dt className="muted"><LabelWithInfo label="Economics">Honest case (H5)</LabelWithInfo></dt>
+        <dt className="muted"><LabelWithInfo label="Economics">Honest case</LabelWithInfo></dt>
         <dd>Cost to do, cost to verify, exceptions, then attribution. The smaller number is the honest one.</dd>
       </dl>
     </>
