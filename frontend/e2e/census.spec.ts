@@ -910,6 +910,58 @@ async function ensureDocumentCheckUnit(request: APIRequestContext, apiKey: strin
   return ((await wuRes.json()) as { id: number }).id;
 }
 
+/** Sit-close Confirm only after a real sitting quote is on a draft row.
+ * Pointer quote wins when declared. Never POST a blank quote. */
+async function seedSitCloseDrafts(request: APIRequestContext, apiKey: string, wuId: number): Promise<void> {
+  const headers = { "X-Spec-Key": apiKey };
+  const listed = await request.get(`/api/work-units/${wuId}/field-ratifications`, { headers });
+  expect(listed.ok(), await listed.text()).toBeTruthy();
+  const existing = ((await listed.json()) as { items: { field_name: string; sitting_quote: string; status: string }[] })
+    .items;
+  const byField = new Map(existing.map((row) => [row.field_name, row]));
+
+  let pointers: { field_name: string; status: string; quote: string }[] = [];
+  const pointerRes = await request.get(`/api/work-units/${wuId}/pointers`, { headers });
+  if (pointerRes.ok()) {
+    pointers = ((await pointerRes.json()) as { items: { field_name: string; status: string; quote: string }[] }).items;
+  }
+
+  const seeds = [
+    {
+      field_name: "desired_condition",
+      sitting_quote: "Rashmi pulls candidate profile from Zwayam. Checks all documents uploaded.",
+      drafted_value: "Accepted or blocked",
+    },
+    {
+      field_name: "authority",
+      sitting_quote: "Rashmi (Offer Desk) — handles ALL hire types across BLR, HYD, CHN",
+      drafted_value: "Offer Desk SME",
+    },
+    {
+      field_name: "acceptance_criteria",
+      sitting_quote: "IF dual employment detected in UAN: do NOT release offer (deviation approval required)",
+      drafted_value:
+        "IF docs complete: proceed. IF docs missing: email recruiter → recruiter follows up with candidate. IF UAN service history missing/inactive: trigger UAN generation guide to candidate. IF employment gap in UAN: check with candidate, may need bank statement or BGV. IF dual employment detected in UAN: do NOT release offer (deviation approval required)",
+    },
+  ];
+
+  for (const seed of seeds) {
+    const have = byField.get(seed.field_name);
+    if (have) continue;
+    const pointer = pointers.find(
+      (p) => p.field_name === seed.field_name && p.status === "declared" && (p.quote ?? "").trim().length >= 8,
+    );
+    const sitting_quote = pointer?.quote ?? seed.sitting_quote;
+    expect(sitting_quote.trim().length, `sit-close ${seed.field_name} quote must be real, not blank`).toBeGreaterThan(0);
+    const created = await request.post(`/api/work-units/${wuId}/field-ratifications`, {
+      headers,
+      data: { field_name: seed.field_name, sitting_quote, drafted_value: seed.drafted_value },
+    });
+    if (created.status() === 409) continue;
+    expect(created.ok(), await created.text()).toBeTruthy();
+  }
+}
+
 test("census stays six steps; sit close is Offer Desk depth, not a seventh census step", async ({ page }) => {
   await page.goto("/");
   await expect(stepCount(page)).toContainText("1 of 6");
@@ -959,7 +1011,8 @@ test("keyed sit close Confirm persists; cards are real or none yet", async ({ pa
   test.setTimeout(60_000);
   await signInWithFreshDemoKey(page, request);
   const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
-  await ensureDocumentCheckUnit(request, apiKey);
+  const wuId = await ensureDocumentCheckUnit(request, apiKey);
+  await seedSitCloseDrafts(request, apiKey, wuId);
 
   await page.goto("/scout/offer-desk/sit-close");
   await expect(page.getByTestId("sit-close")).toBeVisible();
@@ -971,8 +1024,12 @@ test("keyed sit close Confirm persists; cards are real or none yet", async ({ pa
 
   const confirmGoal = page.getByTestId("sit-close-confirm-goal");
   const settledGoal = page.getByTestId("sit-close-settled-goal");
+  const quoteGoal = page.getByTestId("sit-close-quote-goal");
+  const askGoal = page.getByTestId("sit-close-ask-goal");
   await expect(async () => {
     if ((await settledGoal.count()) > 0) return;
+    expect(await askGoal.count(), "Confirm stays off when the sitting quote is blank").toBe(0);
+    expect((await quoteGoal.innerText()).trim().length).toBeGreaterThan(0);
     expect(await confirmGoal.isEnabled()).toBeTruthy();
   }).toPass({ timeout: 20_000 });
 
@@ -1539,8 +1596,8 @@ test("keyed Facilitator shows pack question verbatim; Plan still 95 and 61.8", a
   const f3 = packQuestionText("f3");
   await page.goto("/scout/offer-desk/function-leader");
   await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
-  await expect(page.getByTestId("facilitator-ask")).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByTestId("facilitator-question").first()).toHaveText(f3);
+  await expect(page.getByTestId("facilitator-ask")).toHaveCount(1, { timeout: 20_000 });
+  await expect(page.getByTestId("facilitator-question")).toHaveText(f3);
   await expect(page.getByTestId("facilitator")).toContainText("Ask this exact question");
   await expect(page.getByTestId("facilitator-ask")).not.toContainText(/pack|interrogation/i);
   await expect(page.getByTestId("facilitator")).not.toContainText(/dual employment/i);
