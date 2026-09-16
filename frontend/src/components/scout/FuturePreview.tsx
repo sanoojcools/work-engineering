@@ -63,11 +63,6 @@ export function FuturePreview({
     } catch (err) {
       if (err instanceof NeedsApiKeyError) onNeedsKey();
       else {
-        // The server refuses outright (4xx) when this session has no consent
-        // record attached -- shouldn't happen through this screen (the
-        // ConsentGate below runs first), but stays a plain-language message
-        // rather than a raw error if it ever does (a stale tab, a second
-        // interviewer racing this one).
         setGenError(errorMessage(err));
       }
     } finally {
@@ -119,7 +114,7 @@ export function FuturePreview({
         </div>
 
         <button type="button" className="primary" disabled={busy || locked} onClick={generate}>
-          Generate V8 Work Units
+          Turn this sitting into pieces of work
         </button>
 
         {genError && <Banner kind="error">{genError}</Banner>}
