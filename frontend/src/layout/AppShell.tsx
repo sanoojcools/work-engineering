@@ -56,7 +56,7 @@ const SECTIONS = [
   {
     label: "Specification",
     links: [
-      ["/overview", "V8 Overview"],
+      ["/overview", "Overview (lab)"],
       ["/genome", "Genome"],
       ["/ontology", "Ontology"],
       ["/work-units", "Work Units"],
@@ -75,11 +75,6 @@ const SECTIONS = [
   { label: "Integration", links: [["/spec", "Spec API"]] },
 ] as const;
 
-/** Render's free tier drops an idle service after ~15 minutes; the next
- * request pays a 30-60s cold start. `firstLoadPending` covers that whole
- * window from mount, but most loads resolve in well under a second, so this
- * only shows the banner once pending has actually run long enough to be a
- * cold start rather than normal network latency. */
 function WakingBanner() {
   const { firstLoadPending } = useCompany();
   const [show, setShow] = useState(false);
