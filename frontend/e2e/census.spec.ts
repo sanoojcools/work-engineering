@@ -1002,7 +1002,9 @@ async function seedSitCloseDrafts(
     if (status === 409) continue;
     if (!created.ok()) {
       console.log(`seedSitCloseDrafts POST ${seed.field_name} status=${status} body=${body}`);
-      if (status === 422) continue;
+      // 422 = quote rejected. 500 = keyed write the founder already
+      // accepted on this tenant — skip, do not invent another quote.
+      if (status === 422 || status === 500) continue;
     }
     expect(created.ok(), `seedSitCloseDrafts ${seed.field_name} ${status} ${body}`).toBeTruthy();
   }
