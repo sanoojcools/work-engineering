@@ -1,28 +1,153 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { errorMessage } from "../api";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
 import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
 import { SeatSessionBar, useOfferDeskSeat } from "../components/offerDesk/SeatSessionBar";
 import { SeatStepper } from "../components/offerDesk/SeatStepper";
+import { useCompany } from "../company";
+import { NeedsApiKeyError } from "../lib/apiFetch";
 import { useIsGuest } from "../lib/guestMode";
-import { OFFER_DESK_SAMPLE_ROWS } from "../lib/offerDeskData";
-import { OFFER_DESK_SEATS, PLAYBACK_ROWS } from "../lib/offerDeskSeats";
-import { INTERVIEW_TYPE_LABELS } from "../types";
+import type { OfferDeskSeatKey } from "../lib/offerDeskSeats";
+import {
+  CORE_ANSWER_IDS,
+  QUESTION_COPY,
+  getSittingAnswers,
+  type CoreAnswerId,
+} from "../lib/sittingAnswers";
+import type { SittingAnswer } from "../types";
+
+const NONE_YET = "none yet";
+const LOOKING_ONLY = "Looking only — this walk stored nothing. Confirm and Correct stay on Sit close.";
+
+const TOPIC_LABELS: Record<CoreAnswerId, string> = {
+  pain: "What broke",
+  so_what: "Who owns that",
+  this_period: "This period",
+  in_out: "In and out",
+  who_binds: "Who may bind",
+};
+
+const COLUMNS: { seat: OfferDeskSeatKey; heading: string }[] = [
+  { seat: "function_head", heading: "Function leader" },
+  { seat: "sub_function_lead", heading: "Sub-function lead" },
+  { seat: "sme", heading: "Rashmi" },
+];
+
+function cellText(
+  answers: SittingAnswer[],
+  id: string,
+  answersStatus: "pending" | "loading" | "ready" | "error",
+  hasError: boolean,
+): string {
+  if (answersStatus === "error" || hasError) return "Could not load this walk.";
+  if (answersStatus !== "ready") return "Opening this walk…";
+  const text = answers.find((row) => row.id === id)?.text.trim() ?? "";
+  return text || NONE_YET;
+}
+
+function storedAnswerList(answers: SittingAnswer[]): SittingAnswer[] {
+  return answers.filter((row) => row.text.trim());
+}
 
 export default function OfferDeskPlayback() {
   const chro = useOfferDeskSeat("function_head");
   const ops = useOfferDeskSeat("sub_function_lead");
   const rashmi = useOfferDeskSeat("sme");
   const isGuest = useIsGuest();
+  const { firstLoadPending } = useCompany();
+  const guestSettled = isGuest && !firstLoadPending;
+  const hooks = {
+    function_head: chro,
+    sub_function_lead: ops,
+    sme: rashmi,
+  };
 
-  const columns = [
-    { seat: "function_head" as const, hook: chro, heading: "CHRO stand-in" },
-    { seat: "sub_function_lead" as const, hook: ops, heading: "HR Ops lead" },
-    { seat: "sme" as const, hook: rashmi, heading: "Rashmi" },
+  const [chroAnswers, setChroAnswers] = useState<SittingAnswer[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [needsKey, setNeedsKey] = useState(false);
+  const [answersStatus, setAnswersStatus] = useState<"pending" | "loading" | "ready" | "error">("pending");
+  const sessionId = chro.session?.id ?? null;
+
+  useEffect(() => {
+    if (firstLoadPending) {
+      setAnswersStatus("pending");
+      return;
+    }
+    if (isGuest) {
+      setChroAnswers([]);
+      setError(null);
+      setNeedsKey(false);
+      setAnswersStatus("ready");
+    }
+  }, [firstLoadPending, isGuest]);
+
+  useEffect(() => {
+    if (firstLoadPending || isGuest || sessionId != null) return;
+    setChroAnswers([]);
+    setAnswersStatus(chro.busy ? "loading" : "ready");
+  }, [firstLoadPending, isGuest, sessionId, chro.busy]);
+
+  useEffect(() => {
+    if (firstLoadPending || isGuest || sessionId == null) return;
+    let cancelled = false;
+    setAnswersStatus("loading");
+    getSittingAnswers(sessionId)
+      .then((body) => {
+        if (cancelled) return;
+        setChroAnswers(body.answers ?? []);
+        setNeedsKey(false);
+        setError(null);
+        setAnswersStatus("ready");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setChroAnswers([]);
+        if (err instanceof NeedsApiKeyError) {
+          setNeedsKey(true);
+          setAnswersStatus("ready");
+        } else {
+          setError(errorMessage(err));
+          setAnswersStatus("error");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [firstLoadPending, isGuest, sessionId]);
+
+  const bySeat: Record<OfferDeskSeatKey, SittingAnswer[]> = {
+    function_head: chroAnswers,
+    sub_function_lead: [],
+    sme: [],
+  };
+
+  const stored = storedAnswerList(chroAnswers);
+  const settledEmpty = answersStatus === "ready" && stored.length === 0 && !error;
+  const anchorTopics = [
+    ...new Set(stored.filter((row) => row.id.startsWith("anchor:")).map((row) => row.id)),
+  ].map((id) => ({
+    id,
+    label: id.slice("anchor:".length).replace(/_/g, " "),
+  }));
+  const topics = [
+    ...CORE_ANSWER_IDS.map((id) => ({ id, label: TOPIC_LABELS[id], question: QUESTION_COPY[id] })),
+    ...anchorTopics.map((row) => ({ id: row.id, label: row.label, question: row.label })),
   ];
 
+  const given = stored.length
+    ? stored.map((row) => row.text.trim()).join(" ")
+    : settledEmpty
+      ? "Nothing stored in this walk yet."
+      : "Opening this walk…";
+  const output = settledEmpty ? NONE_YET : stored.length ? stored.map((row) => row.text.trim()).join(" ") : "Opening this walk…";
+  const processed = guestSettled
+    ? "Looking only. This page does not save. Confirm and Correct stay on Sit close."
+    : "We show the sentences this walk stored. Empty cells stay empty. We do not fill them from a canned row.";
+
   return (
-    <>
+    <div data-testid="playback">
       <p className="hint" style={{ marginBottom: 4 }}>
         Offer Desk · three seats, not one story
       </p>
@@ -31,114 +156,112 @@ export default function OfferDeskPlayback() {
         <InfoTooltip
           term="Playback"
           simple="Playback puts the three sittings side by side on the same topics. We do not vote them into one story. Why: the leader, the desk lead, and Rashmi often disagree; the product is to see that, not to hide it."
+          technical="GET /api/scout/sessions/{id}/sitting-answers for the function leader sitting. Empty cells are none yet. Guest never calls this. Confirm and Correct stay on Sit close — no second table."
         />
       </h2>
-      <p className="lede">We do not vote the rows into one story.</p>
+      <p className="lede">We do not vote the rows into one story. Empty stays empty.</p>
       <SeatStepper />
 
-      {(chro.needsKey || ops.needsKey || rashmi.needsKey) && !isGuest && (
-        <ApiKeyBanner onSaved={() => { void chro.retry(); void ops.retry(); void rashmi.retry(); }} />
+      {(chro.needsKey || ops.needsKey || rashmi.needsKey || needsKey) && !isGuest && (
+        <ApiKeyBanner
+          onSaved={() => {
+            void chro.retry();
+            void ops.retry();
+            void rashmi.retry();
+          }}
+        />
+      )}
+      {error && (
+        <div className="banner error" data-testid="playback-error">
+          {error}
+        </div>
+      )}
+      {guestSettled && (
+        <p className="hint" data-testid="playback-guest">
+          {LOOKING_ONLY}
+        </p>
+      )}
+      {settledEmpty && (
+        <p style={{ fontSize: 15, margin: "0 0 16px" }} data-testid="playback-empty">
+          {NONE_YET}
+        </p>
+      )}
+      {(answersStatus === "pending" || answersStatus === "loading") && (
+        <p className="hint" data-testid="playback-loading">
+          Opening this walk…
+        </p>
       )}
 
       <div className="split" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
-        {columns.map((col) => (
-          <SeatSessionBar
-            key={col.seat}
-            seat={col.seat}
-            session={col.hook.session}
-            needsKey={col.hook.needsKey}
-            error={col.hook.error}
-            busy={col.hook.busy}
-            onRetry={col.hook.retry}
-            showKeyBanner={false}
-          />
-        ))}
+        {COLUMNS.map((col) => {
+          const hook = hooks[col.seat];
+          return (
+            <SeatSessionBar
+              key={col.seat}
+              seat={col.seat}
+              session={hook.session}
+              needsKey={hook.needsKey}
+              error={hook.error}
+              busy={hook.busy}
+              onRetry={hook.retry}
+              showKeyBanner={false}
+            />
+          );
+        })}
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3>Same topics, three answers</h3>
+        <h3 id="playback-topics-heading">Same topics, three answers</h3>
         <div className="table-wrap" style={{ marginBottom: 0 }}>
-          <table>
+          <table data-testid="playback-table" aria-labelledby="playback-topics-heading">
             <thead>
               <tr>
-                <th>Topic</th>
-                <th>CHRO stand-in</th>
-                <th>HR Ops lead</th>
-                <th>Rashmi</th>
+                <th scope="col">Topic</th>
+                {COLUMNS.map((col) => (
+                  <th key={col.seat} scope="col">
+                    {col.heading}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {PLAYBACK_ROWS.map((row) => (
-                <tr key={row.topic}>
-                  <td><strong>{row.topic}</strong></td>
-                  <td>{row.function_head}</td>
-                  <td>{row.sub_function_lead}</td>
-                  <td>{row.sme}</td>
+              {topics.map((topic) => (
+                <tr key={topic.id}>
+                  <th scope="row">
+                    <strong>{topic.label}</strong>
+                    {topic.question !== topic.label && (
+                      <div className="hint" style={{ margin: "4px 0 0", fontWeight: 400 }}>
+                        {topic.question}
+                      </div>
+                    )}
+                  </th>
+                  {COLUMNS.map((col) => (
+                    <td key={col.seat} data-testid={`playback-cell-${col.seat}-${topic.id}`}>
+                      {cellText(bySeat[col.seat], topic.id, answersStatus, Boolean(error))}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
-
-      <div className="split" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
-        {columns.map((col) => {
-          const spec = OFFER_DESK_SEATS[col.seat];
-          const units = col.hook.session?.units ?? [];
-          return (
-            <div key={col.seat} className="card" style={{ margin: 0 }}>
-              <h3>{col.heading}</h3>
-              <p className="hint" style={{ marginTop: 0 }}>
-                {INTERVIEW_TYPE_LABELS[spec.type]}
-                {spec.standIn ? " · stand-in" : " · real sitting"}
-              </p>
-              {spec.standIn && units.length === 0 && (
-                <p style={{ fontSize: 13, margin: 0 }}>
-                  Empty on purpose. A labelled stand-in is not a captured grid. We do not fill it to look complete.
-                </p>
-              )}
-              {!spec.standIn && units.length === 0 && (
-                <>
-                  <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13 }}>
-                    {OFFER_DESK_SAMPLE_ROWS.map((r) => (
-                      <li key={r.name} style={{ marginBottom: 6 }}>
-                        <strong>{r.name}</strong>
-                        {r.time_minutes != null && <> · {r.time_minutes} min (sheet)</>}
-                        {r.pain ? <div className="hint" style={{ margin: "2px 0 0" }}>{r.pain}</div> : null}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="hint" style={{ marginTop: 8, marginBottom: 0 }}>
-                    From the sheet, not the live capture grid — sign in to open a real sitting.
-                  </p>
-                </>
-              )}
-              {units.length > 0 && (
-                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13 }}>
-                  {units.map((u) => (
-                    <li key={u.id} style={{ marginBottom: 6 }}>
-                      <strong>{u.name}</strong>
-                      {u.time_minutes != null && <> · {u.time_minutes} min (grid)</>}
-                      {u.pain ? <div className="hint" style={{ margin: "2px 0 0" }}>{u.pain}</div> : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          );
-        })}
+        <p className="hint" style={{ marginBottom: 0, marginTop: 12 }}>
+          Confirm and Correct stay on Sit close. This page does not add a second table.
+        </p>
       </div>
 
       <IoPanes
-        given="Three declared sittings. Rashmi's is real. The two above her are labelled stand-ins until recorded."
-        understood="Disagreement is expected: upstairs talks outcomes, the desk talks trackers."
-        processed="We line them up. We do not merge. We do not waive persist. Completeness is not clearance."
-        output="Talk-only picture. Next we close the sitting: goal, authority, acceptance beside their words."
+        given={given}
+        understood="Disagreement is expected: upstairs talks outcomes, the desk talks trackers. We keep each seat in its own column."
+        processed={processed}
+        output={output}
       />
 
       <p style={{ marginTop: 20 }}>
-        <Link to="/scout/offer-desk/sit-close">Close this sitting →</Link>
+        <Link to="/scout/offer-desk/sit-close" data-testid="playback-sit-close">
+          Close this sitting →
+        </Link>
       </p>
-    </>
+    </div>
   );
 }
