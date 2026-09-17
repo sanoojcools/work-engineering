@@ -1739,5 +1739,148 @@ test("guest Function leader shows pain question and This period (draft) after ty
   ).toEqual([]);
 });
 
+/** D-2. Playback from stored answers, not PLAYBACK_ROWS. Empty stays empty.
+ * Confirm/Correct is the sit-close shape. Guest 1→6 and Plan 95 / 61.8 stay
+ * in the tests above. Never mint we-spec-key. */
+
+const CANNED_PLAYBACK = [
+  "Safe offer, two-hour SLA",
+  "A desk in a chain of desks",
+  "Eleven steps, Excel at the centre",
+];
+const PLAYBACK_STORED = "The offer stalled because the UAN check sat with no backup.";
+const PLAYBACK_SO_WHAT = "Rashmi owns the UAN check.";
+const PLAYBACK_CORRECTED = "A named human owns the UAN check.";
+
+test("guest Playback is empty, not canned rows; Confirm/Correct look-only; Plan still 95 and 61.8; never writes we-spec-key", async ({
+  page,
+}) => {
+  const sittingTraffic: string[] = [];
+  page.on("request", (req) => {
+    const url = req.url();
+    const method = req.method();
+    if (url.includes("/sitting-answers")) {
+      sittingTraffic.push(`${method} ${url}`);
+    }
+  });
+
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+
+  await page.goto("/scout/offer-desk/function-leader");
+  await expect(page.getByTestId("sitting-pain")).toHaveText(PAIN_QUESTION, { timeout: 15_000 });
+  await page.getByTestId("sitting-answer").fill(SITTING_LINE);
+  await expect(page.getByTestId("this-period-draft")).toBeVisible();
+
+  await page.goto("/scout/offer-desk/playback");
+  await expect(page.getByTestId("playback")).toBeVisible();
+  await expect(page.getByText("Looking only — nothing is saved")).toBeVisible();
+  await expect(page.getByTestId("playback-table")).toBeVisible();
+  await expect(page.getByTestId("playback-cell-pain-function_head")).toHaveText("");
+  await expect(page.getByTestId("playback-cell-pain-sub_function_lead")).toHaveText("");
+  await expect(page.getByTestId("playback-cell-pain-sme")).toHaveText("");
+  await expect(page.getByTestId("playback-ask-pain")).toBeVisible();
+  await expect(page.getByTestId("playback-confirm-pain")).toHaveCount(0);
+  await expect(page.getByTestId("playback-correct-pain")).toHaveCount(0);
+  await expect(page.getByTestId("playback-guest-pain")).toContainText(/looking only/i);
+  for (const canned of CANNED_PLAYBACK) {
+    await expect(page.getByText(canned)).toHaveCount(0);
+  }
+  await expect(page.getByText(SITTING_LINE)).toHaveCount(0);
+  await expect(page.getByText(/47 days/i)).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+  expect(sittingTraffic, "guest must never GET or PUT sitting-answers").toEqual([]);
+});
+
+test("keyed Playback shows stored sitting answers, not PLAYBACK_ROWS; Plan still 95 and 61.8", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+  const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
+
+  await page.goto("/scout/offer-desk/function-leader");
+  await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
+  await expect(page.getByText(/Open sitting #/)).toBeVisible({ timeout: 20_000 });
+
+  const headers = { "X-Spec-Key": apiKey };
+  const listed = await request.get("/api/scout/sessions", { headers });
+  expect(listed.ok(), await listed.text()).toBeTruthy();
+  const items = (
+    (await listed.json()) as { items: { id: number; type: string; interviewee_name: string }[] }
+  ).items;
+  const session = items.find(
+    (s) => s.type === "function_head" && s.interviewee_name === "CHRO (stand-in)",
+  );
+  expect(session, "function_head stand-in sitting must exist after opening Function leader").toBeTruthy();
+  const put = await request.put(`/api/scout/sessions/${session!.id}/sitting-answers`, {
+    headers,
+    data: {
+      answers: [
+        { id: "pain", text: PLAYBACK_STORED },
+        { id: "so_what", text: PLAYBACK_SO_WHAT },
+        { id: "this_period", text: "" },
+        { id: "in_out", text: "" },
+        { id: "who_binds", text: "" },
+      ],
+    },
+  });
+  expect(put.ok(), await put.text()).toBeTruthy();
+
+  await page.goto("/scout/offer-desk/playback");
+  await expect(page.getByTestId("playback")).toBeVisible();
+  await expect(page.getByTestId("playback-cell-pain-function_head")).toHaveText(PLAYBACK_STORED, {
+    timeout: 20_000,
+  });
+  await expect(page.getByTestId("playback-quote-pain-function_head")).toHaveText(PLAYBACK_STORED);
+  await expect(page.getByTestId("playback-cell-so_what-function_head")).toHaveText(PLAYBACK_SO_WHAT);
+  await expect(page.getByTestId("playback-cell-pain-sub_function_lead")).toHaveText("");
+  await expect(page.getByTestId("playback-cell-pain-sme")).toHaveText("");
+  await expect(page.getByTestId("playback-confirm-pain")).toBeVisible();
+  await expect(page.getByTestId("playback-correct-pain")).toBeVisible();
+  await expect(page.getByTestId("playback-confirm-pain")).toBeDisabled();
+  await expect(page.getByTestId("playback-ask-pain")).toHaveCount(0);
+
+  await page.getByTestId("playback-confirmed-by").fill("QA Playback");
+  await expect(page.getByTestId("playback-confirm-pain")).toBeEnabled();
+  const kept = page.waitForResponse(
+    (res) => res.request().method() === "PUT" && res.url().includes("/sitting-answers"),
+  );
+  await page.getByTestId("playback-confirm-pain").click();
+  expect((await kept).ok()).toBeTruthy();
+  await expect(page.getByTestId("playback-settled-pain")).toContainText(/confirmed — QA Playback/);
+
+  await page.getByTestId("playback-line-so_what").fill(PLAYBACK_CORRECTED);
+  await expect(page.getByTestId("playback-correct-so_what")).toBeEnabled();
+  const corrected = page.waitForResponse(
+    (res) => res.request().method() === "PUT" && res.url().includes("/sitting-answers"),
+  );
+  await page.getByTestId("playback-correct-so_what").click();
+  expect((await corrected).ok()).toBeTruthy();
+  await expect(page.getByTestId("playback-settled-so_what")).toContainText(/corrected — QA Playback/);
+  await expect(page.getByTestId("playback-cell-so_what-function_head")).toContainText(PLAYBACK_CORRECTED);
+  await expect(page.locator(`[data-testid="playback-cell-so_what-function_head"] del`)).toHaveText(
+    PLAYBACK_SO_WHAT,
+  );
+
+  for (const canned of CANNED_PLAYBACK) {
+    await expect(page.getByText(canned)).toHaveCount(0);
+  }
+  await expect(page.getByText(/47 days/i)).toHaveCount(0);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+});
+
+
 
 
