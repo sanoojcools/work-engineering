@@ -14,6 +14,13 @@ construction; the model path is *verified* against it, and any span the model
 paraphrased or invented is dropped. A model can be wrong about what someone
 said — this is the check that stops that becoming a fabricated work unit.
 
+D-3 adds rules on the *model reading* (not the speaker's own words):
+- at most one `?` across suggested_name + structured fields
+- no automation-framing (`automat*`) unless that stem is already in the transcript
+- if either rule breaks: keep nothing invented (empty chunks, used_llm still true)
+A dead model still falls back to the sentence split and says so. That fallback
+is labelled. It is not a silent mock of a successful extract.
+
 The structured fields are a different matter and are labelled as such: they
 are the model's reading of the span, not quotes from it, so the interviewer
 reviews them before they become rows.
@@ -34,6 +41,7 @@ logger = logging.getLogger(__name__)
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 MIN_CHUNK_LEN = 8
 MAX_CHUNKS = 12
+_AUTOMATION_STEM = re.compile(r"automat", re.IGNORECASE)
 
 # Only fields the Work Capture Grid actually has. Anything else the model
 # returns is discarded rather than silently carried around.
@@ -68,6 +76,8 @@ paraphrase, tidy, or join across gaps. It is checked, and any element whose \
 "text" is not found verbatim is discarded.
 - Leave a field as "" (or null for time_minutes) when the transcript does not \
 say. Do not guess, and do not invent plausible-sounding detail.
+- Do not ask more than one question in the reading. Do not frame the work as \
+something to automate unless the speaker said that.
 - Return [] if the transcript describes no concrete work.
 - No prose, no markdown fences — the JSON array only."""
 
@@ -97,6 +107,35 @@ def _coerce_time(value: object) -> int | None:
     return None
 
 
+def _model_reading_text(chunks: list[dict]) -> str:
+    parts: list[str] = []
+    for chunk in chunks:
+        parts.append(str(chunk.get("suggested_name") or ""))
+        for field in GRID_FIELDS:
+            value = chunk.get(field)
+            if isinstance(value, str) and value:
+                parts.append(value)
+    return " ".join(parts)
+
+
+def apply_llm_reading_guardrails(chunks: list[dict], source: str) -> tuple[list[dict], str | None]:
+    """Refuse a model reading that asks too much or frames automation.
+
+    Speaker spans already had to be literal substrings. This checks the
+    model's own fields. On refuse: empty list + reason. Caller must not
+    substitute a sentence split.
+    """
+    reading = _model_reading_text(chunks)
+    if reading.count("?") > 1:
+        return [], "Refused: the model reading asked more than one question. Kept nothing invented."
+    if _AUTOMATION_STEM.search(reading) and not _AUTOMATION_STEM.search(source or ""):
+        return [], (
+            "Refused: the model reading framed the work as something to automate "
+            "and the speaker did not say that. Kept nothing invented."
+        )
+    return chunks, None
+
+
 def _parse_llm_chunks(body: str, source: str) -> list[dict]:
     """Parse the model's array and enforce the substring guarantee.
 
@@ -120,7 +159,6 @@ def _parse_llm_chunks(body: str, source: str) -> list[dict]:
             dropped += 1
             continue
         span = str(item.get("text", "")).strip()
-        # The whole point: verbatim or not at all.
         if not span or span not in source:
             dropped += 1
             continue
@@ -153,6 +191,13 @@ def extract_from_story(text: str) -> dict:
                 max_tokens=4096,
             )
             chunks = _parse_llm_chunks(body, source)
+            chunks, refused = apply_llm_reading_guardrails(chunks, source)
+            if refused:
+                return {
+                    "used_llm": True,
+                    "chunks": [],
+                    "note": refused + " This is not a sentence split.",
+                }
             return {
                 "used_llm": True,
                 "chunks": chunks,
@@ -164,8 +209,6 @@ def extract_from_story(text: str) -> dict:
                 ),
             }
         except llm.LLMUnavailable as exc:
-            # A model that is configured but failing must not take the panel
-            # down, and must not quietly look like the deterministic mode.
             return {
                 "used_llm": False,
                 "chunks": _deterministic_chunks(source),
@@ -192,24 +235,6 @@ DUAL_EMPLOYMENT_PHRASE = "dual employment"
 
 
 def score_delinquency(chunks: list[dict], transcript: str) -> tuple[list[dict], dict[str, int]]:
-    """V10-12 (docs/contracts/v10-12-discovery.md): discovery is a
-    *performer*, not a silent author. Deterministic, no extra model call --
-    runs on whatever chunks extract_from_story already produced (LLM or
-    deterministic path alike) and never trusts them further:
-
-    - invention: a chunk's span is not a case-insensitive substring of the
-      transcript -> +1, the chunk is dropped entirely (never returned).
-    - distortion: a structured field on a surviving chunk is non-empty and
-      is not a substring of that chunk's own span -> +1, the field is
-      blanked (the chunk itself is kept).
-    - flattery: the transcript names `dual employment` but no surviving
-      chunk's span does -> +1. This does not invent a stop row; it only
-      counts the omission (the dual-employment stop itself lives in
-      services/handoff.py and is untouched here).
-
-    omission is NOT computed here -- section 3 of the contract: a live
-    caller's transcript has no hidden "expected" list to compare against.
-    See run_golden_set() for the one place omission is honest to compute."""
     counters = {"invention": 0, "omission": 0, "distortion": 0, "flattery": 0}
     transcript_lower = (transcript or "").lower()
 
@@ -236,11 +261,6 @@ def score_delinquency(chunks: list[dict], transcript: str) -> tuple[list[dict], 
 
 
 def extract_with_delinquency(text: str) -> dict:
-    """The route's entry point (V10-12): same `extract_from_story` above,
-    plus the performer contract -- `cap` always `execute_with_approval`
-    (extracted binding fields are never auto-elevated), and the four
-    delinquency counters from `score_delinquency`. `golden` is always
-    False here; only `run_golden_set` sets it True."""
     result = extract_from_story(text)
     chunks, counters = score_delinquency(result["chunks"], text or "")
     return {
@@ -254,13 +274,6 @@ def extract_with_delinquency(text: str) -> dict:
 
 
 def run_golden_set(pack_path: str | Path) -> dict:
-    """Section 3's golden runner: Offer Desk seed, deterministic path only
-    (no live key in tests -- see tests/conftest.py's autouse `_no_live_llm`).
-    `omission` is only ever honest here, never on a live caller's
-    transcript: each `must_span` item the pack declares is checked against
-    every surviving chunk's span; a `must_span` item not found anywhere is
-    +1 omission. If the deterministic path returns no chunks at all,
-    omission is simply len(must_span) -- not a fake zero."""
     with open(pack_path, encoding="utf-8") as f:
         pack = yaml.safe_load(f)
 
