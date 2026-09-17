@@ -35,6 +35,41 @@ _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 MIN_CHUNK_LEN = 8
 MAX_CHUNKS = 12
 
+
+class GuardrailViolation(Exception):
+    """Raised when a system prompt violates extraction guardrails."""
+    pass
+
+
+def validate_system_prompt(prompt: str) -> None:
+    """Enforce extraction guardrails from Scout v1 / AODP (D-3 contract).
+
+    Rules ported into WEP code (not imported from those repos):
+    1. One `?` maximum — if the LLM asks questions, only one at a time.
+    2. No automation-framing — ban words starting with "automat".
+    3. Fail closed — already enforced in _parse_llm_chunks (span verification).
+    4. No silent mock — already enforced (deterministic fallback is explicit).
+
+    Raises GuardrailViolation if any rule is violated.
+    """
+    # Rule 1: One question mark maximum
+    question_count = prompt.count("?")
+    if question_count > 1:
+        raise GuardrailViolation(
+            f"System prompt contains {question_count} question marks; "
+            "extraction must ask one question at a time (Scout v1 rule)."
+        )
+
+    # Rule 2: No automation-framing (ban "automat*")
+    # Check case-insensitive for words starting with "automat"
+    automat_pattern = re.compile(r"\bautomat\w*", re.IGNORECASE)
+    matches = automat_pattern.findall(prompt)
+    if matches:
+        raise GuardrailViolation(
+            f"System prompt contains automation-framing words: {matches}. "
+            "Discovery extracts what was said, not what could be automated (AODP rule)."
+        )
+
 # Only fields the Work Capture Grid actually has. Anything else the model
 # returns is discarded rather than silently carried around.
 GRID_FIELDS = (
@@ -147,6 +182,9 @@ def extract_from_story(text: str) -> dict:
 
     if llm.is_enabled():
         try:
+            # D-3: Validate system prompt against guardrails before use
+            validate_system_prompt(_SYSTEM)
+
             body = llm.complete(
                 f"Transcript:\n\n{source}",
                 system=_SYSTEM,
@@ -161,6 +199,17 @@ def extract_from_story(text: str) -> dict:
                     "your transcript and any the model did not copy verbatim was discarded. "
                     "The structured fields are the model's reading of each span, not quotes — "
                     "review them before adding the rows."
+                ),
+            }
+        except GuardrailViolation as exc:
+            # Guardrail failure: fail closed, fall back to deterministic mode
+            return {
+                "used_llm": False,
+                "chunks": _deterministic_chunks(source),
+                "note": (
+                    f"System prompt failed guardrail validation ({exc}). "
+                    "Using deterministic sentence split instead — each chunk is a literal "
+                    "substring of what you said, not extracted work units."
                 ),
             }
         except llm.LLMUnavailable as exc:
