@@ -251,13 +251,25 @@ async function startKeyedCensus(page: Page): Promise<void> {
   await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
   const startedBadge = page.getByText("Census started");
   const keyedStartHint = page.getByText(/Creates a census record for this Offer/);
-  const loadingCensus = page.getByText("Loading this tenant's census…");
-  await expect(startedBadge.or(keyedStartHint).or(loadingCensus)).toBeVisible({ timeout: 15_000 });
-  await expect(loadingCensus).toHaveCount(0, { timeout: 15_000 });
+  const loadingCensus = page.getByText(/Loading this tenant's census/);
+  // GET /censuses can sit behind whoami on a cold CI box. Poll until the
+  // started badge or the keyed Start hint is on screen and the loading
+  // line is gone — loading is not a ready state.
+  await expect
+    .poll(
+      async () => {
+        if ((await loadingCensus.count()) > 0) return "loading";
+        if ((await startedBadge.count()) > 0) return "started";
+        if ((await keyedStartHint.count()) > 0) return "hint";
+        return "wait";
+      },
+      { timeout: 30_000 },
+    )
+    .toMatch(/^(started|hint)$/);
   if ((await startedBadge.count()) > 0) return;
   await expect(keyedStartHint).toBeVisible();
   await page.getByRole("button", { name: "Start census" }).evaluate((el) => (el as HTMLButtonElement).click());
-  await expect(startedBadge).toBeVisible({ timeout: 15_000 });
+  await expect(startedBadge).toBeVisible({ timeout: 30_000 });
 }
 
 test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 leaves and an external band", async ({ page }) => {
@@ -646,9 +658,9 @@ test("Spec deny without a file still denies", async ({ page, request }) => {
 
 test("keyed Evidence lists this tenant's files as connected or not", async ({ page, request }) => {
   // V10-10 catalogue walk — GET /api/evidence/catalogue, not a demo pack.
-  // 7 sequential real file uploads + a genome import comfortably exceed the
-  // suite's default 30s per-test budget.
-  test.setTimeout(60_000);
+  // 7 sequential real file uploads + a genome import + the page's catalogue
+  // GET comfortably exceed the suite's default 30s per-test budget.
+  test.setTimeout(90_000);
   await signInWithFreshDemoKey(page, request);
 
   // Real upload + real genome import -- the one path in this walk that
@@ -669,21 +681,23 @@ test("keyed Evidence lists this tenant's files as connected or not", async ({ pa
   const bannerText = await importBanner.innerText();
   expect(bannerText, bannerText).toMatch(/Accepted\.|Not accepted\./);
 
-  const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
-  const catRes = await request.get("/api/evidence/catalogue", { headers: { "X-Spec-Key": apiKey } });
-  expect(catRes.ok(), await catRes.text()).toBeTruthy();
+  const catalogueLoaded = page.waitForResponse(
+    (res) =>
+      res.request().method() === "GET" &&
+      res.ok() &&
+      res.url().includes("/evidence/catalogue"),
+    { timeout: 30_000 },
+  );
+  await page.goto("/census/evidence");
+  const catRes = await catalogueLoaded;
   const catalogue = (await catRes.json()) as {
     connected: number;
     not: number;
     items: { id: number; file_name: string; coverage: "connected" | "not" }[];
   };
 
-  await page.goto("/census/evidence");
   await expect(page.getByRole("heading", { name: "Evidence", exact: false }).first()).toBeVisible();
   await expect(page.getByTestId("evidence-catalogue")).toBeVisible();
-  await expect(
-    page.getByTestId("evidence-catalogue-empty").or(page.getByTestId("evidence-catalogue-totals")),
-  ).toBeVisible({ timeout: 20_000 });
 
   const filesTable = page.getByTestId("evidence-catalogue");
   if (catalogue.items.length === 0) {
@@ -711,7 +725,8 @@ test("keyed Evidence click shows a real XLSX cell; a broken pointer is not a fac
   // Fresh CI Postgres still shares Client A: Start census, GET /pointers,
   // and the click must all finish inside one job. Unique type + one 500
   // retry above so a prior evidence-pack import does not fail this seed.
-  test.setTimeout(90_000);
+  // startKeyedCensus may poll 30s for Start / Census started after whoami.
+  test.setTimeout(120_000);
   await signInWithFreshDemoKey(page, request);
   await startKeyedCensus(page);
   const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
@@ -1522,7 +1537,7 @@ test("keyed Document check posts finish times; sixth is the limit; Plan still 95
   page,
   request,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   await signInWithFreshDemoKey(page, request);
   const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
   const wuId = await ensureDocumentCheckUnit(request, apiKey);
@@ -1547,17 +1562,19 @@ test("keyed Document check posts finish times; sixth is the limit; Plan still 95
     const uiPost = page.waitForResponse(
       (res) =>
         res.request().method() === "POST" && res.url().includes(`/work-units/${wuId}/shadow-logs`),
+      { timeout: 20_000 },
     );
     await page.getByTestId("shadow-times-date").fill(date);
     await page.getByTestId("shadow-times-minutes").fill("25");
     await page.getByTestId("shadow-times-submit").click();
     const uiStatus = (await uiPost).status();
-    const added = page.getByTestId("shadow-times-row").filter({ hasText: date });
-    const limited = page.getByTestId("shadow-times-limit");
-    if (uiStatus === 422) {
-      await expect(limited).toBeVisible({ timeout: 15_000 });
+    if (uiStatus === 201) {
+      await expect(page.getByTestId("shadow-times-row").filter({ hasText: date })).toBeVisible({
+        timeout: 15_000,
+      });
     } else {
-      await expect(added.or(limited)).toBeVisible({ timeout: 15_000 });
+      expect(uiStatus).toBe(422);
+      await expect(page.getByTestId("shadow-times-limit")).toHaveText("five is the limit.");
     }
     count = await shadowCount();
   }
@@ -1596,6 +1613,7 @@ test("keyed Document check posts finish times; sixth is the limit; Plan still 95
     (res) =>
       res.request().method() === "POST" &&
       res.url().includes(`/work-units/${wuId}/shadow-logs`),
+    { timeout: 20_000 },
   );
   await page.getByTestId("shadow-times-submit").click();
   expect((await sixth).status()).toBe(422);
