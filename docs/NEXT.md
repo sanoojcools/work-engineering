@@ -1,37 +1,40 @@
 # NEXT — agents read this and execute their section
 
-Discovery program is unlocked. D-1 BACKEND is on `main` (#59). Do not rebuild Chart, Plan 95/61.8, or Gap buckets.
+D-1 both halves are on `main` (#59 API, #60 UI). Do not rebuild Chart, Plan 95/61.8, or Gap buckets.
 
 **Cloud factory: LOCKED.** GitHub Actions must not spend Claude credits.
 **Local paste: this file’s section is the work order.**
 
 Canon: `docs/WEP_Discovery_Proposal.md` v2. Roadmap: `docs/DISCOVERY_ROADMAP.md`.
 
+Founder accepted keyed CI 500s on the shared demo tenant when landing #60. Do not spend this slice chasing those 500s. Come back after D-2: writes must return 409/422, not 500.
+
 ---
 
 ## Claude
 
-**LOCKED.** D-1 backend shipped (#59). Do not start D-2/D-3 until Cursor D-1 UI is on main. If you are a cloud run: stop. No feature PR.
+**UNLOCKED — D-3 only.** Local paste. If you are a cloud run: stop.
+
+Port extract **rules** into this repo (one `?`, no automation-framing, span must be a literal substring, fail closed, no silent mock). Not a scout-v1 / aodp import.
+
+Branch `claude/d3-extract-guardrails` off latest `main`.
+
+Files: `backend/app/services/scout_story.py`, tests next to `test_v10_12_discovery.py` / `test_scout_story_llm.py`, one honest paragraph in `docs/HONESTY.md`. Same extract URL. Tests never call a live model. Do not touch frontend, Chart, Plan, or `handoff.py`.
+
+Ready PR → main. Do not merge. Stop. Do not start D-4/D-5.
 
 ---
 
 ## Cursor
 
-**UNLOCKED.**
+**UNLOCKED — D-2 only.**
 
-Execute `docs/contracts/d1-chro-sitting.md` **Frontend section only**.
+Playback from **stored answers**, not `PLAYBACK_ROWS`, once any real text exists. Empty stays empty. Confirm/Correct = existing sit-close shape.
 
-D-1 API is on this main: `GET`/`PUT /api/scout/sessions/{id}/sitting-answers`, `POST /api/work-systems/{id}/draft-strategy-intent`, `GET /api/packs/hr/hard-anchors`.
+Branch `cursor/d2-playback` off latest `main` (`1f5a151` or later).
 
-Branch `cursor/d1-chro-ui` off latest `main`.
+Files: `frontend/src/pages/OfferDeskPlayback.tsx`, Playwright only for Playback checks. Do not edit Function leader, Chart, Plan math, or backend.
 
-Replace `OfferDeskFunctionLeader` stand-in with pain-to-permit, one question at a time.
-Keyed: PUT sitting-answers; use as this period’s line → POST draft-strategy-intent.
-Immediately after successful POST, render returned `strategy_intent.label` on THIS page as **This period (draft)** with Edit and Confirm. Do not hide it.
-Edit → POST draft-strategy-intent again (substring or 422 on screen).
-Confirm → existing `POST /work-systems/{id}/confirm-strategy-intent`. No second confirm API.
-Guest: type only, no `we-spec-key`; still show This period (draft) from what they typed; Confirm disabled.
-Do not ask offer steps. Do not invent 47 days. Do not touch Playback, Chart 18, Plan 95/61.8.
+Guest: no `we-spec-key`. Census still 1 of 6 … 6 of 6. Plan still 95 and 61.8 as two numbers.
 
-Playwright: guest 1→6; Plan still 95 and 61.8; pain question visible; This period (draft) after typing; no key minted.
-Ready PR → main. Do not merge. Stop. Do not start D-2.
+Ready PR → main. Do not merge. Stop. Do not start Ops seat or SME dump.
