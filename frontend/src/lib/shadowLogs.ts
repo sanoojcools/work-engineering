@@ -22,7 +22,7 @@ export const NO_TIMES_YET = "No times recorded yet.";
 export const TIMES_INFO = {
   term: "Finish times",
   simple:
-    "Times someone typed in after they finished this piece of work. Self-reported. Low confidence. Not from the company system. They are never added to 95 or 61.8.",
+    "Times someone typed in after they finished this piece of work. Self-reported. Low confidence. Not from the company system. This is a shadow log, not an Observed system log. They are never added to 95 or 61.8.",
   technical:
     "GET/POST /api/work-units/{id}/shadow-logs and GET /api/work-units/{id}/shadow-summary. label=self_reported, confidence=low, cap 5 (6th is 422). Not Observed system logs. Guest never calls these.",
 } as const;

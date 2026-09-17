@@ -50,12 +50,18 @@ export function FacilitatorStrip({ sessionId }: { sessionId: number | null }) {
         />
       </h3>
       <div className="stack" style={{ gap: 12 }}>
-        {data.map((q) => (
-          <div key={`${q.piece_code}-${q.field}-${q.pack_id}`} data-testid="facilitator-ask">
+        {data.map((q, i) => (
+          <div
+            key={`${q.piece_code}-${q.field}-${q.pack_id}`}
+            data-testid={i === 0 ? "facilitator-ask" : `facilitator-ask-${q.piece_code}-${q.field}`}
+          >
             <div className="hint" style={{ marginTop: 0, fontWeight: 700 }}>
               {ASK_THIS_EXACT}
             </div>
-            <p style={{ fontSize: 15, fontWeight: 600, margin: "4px 0 0" }} data-testid="facilitator-question">
+            <p
+              style={{ fontSize: 15, fontWeight: 600, margin: "4px 0 0" }}
+              data-testid={i === 0 ? "facilitator-question" : `facilitator-question-${q.piece_code}-${q.field}`}
+            >
               {q.text}
             </p>
           </div>

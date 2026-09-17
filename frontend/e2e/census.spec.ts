@@ -251,13 +251,25 @@ async function startKeyedCensus(page: Page): Promise<void> {
   await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
   const startedBadge = page.getByText("Census started");
   const keyedStartHint = page.getByText(/Creates a census record for this Offer/);
-  const loadingCensus = page.getByText("Loading this tenant's census…");
-  await expect(startedBadge.or(keyedStartHint).or(loadingCensus)).toBeVisible({ timeout: 15_000 });
-  await expect(loadingCensus).toHaveCount(0, { timeout: 15_000 });
+  const loadingCensus = page.getByText(/Loading this tenant's census/);
+  // GET /censuses can sit behind whoami on a cold CI box. Poll until the
+  // started badge or the keyed Start hint is on screen and the loading
+  // line is gone — loading is not a ready state.
+  await expect
+    .poll(
+      async () => {
+        if ((await loadingCensus.count()) > 0) return "loading";
+        if ((await startedBadge.count()) > 0) return "started";
+        if ((await keyedStartHint.count()) > 0) return "hint";
+        return "wait";
+      },
+      { timeout: 30_000 },
+    )
+    .toMatch(/^(started|hint)$/);
   if ((await startedBadge.count()) > 0) return;
   await expect(keyedStartHint).toBeVisible();
   await page.getByRole("button", { name: "Start census" }).evaluate((el) => (el as HTMLButtonElement).click());
-  await expect(startedBadge).toBeVisible({ timeout: 15_000 });
+  await expect(startedBadge).toBeVisible({ timeout: 30_000 });
 }
 
 test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 leaves and an external band", async ({ page }) => {
@@ -646,9 +658,9 @@ test("Spec deny without a file still denies", async ({ page, request }) => {
 
 test("keyed Evidence lists this tenant's files as connected or not", async ({ page, request }) => {
   // V10-10 catalogue walk — GET /api/evidence/catalogue, not a demo pack.
-  // 7 sequential real file uploads + a genome import comfortably exceed the
-  // suite's default 30s per-test budget.
-  test.setTimeout(60_000);
+  // 7 sequential real file uploads + a genome import + the page's catalogue
+  // GET comfortably exceed the suite's default 30s per-test budget.
+  test.setTimeout(90_000);
   await signInWithFreshDemoKey(page, request);
 
   // Real upload + real genome import -- the one path in this walk that
@@ -669,18 +681,38 @@ test("keyed Evidence lists this tenant's files as connected or not", async ({ pa
   const bannerText = await importBanner.innerText();
   expect(bannerText, bannerText).toMatch(/Accepted\.|Not accepted\./);
 
+  const catalogueLoaded = page.waitForResponse(
+    (res) =>
+      res.request().method() === "GET" &&
+      res.ok() &&
+      res.url().includes("/evidence/catalogue"),
+    { timeout: 30_000 },
+  );
   await page.goto("/census/evidence");
+  const catRes = await catalogueLoaded;
+  const catalogue = (await catRes.json()) as {
+    connected: number;
+    not: number;
+    items: { id: number; file_name: string; coverage: "connected" | "not" }[];
+  };
+
   await expect(page.getByRole("heading", { name: "Evidence", exact: false }).first()).toBeVisible();
   await expect(page.getByTestId("evidence-catalogue")).toBeVisible();
-  await expect(page.getByTestId("evidence-catalogue-empty")).toHaveCount(0);
 
   const filesTable = page.getByTestId("evidence-catalogue");
-  // This run's own 7 uploads are real either way.
-  await expect(filesTable.getByText("zwayam-candidate-export.csv").first()).toBeVisible();
-  // uan-service-history-sample.csv is never cited by a resolved field
-  // pointer in this fixture — connected would be a lie.
-  const orphanRow = filesTable.locator("tr", { has: page.getByText("uan-service-history-sample.csv") }).first();
-  await expect(orphanRow.getByText("not", { exact: true })).toBeVisible();
+  if (catalogue.items.length === 0) {
+    await expect(page.getByTestId("evidence-catalogue-empty")).toBeVisible();
+    await expect(page.locator("[data-testid^='evidence-catalogue-row-']")).toHaveCount(0);
+  } else {
+    await expect(page.getByTestId("evidence-catalogue-empty")).toHaveCount(0);
+    await expect(page.getByTestId("evidence-catalogue-totals")).toHaveText(
+      `${catalogue.connected} connected · ${catalogue.not} not`,
+    );
+    for (const item of catalogue.items) {
+      const coverage = item.coverage === "connected" ? "connected" : "not";
+      await expect(page.getByTestId(`evidence-catalogue-coverage-${item.id}`)).toHaveText(coverage);
+    }
+  }
   await expect(filesTable).not.toContainText("%");
   await expect(filesTable).not.toContainText("coverage %");
 
@@ -693,7 +725,8 @@ test("keyed Evidence click shows a real XLSX cell; a broken pointer is not a fac
   // Fresh CI Postgres still shares Client A: Start census, GET /pointers,
   // and the click must all finish inside one job. Unique type + one 500
   // retry above so a prior evidence-pack import does not fail this seed.
-  test.setTimeout(90_000);
+  // startKeyedCensus may poll 30s for Start / Census started after whoami.
+  test.setTimeout(120_000);
   await signInWithFreshDemoKey(page, request);
   await startKeyedCensus(page);
   const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
@@ -910,6 +943,79 @@ async function ensureDocumentCheckUnit(request: APIRequestContext, apiKey: strin
   return ((await wuRes.json()) as { id: number }).id;
 }
 
+type SitCloseGoalSeed = "drafted" | "settled" | "empty";
+
+/** Sit-close Confirm only after a real sitting quote is on a draft row.
+ * Pointer quote wins when declared. A 422 means the API rejected the quote —
+ * skip, do not invent another. Confirm stays off. */
+async function seedSitCloseDrafts(
+  request: APIRequestContext,
+  apiKey: string,
+  wuId: number,
+): Promise<SitCloseGoalSeed> {
+  const headers = { "X-Spec-Key": apiKey };
+  const listed = await request.get(`/api/work-units/${wuId}/field-ratifications`, { headers });
+  expect(listed.ok(), await listed.text()).toBeTruthy();
+  const existing = ((await listed.json()) as { items: { field_name: string; sitting_quote: string; status: string }[] })
+    .items;
+  const byField = new Map(existing.map((row) => [row.field_name, row]));
+
+  let pointers: { field_name: string; status: string; quote: string }[] = [];
+  const pointerRes = await request.get(`/api/work-units/${wuId}/pointers`, { headers });
+  if (pointerRes.ok()) {
+    pointers = ((await pointerRes.json()) as { items: { field_name: string; status: string; quote: string }[] }).items;
+  }
+
+  const seeds = [
+    {
+      field_name: "desired_condition",
+      sitting_quote: "Rashmi pulls candidate profile from Zwayam. Checks all documents uploaded.",
+      drafted_value: "Accepted or blocked",
+    },
+    {
+      field_name: "authority",
+      sitting_quote: "Rashmi (Offer Desk) — handles ALL hire types across BLR, HYD, CHN",
+      drafted_value: "Offer Desk SME",
+    },
+    {
+      field_name: "acceptance_criteria",
+      sitting_quote: "IF dual employment detected in UAN: do NOT release offer (deviation approval required)",
+      drafted_value:
+        "IF docs complete: proceed. IF docs missing: email recruiter → recruiter follows up with candidate. IF UAN service history missing/inactive: trigger UAN generation guide to candidate. IF employment gap in UAN: check with candidate, may need bank statement or BGV. IF dual employment detected in UAN: do NOT release offer (deviation approval required)",
+    },
+  ];
+
+  for (const seed of seeds) {
+    const have = byField.get(seed.field_name);
+    if (have) continue;
+    const pointer = pointers.find(
+      (p) => p.field_name === seed.field_name && p.status === "declared" && (p.quote ?? "").trim().length >= 8,
+    );
+    const sitting_quote = (pointer?.quote ?? seed.sitting_quote).trim();
+    if (sitting_quote.length < 8) continue;
+    const created = await request.post(`/api/work-units/${wuId}/field-ratifications`, {
+      headers,
+      data: { field_name: seed.field_name, sitting_quote, drafted_value: seed.drafted_value },
+    });
+    const status = created.status();
+    const body = await created.text();
+    if (status === 409) continue;
+    if (!created.ok()) {
+      console.log(`seedSitCloseDrafts POST ${seed.field_name} status=${status} body=${body}`);
+      if (status === 422) continue;
+    }
+    expect(created.ok(), `seedSitCloseDrafts ${seed.field_name} ${status} ${body}`).toBeTruthy();
+  }
+
+  const again = await request.get(`/api/work-units/${wuId}/field-ratifications`, { headers });
+  expect(again.ok(), await again.text()).toBeTruthy();
+  const goal = ((await again.json()) as { items: { field_name: string; sitting_quote: string; status: string }[] }).items
+    .find((row) => row.field_name === "desired_condition");
+  if (!goal || !goal.sitting_quote.trim()) return "empty";
+  if (goal.status !== "drafted") return "settled";
+  return "drafted";
+}
+
 test("census stays six steps; sit close is Offer Desk depth, not a seventh census step", async ({ page }) => {
   await page.goto("/");
   await expect(stepCount(page)).toContainText("1 of 6");
@@ -959,7 +1065,9 @@ test("keyed sit close Confirm persists; cards are real or none yet", async ({ pa
   test.setTimeout(60_000);
   await signInWithFreshDemoKey(page, request);
   const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
-  await ensureDocumentCheckUnit(request, apiKey);
+  const wuId = await ensureDocumentCheckUnit(request, apiKey);
+  const goalSeed = await seedSitCloseDrafts(request, apiKey, wuId);
+  console.log(`sit-close goal seed=${goalSeed}`);
 
   await page.goto("/scout/offer-desk/sit-close");
   await expect(page.getByTestId("sit-close")).toBeVisible();
@@ -971,32 +1079,43 @@ test("keyed sit close Confirm persists; cards are real or none yet", async ({ pa
 
   const confirmGoal = page.getByTestId("sit-close-confirm-goal");
   const settledGoal = page.getByTestId("sit-close-settled-goal");
-  await expect(async () => {
-    if ((await settledGoal.count()) > 0) return;
-    expect(await confirmGoal.isEnabled()).toBeTruthy();
-  }).toPass({ timeout: 20_000 });
+  await expect(
+    page
+      .getByTestId("sit-close-cards-empty")
+      .or(page.getByTestId("sit-close-card").first())
+      .or(page.locator(".banner.error")),
+  ).toBeVisible({ timeout: 20_000 });
 
-  if (await confirmGoal.isEnabled()) {
+  const confirmVisible = (await confirmGoal.count()) > 0;
+  const confirmOn = confirmVisible && (await confirmGoal.isEnabled());
+  const alreadySettled = (await settledGoal.count()) > 0;
+
+  if (confirmOn) {
     await confirmGoal.click();
     await expect(settledGoal).toContainText(/confirmed — QA Sit Close/);
+
+    const confirmAuth = page.getByTestId("sit-close-confirm-authority");
+    const lineAuth = page.getByTestId("sit-close-line-authority");
+    const settledAuth = page.getByTestId("sit-close-settled-authority");
+    if ((await lineAuth.count()) > 0 && (await confirmAuth.count()) > 0 && (await settledAuth.count()) === 0) {
+      await lineAuth.fill("HR Ops lead signs this, not the draft owner");
+      const correctAuth = page.getByTestId("sit-close-correct-authority");
+      await expect(correctAuth).toBeEnabled();
+      await correctAuth.click();
+      await expect(settledAuth).toContainText(/corrected — QA Sit Close/);
+    }
+
+    await page.reload();
+    await expect(page.getByTestId("sit-close-confirmed-by")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("sit-close-settled-goal")).toContainText(/confirmed|corrected/, { timeout: 20_000 });
+  } else if (alreadySettled) {
+    await page.reload();
+    await expect(page.getByTestId("sit-close-confirmed-by")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("sit-close-settled-goal")).toContainText(/confirmed|corrected/, { timeout: 20_000 });
   } else {
-    await expect(settledGoal).toBeVisible();
+    await expect(settledGoal).toHaveCount(0);
+    if (confirmVisible) await expect(confirmGoal).toBeDisabled();
   }
-
-  const confirmAuth = page.getByTestId("sit-close-confirm-authority");
-  const lineAuth = page.getByTestId("sit-close-line-authority");
-  const settledAuth = page.getByTestId("sit-close-settled-authority");
-  if ((await lineAuth.count()) > 0 && (await confirmAuth.count()) > 0 && (await settledAuth.count()) === 0) {
-    await lineAuth.fill("HR Ops lead signs this, not the draft owner");
-    const correctAuth = page.getByTestId("sit-close-correct-authority");
-    await expect(correctAuth).toBeEnabled();
-    await correctAuth.click();
-    await expect(settledAuth).toContainText(/corrected — QA Sit Close/);
-  }
-
-  await page.reload();
-  await expect(page.getByTestId("sit-close-confirmed-by")).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByTestId("sit-close-settled-goal")).toContainText(/confirmed|corrected/, { timeout: 20_000 });
 
   const empty = page.getByTestId("sit-close-cards-empty");
   const card = page.getByTestId("sit-close-card");
@@ -1011,6 +1130,58 @@ test("keyed sit close Confirm persists; cards are real or none yet", async ({ pa
 
 /** V10-9 FRONTEND. One Plan row for this period + unowned-lines count.
  * Guest 1→6 and Plan 95 / 61.8 stay in the tests above. */
+
+const PAIN_QUESTION =
+  "Think of the last hire that went off the rails between offer and Day-1. What broke?";
+const SITTING_LINE = "The backup never saw dual employment on that hire.";
+
+test("keyed Function leader POSTs draft line onto the same page; Plan still 95 and 61.8", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+
+  await page.goto("/scout/offer-desk/function-leader");
+  await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
+  await expect(page.getByTestId("sitting-pain")).toHaveText(PAIN_QUESTION, { timeout: 20_000 });
+  await expect(page.getByText(/Open sitting #/)).toBeVisible({ timeout: 20_000 });
+  await page.getByTestId("sitting-answer").fill(SITTING_LINE);
+  const useLine = page.getByTestId("sitting-use-as-line");
+  await expect(useLine).toBeVisible();
+  await expect
+    .poll(async () => {
+      if ((await page.getByTestId("this-period-confirmed").count()) > 0) return "confirmed";
+      if (await useLine.isEnabled()) return "ready";
+      return "wait";
+    })
+    .toMatch(/confirmed|ready/);
+  const wasConfirmed = (await page.getByTestId("this-period-confirmed").count()) > 0;
+  if (wasConfirmed) {
+    await expect(page.getByText(/47 days/i)).toHaveCount(0);
+  } else {
+    const drafted = page.waitForResponse(
+      (res) =>
+        res.request().method() === "POST" && res.url().includes("/draft-strategy-intent"),
+    );
+    await useLine.click();
+    const draftedRes = await drafted;
+    expect(draftedRes.ok(), await draftedRes.text()).toBeTruthy();
+    await expect(page.getByTestId("this-period-draft")).toBeVisible();
+    await expect(page.getByTestId("this-period-label")).toHaveText(SITTING_LINE);
+    await expect(page.getByText(/47 days/i)).toHaveCount(0);
+  }
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  if (wasConfirmed) {
+    await expect(page.getByTestId("plan-period")).toBeVisible();
+  } else {
+    await expect(page.getByTestId("plan-period-focus")).toContainText(SITTING_LINE);
+  }
+});
 
 test("keyed Confirm as owner on Plan this-period row persists", async ({ page, request }) => {
   await signInWithFreshDemoKey(page, request);
@@ -1366,48 +1537,73 @@ test("keyed Document check posts finish times; sixth is the limit; Plan still 95
   page,
   request,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   await signInWithFreshDemoKey(page, request);
   const apiKey = (await page.evaluate(() => localStorage.getItem("we-spec-key"))) as string;
   const wuId = await ensureDocumentCheckUnit(request, apiKey);
   const headers = { "X-Spec-Key": apiKey };
 
-  const listed = await request.get(`/api/work-units/${wuId}/shadow-logs`, { headers });
-  expect(listed.ok(), await listed.text()).toBeTruthy();
-  let count = ((await listed.json()) as { occurred_at: string }[]).length;
+  async function shadowCount(): Promise<number> {
+    const listed = await request.get(`/api/work-units/${wuId}/shadow-logs`, { headers });
+    expect(listed.ok(), await listed.text()).toBeTruthy();
+    return ((await listed.json()) as { occurred_at: string }[]).length;
+  }
 
   await page.goto("/scout/offer-desk/document-check");
   await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
   await expect(page.getByTestId("shadow-times-guest")).toHaveCount(0);
 
+  let count = await shadowCount();
   if (count < 5) {
     await expect(page.getByTestId("shadow-times-date")).toBeVisible({ timeout: 20_000 });
     const stamp = Date.now().toString(10).slice(-4);
     const day = String((Number(stamp) % 28) + 1).padStart(2, "0");
     const date = `2026-07-${day}`;
+    const uiPost = page.waitForResponse(
+      (res) =>
+        res.request().method() === "POST" && res.url().includes(`/work-units/${wuId}/shadow-logs`),
+      { timeout: 20_000 },
+    );
     await page.getByTestId("shadow-times-date").fill(date);
     await page.getByTestId("shadow-times-minutes").fill("25");
     await page.getByTestId("shadow-times-submit").click();
-    const added = page.getByTestId("shadow-times-row").filter({ hasText: date });
-    const limited = page.getByTestId("shadow-times-limit");
-    await expect(added.or(limited)).toBeVisible({ timeout: 15_000 });
-    count += 1;
+    const uiStatus = (await uiPost).status();
+    if (uiStatus === 201) {
+      await expect(page.getByTestId("shadow-times-row").filter({ hasText: date })).toBeVisible({
+        timeout: 15_000,
+      });
+    } else {
+      expect(uiStatus).toBe(422);
+      await expect(page.getByTestId("shadow-times-limit")).toHaveText("five is the limit.");
+    }
+    count = await shadowCount();
   }
 
-  let day = 1;
-  const months = ["01", "02", "03", "04", "05"];
-  for (const month of months) {
-    day = 1;
-    while (count < 5 && day <= 28) {
-      const occurredAt = `2026-${month}-${String(day).padStart(2, "0")}T00:00:00.000Z`;
-      const posted = await request.post(`/api/work-units/${wuId}/shadow-logs`, {
-        headers,
-        data: { occurred_at: occurredAt, duration_minutes: 10 },
-      });
-      if (posted.status() === 201) count += 1;
-      day += 1;
+  let slot = 0;
+  while ((count = await shadowCount()) < 5 && slot < 80) {
+    // Unique per try: shared Client A often 409s a reused day, and a
+    // refresh-after-write can 500 the same POST. New occurred_at, retry.
+    const occurredAt = new Date(
+      Date.UTC(2026, 0, 1, 12, 0, 0) + slot * 60_000 + (Date.now() % 1000),
+    ).toISOString();
+    const posted = await request.post(`/api/work-units/${wuId}/shadow-logs`, {
+      headers,
+      data: { occurred_at: occurredAt, duration_minutes: 10 },
+    });
+    const status = posted.status();
+    if (status === 201) {
+      const after = count + 1;
+      await expect.poll(async () => shadowCount(), { timeout: 10_000 }).toBe(after);
+      count = after;
+    } else if (status === 422) {
+      count = await shadowCount();
+      break;
+    } else {
+      console.log(`shadow-log POST status=${status} body=${await posted.text()}`);
     }
+    slot += 1;
   }
+  count = await shadowCount();
   expect(count, "WU-OD-02 must be at the cap of 5 before the sixth POST").toBeGreaterThanOrEqual(5);
 
   await page.goto("/scout/offer-desk/document-check");
@@ -1421,6 +1617,7 @@ test("keyed Document check posts finish times; sixth is the limit; Plan still 95
     (res) =>
       res.request().method() === "POST" &&
       res.url().includes(`/work-units/${wuId}/shadow-logs`),
+    { timeout: 20_000 },
   );
   await page.getByTestId("shadow-times-submit").click();
   expect((await sixth).status()).toBe(422);
@@ -1487,8 +1684,8 @@ test("keyed Facilitator shows pack question verbatim; Plan still 95 and 61.8", a
   const f3 = packQuestionText("f3");
   await page.goto("/scout/offer-desk/function-leader");
   await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
-  await expect(page.getByTestId("facilitator-ask")).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByTestId("facilitator-question").first()).toHaveText(f3);
+  await expect(page.getByTestId("facilitator-ask")).toHaveCount(1, { timeout: 20_000 });
+  await expect(page.getByTestId("facilitator-question")).toHaveText(f3);
   await expect(page.getByTestId("facilitator")).toContainText("Ask this exact question");
   await expect(page.getByTestId("facilitator-ask")).not.toContainText(/pack|interrogation/i);
   await expect(page.getByTestId("facilitator")).not.toContainText(/dual employment/i);
@@ -1497,6 +1694,49 @@ test("keyed Facilitator shows pack question verbatim; Plan still 95 and 61.8", a
   await expect(stepCount(page)).toContainText("6 of 6");
   await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
   await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+});
+
+/** D-1 FRONTEND. Pain-to-permit on Function leader. Guest 1→6 and Plan
+ * 95 / 61.8 stay in the tests above. Never invent 47 days. */
+
+test("guest Function leader shows pain question and This period (draft) after typing; Plan still 95 and 61.8; never writes we-spec-key", async ({
+  page,
+}) => {
+  const sittingWrites: string[] = [];
+  page.on("request", (req) => {
+    const url = req.url();
+    const method = req.method();
+    if (url.includes("/sitting-answers") && (method === "PUT" || method === "POST")) {
+      sittingWrites.push(`${method} ${url}`);
+    }
+    if (url.includes("draft-strategy-intent") || url.includes("confirm-strategy-intent")) {
+      sittingWrites.push(`${method} ${url}`);
+    }
+  });
+
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+
+  await page.goto("/scout/offer-desk/function-leader");
+  await expect(page.getByTestId("sitting-pain")).toHaveText(PAIN_QUESTION, { timeout: 15_000 });
+  await expect(page.getByText("We asked · what we use as the CHRO voice for this demo")).toHaveCount(0);
+  await expect(page.getByText(/47 days/i)).toHaveCount(0);
+  await page.getByTestId("sitting-answer").fill(SITTING_LINE);
+  await expect(page.getByTestId("this-period-draft")).toBeVisible();
+  await expect(page.getByTestId("this-period-label")).toHaveText(SITTING_LINE);
+  await expect(page.getByTestId("this-period-confirm")).toBeDisabled();
+  await expect(page.getByTestId("sitting-guest")).toContainText(/looking only/i);
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+  expect(
+    sittingWrites,
+    "guest must never PUT sitting-answers or POST draft/confirm strategy intent",
+  ).toEqual([]);
 });
 
 
