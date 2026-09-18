@@ -9,6 +9,14 @@ import { SeatStepper } from "../components/offerDesk/SeatStepper";
 import { useCompany } from "../company";
 import { NeedsApiKeyError } from "../lib/apiFetch";
 import { useIsGuest } from "../lib/guestMode";
+import {
+  OPS_ANSWER_IDS,
+  OPS_QUESTION_COPY,
+  OPS_TOPIC_LABELS,
+  SAMPLE_FIELD_LABEL,
+  sampleTextFor,
+  useDemoSampleOn,
+} from "../lib/demoSampleSeats";
 import type { OfferDeskSeatKey } from "../lib/offerDeskSeats";
 import {
   CORE_ANSWER_IDS,
@@ -35,16 +43,27 @@ const COLUMNS: { seat: OfferDeskSeatKey; heading: string }[] = [
   { seat: "sme", heading: "Rashmi" },
 ];
 
-function cellText(
+function storedCell(answers: SittingAnswer[], id: string): string {
+  return answers.find((row) => row.id === id)?.text.trim() ?? "";
+}
+
+function cellDisplay(
   answers: SittingAnswer[],
+  seat: OfferDeskSeatKey,
   id: string,
   answersStatus: "pending" | "loading" | "ready" | "error",
   hasError: boolean,
-): string {
-  if (answersStatus === "error" || hasError) return "Could not load this walk.";
-  if (answersStatus !== "ready") return "Opening this walk…";
-  const text = answers.find((row) => row.id === id)?.text.trim() ?? "";
-  return text || NONE_YET;
+  sampleOn: boolean,
+): { text: string; sample: boolean } {
+  if (answersStatus === "error" || hasError) return { text: "Could not load this walk.", sample: false };
+  if (answersStatus !== "ready") return { text: "Opening this walk…", sample: false };
+  const stored = storedCell(answers, id);
+  if (stored) return { text: stored, sample: false };
+  if (sampleOn) {
+    const sample = sampleTextFor(seat, id);
+    if (sample) return { text: sample, sample: true };
+  }
+  return { text: NONE_YET, sample: false };
 }
 
 function storedAnswerList(answers: SittingAnswer[]): SittingAnswer[] {
@@ -57,6 +76,7 @@ export default function OfferDeskPlayback() {
   const rashmi = useOfferDeskSeat("sme");
   const isGuest = useIsGuest();
   const { firstLoadPending } = useCompany();
+  const sampleOn = useDemoSampleOn();
   const guestSettled = isGuest && !firstLoadPending;
   const hooks = {
     function_head: chro,
@@ -124,27 +144,46 @@ export default function OfferDeskPlayback() {
   };
 
   const stored = storedAnswerList(chroAnswers);
-  const settledEmpty = answersStatus === "ready" && stored.length === 0 && !error;
+  const sampleOnly = sampleOn && stored.length === 0 && !error && answersStatus === "ready";
+  const settledEmpty = answersStatus === "ready" && stored.length === 0 && !sampleOn && !error;
   const anchorTopics = [
     ...new Set(stored.filter((row) => row.id.startsWith("anchor:")).map((row) => row.id)),
   ].map((id) => ({
     id,
     label: id.slice("anchor:".length).replace(/_/g, " "),
   }));
+  const opsTopics = sampleOn
+    ? OPS_ANSWER_IDS.map((id) => ({
+        id,
+        label: OPS_TOPIC_LABELS[id],
+        question: OPS_QUESTION_COPY[id],
+      }))
+    : [];
   const topics = [
     ...CORE_ANSWER_IDS.map((id) => ({ id, label: TOPIC_LABELS[id], question: QUESTION_COPY[id] })),
+    ...opsTopics,
     ...anchorTopics.map((row) => ({ id: row.id, label: row.label, question: row.label })),
   ];
 
   const given = stored.length
     ? stored.map((row) => row.text.trim()).join(" ")
-    : settledEmpty
-      ? "Nothing stored in this walk yet."
-      : "Opening this walk…";
-  const output = settledEmpty ? NONE_YET : stored.length ? stored.map((row) => row.text.trim()).join(" ") : "Opening this walk…";
+    : sampleOnly
+      ? "Sample from Rashmi's sitting. Not a named leader."
+      : settledEmpty
+        ? "Nothing stored in this walk yet."
+        : "Opening this walk…";
+  const output = settledEmpty
+    ? NONE_YET
+    : stored.length
+      ? stored.map((row) => row.text.trim()).join(" ")
+      : sampleOnly
+        ? "Sample — not a named sitting."
+        : "Opening this walk…";
   const processed = guestSettled
     ? "Looking only. This page does not save. Confirm and Correct stay on Sit close."
-    : "We show the sentences this walk stored. Empty cells stay empty. We do not fill them from a canned row.";
+    : sampleOnly
+      ? "Only sample is on the glass. We did not PUT it as a named sitting."
+      : "We show the sentences this walk stored. Empty cells stay empty. We do not fill them from a canned row.";
 
   return (
     <div data-testid="playback">
@@ -184,6 +223,11 @@ export default function OfferDeskPlayback() {
       {settledEmpty && (
         <p style={{ fontSize: 15, margin: "0 0 16px" }} data-testid="playback-empty">
           {NONE_YET}
+        </p>
+      )}
+      {sampleOnly && (
+        <p className="hint" style={{ margin: "0 0 16px" }} data-testid="playback-sample-only">
+          {SAMPLE_FIELD_LABEL}
         </p>
       )}
       {(answersStatus === "pending" || answersStatus === "loading") && (
@@ -235,11 +279,26 @@ export default function OfferDeskPlayback() {
                       </div>
                     )}
                   </th>
-                  {COLUMNS.map((col) => (
-                    <td key={col.seat} data-testid={`playback-cell-${col.seat}-${topic.id}`}>
-                      {cellText(bySeat[col.seat], topic.id, answersStatus, Boolean(error))}
-                    </td>
-                  ))}
+                  {COLUMNS.map((col) => {
+                    const cell = cellDisplay(
+                      bySeat[col.seat],
+                      col.seat,
+                      topic.id,
+                      answersStatus,
+                      Boolean(error),
+                      sampleOn,
+                    );
+                    return (
+                      <td key={col.seat} data-testid={`playback-cell-${col.seat}-${topic.id}`}>
+                        {cell.text}
+                        {cell.sample && (
+                          <div className="hint" style={{ margin: "4px 0 0" }} data-testid={`playback-sample-${col.seat}-${topic.id}`}>
+                            {SAMPLE_FIELD_LABEL}
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
