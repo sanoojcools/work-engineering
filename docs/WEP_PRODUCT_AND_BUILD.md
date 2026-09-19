@@ -1,127 +1,70 @@
 # Work Engineering — Product view and build paper
 
-**Status:** Battle-test draft v2 — first critique absorbed. Not a Cursor ticket. Not canon until the founder locks it.  
-**Date:** 18 Sep 2026  
-**Governs on conflict:** live `main` + `docs/HONESTY.md` + `docs/WEP_Discovery_Proposal.md` v2.  
+**Status:** LONG FORM v2 — not a stub. Battle-test draft. Not a Cursor ticket. Not canon until the founder locks it.
+**Date:** 18 Sep 2026
+**Governs on conflict:** live `main` + `docs/HONESTY.md` + `docs/WEP_Discovery_Proposal.md` v2.
 **Wedge:** HR Offer Desk (Offer → Day-1). One product.
 
-**How to battle-test**  
-Read this whole file. Attack §12. Do not praise. Do not invent a seventh census step, a scrape, or 47 days.
+Reviewers: this file is the long addendum. Deliver A–E. Do not stop for artifacts/.
 
----
+## 0. Job
+Specification layer. Sit three altitudes, bind only what a helper needs a permit for, refuse what we cannot defend.
 
-## 0. Job of the product
+Quality stack: sitting → process understanding → genome (objects changing condition) → journey canvas → hours we defend / stops that do not lift / spec that denies without a file.
+We do not wait for persist or a library. Draw what we know. Leave the rest grey.
 
-Work Engineering is the specification layer between enterprise intent and execution. It does **not** run the work.
+## 0.1 Critique absorbed
+- Enum is `sub_function_lead`, not `ops`.
+- Seed “cut offer-to-Day-1…” is a stain: **delete** from ENSURE_BODY; do not hide. Download must not print it.
+- Predict systems only from this tenant’s tags.
+- No new specification score. Node fill = bind-eligible / not / grey. `predicted` is a guess; do not paint it.
+- Edges only if Rashmi’s sheet (or a sitting) names the movement.
+- No URL fetch. Files they upload only.
+- S2 names `offerDeskSeats.ts` and `intent.ts` together.
+- Layout: x = `hire_leaves.yaml` **step**, lane = **band** (not parent; parent is collinear). Hand-rolled SVG. No reactflow.
+- Designed empty rooms before persist. Canvas: Desk live, CHRO/Ops grey.
+- 95 / 61.8 stay on THIS desk. New tenant: two labelled empties.
 
-**One sentence:** We sit three altitudes on one journey, bind only what a helper would need a permit for, and refuse what we cannot defend.
+## 1. Feel
+Minute 3: their sentence or **none yet**. Minute 8: readable journey, lock, split, grey. Minute 12 on this desk: 95 and 61.8. Spec closed without a file.
+New tenant afternoon: mostly grey canvas, spec refuses. Honest. Colleague demo uses Rashmi’s sheet stamped sample.
 
-**Quality stack (ambition — not a claim that all five arrows exist as code today)**
-
-```
-High-quality sitting
-        ↓
-High-quality understanding of their process
-        ↓
-High-quality genome (objects changing condition)
-        ↓
-High-quality work graph (journey you can read)
-        ↓
-Hours we will defend · stops that do not lift · spec that denies without a file
-```
-
-If discovery is a form, the genome is a spreadsheet and the graph is a poster. That is today’s gap. The law is ahead of the room. **We do not close the gap by waiting for more storage.** We close it by sitting, drawing what we know, and leaving the rest grey.
-
----
-
-## 0.1 What we took from the first critique — and what we refused
-
-Claude’s 18 Sep review of v1 was run against `main` at `6b10f08`. Integrity hits stand. Ambition delays do not.
-
-| Critique | Call |
-|---|---|
-| Enum is `sub_function_lead`, not `ops` | **Accept.** Rewrite. |
-| Seeded “cut offer-to-Day-1…” is on the row before anyone types | **Accept.** Raise: demo path shows **none yet** until they type. Seed is a stain, not a feature. |
-| Zwayam list on an empty tenant is prefill | **Accept.** Predict only from **this tenant’s** tags. Empty tenant = open question. |
-| Density / weight as a new number is 72% in a coat | **Accept kill.** Encode the **existing five statuses**. No new score. |
-| Edge labels have no table | **Restrict.** Only movements named on Rashmi’s sheet (or a later sitting). No invented “packet.” |
-| Pasted URL is a crawl with a click | **Kill.** Files they upload only. Never fetch a URL. |
-| Killing stand-in rows can crash `intent.ts` | **Accept.** S2/S4 name `offerDeskSeats.ts` **and** `intent.ts` together. |
-| No layout library on `package.json` | **Refuse delay.** Layout is already in the pack: `x = step`, lane = `parent` in `hire_leaves.yaml`. Hand-rolled SVG. S3 does not add reactflow. |
-| Wait for S5 before drawing rooms or layers | **Refuse.** Designed empty is the product. Canvas ships with Desk live, CHRO/Ops **grey**. That is Atlan partial — not theatre. |
-| Minute 12 hours are Rashmi-hardcoded | **Exception, not kill.** On **this wedge** Plan keeps 95 / 61.8 as two numbers. On a tenant with no Offer Desk hours: two labelled empties. Never invent a third number. |
-| Paper scores are unsourced percents | **Relabel.** Founder estimates. Not telemetry. |
-
----
-
-## 1. What a customer should feel
-
-A function leader should feel they sat with a partner who got **this desk**, then open a picture of Offer → Day-1 that looks like their company.
-
-- Minute 3: **if they typed**, that sentence is this period’s draft. If they did not: **none yet.** Never the seed sentence dressed as theirs.
-- Minute 8: the journey is readable. Dual-employment is a lock. Disagreement is a split. Unsat seats are grey.
-- Minute 12 on **this** Offer Desk walk: 95 stated / 61.8 defended. Spec closed without a file.
-
-They never meet forty lab doors, a mic that dies, V8 Overview, or offboarding rows on Offer Desk.
-
-**Honest about one afternoon (new tenant, no Rashmi sheet):**
-A period sentence if they typed one. A lock if they confirmed a pack stop. A mostly-grey canvas. Evidence empty. Spec refuses. That is the system working. The 12-minute wow **on the colleague demo** uses Rashmi’s sheet as the pack they already handed us — stamped sample until a named leader sits.
-
----
-
-## 2. What is already true on `main` (do not rebuild)
-
-Verify on GitHub. Snapshot 18 Sep 2026.
-
-| Piece | State |
-|---|---|
-| Census 1–6 | Live. Guest looking-only. No key. Step 5 label on glass is still **Work Chart**. |
-| Function leader (D-1) | Pain → permit. Draft from their words **when they replace the seed**. Guest confirm off. |
-| Playback (D-2) | Stored answers. Empty = none yet. |
-| Extract (D-3) | One `?`, no automation-framing, fail closed. |
-| Sit close | Quote-gated. |
-| Rashmi sheet | Real sitting 12 May 2026. |
-| Seat 2 | **On the glass today:** `HR_OPS_STAND_IN` — workbook, labelled not a recorded sitting. |
-| Chart | Exactly 18 hire leaves. Enforced in `hireLeaves.ts`. |
-| Plan | 95 / 61.8 two numbers on this desk. |
-| Strategy row | **Seeded** on first ensure. Substring gate applies only to replacement. |
-| Dual-employment | Unliftable in `handoff.py`. |
-| Disagreement detector | Exists (`function_head` vs `sme`). |
-| Session types | `function_head` \| `sub_function_lead` \| `sme`. No `ops` value. |
-| Demo sample | #65 Ready, not merged. |
-
----
+## 2. On main
+Census 1–6. D-1/D-2/D-3 shipped. Sit close quote-gated. Rashmi sheet 12 May 2026. Seat 2 is HR_OPS_STAND_IN. 18 leaves enforced. Strategy row seeded on first ensure. Dual-employment unliftable. Disagreement detector exists. Session types: function_head | sub_function_lead | sme. #65 sample Ready not merged.
 
 ## 3. Product
+Case file: Scope → three rooms + Playback + Sit close → Evidence → Gap → Journey canvas → Plan → Spec. Six stages. Step 5 label becomes Journey. Leaf step:7 is not a seventh census stage.
 
-### 3.1 Case file
-Six stages. Step 5 on the stepper becomes **Journey**. Leaf `step: 7` is not a seventh census stage.
+Room A function_head: last messy offer; playback; who may let it through; is that this period; pack anchors they confirm.
+Room B sub_function_lead: trigger/end; tags on this tenant only; cover. Empty = Ops has not sat.
+Room C Rashmi: sheet first; dump → is this you?
 
-### 3.2 Rooms
-Function leader (`function_head`). Head of HR operations (`sub_function_lead`): predict only from this tenant’s tags; empty = open question; empty state **Ops has not sat**. Rashmi: sheet first. Designed empty rooms ship before persist.
+Room → genome: CHRO sentence → strategy_intent_focus after substring; who binds → authority; pack stop → lock; Ops trigger/end → work_systems at S5; Rashmi sheet → unit fields; detector → split.
 
-### 3.3 Pre-work
-Files they upload only. No URL fetch.
+Graph: x=step lane=band. Bind/not/grey. Lock. Split halo. Hours on Plan only.
 
-### 3.4 Room → genome
-CHRO sentence → strategy_intent_focus after substring draft. Who binds → authority. Pack stop → lock. Ops trigger/end → work_systems at S5. Rashmi sheet → unit fields. Disagreement detector → split.
-
-### 3.5 Graph
-Layout: x = hire_leaves.step, lane = parent. Hand-rolled SVG. No reactflow. Fill = existing five statuses, not a new score. Edges only if the sheet names the movement. Desk layer live; CHRO/Ops grey. Hours on Plan only. S3 done-condition includes 95 and 61.8 still on Plan.
-
-## 5. Seed
-First ensure writes a fixture. Demo path shows **none yet** until they type. Seed is a stain.
+## 5. Sentence → law
+They typed it → sitting_answers → draft-strategy-intent (literal substring) → this period draft → confirm → Plan. First ensure today writes a fixture. Delete that line. Guest never PUTs.
 
 ## 7. Order
-S0 → S1 → S4 → S3 ∥ S2 → S5 → S6 → named sitting.
+S0 #65 → S1 chrome → S4 delete seed + glass → S3 canvas → S2 designed-empty rooms → S5 persist → S6 409/422 → named sitting.
 S3 does not wait for S2. S2 does not wait for S5.
-S2 must touch offerDeskSeats.ts **and** intent.ts together.
-S5 uses `sub_function_lead`, never an `ops` enum.
+
+S1 files: AppShell, CensusStepper, Overview. Done: stranger hits Function leader without 40 links.
+S4: remove strategy_intent_focus from ENSURE_BODY in workSystem.ts. Download fallback already “Not drafted yet.”
+S3: WorkGraph / Chart hero SVG. hire_leaves read-only. Plan still 95 and 61.8. No new graph package.
+S2: OfferDesk seats + offerDeskSeats.ts + intent.ts together.
 
 ## 8. Refuse
-URL fetch · new specification score · reactflow for S3 · predicting another company’s Zwayam · seed presented as discovered · seventh census stage · scrape · 47 days · 72% · Box 4
+Seventh census stage · scrape/URL fetch · 47 days · 72% · five-status rainbow · seed as discovered · lift dual-employment · Box 4 · ATS→current_condition · offboarding fill on Offer Desk · reactflow for S3 · Zwayam on empty tenant
 
-## 12. Review again
-A–F on this v2. Grey + not sat is the bar, not delay.
+## 10. Files
+| Slice | Touch | Do not touch |
+| S1 | AppShell, CensusStepper | Plan math, leaf count, backend |
+| S2 | Function leader, SubFunctionLead, offerDeskSeats.ts + intent.ts | handoff.py, CensusPlan math |
+| S3 | Chart hero / WorkGraph SVG | hire_leaves count, 95/61.8 values, new graph lib |
+| S4 | workSystem.ts ENSURE_BODY seed line | New objects |
+| S5 | sub_function_lead sitting-answers | ops enum |
 
-*Full v2 source of truth also at the Grok project artifacts/WEP_PRODUCT_AND_BUILD.md if this commit is read as a stub.*
+## 12
+A–F as in the elevation prompt. This file is complete enough to score paper 3.
