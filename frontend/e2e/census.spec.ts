@@ -457,9 +457,8 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await expect(page.getByTestId("plan-risks")).not.toContainText(/every clerk uses their own judgment/i);
   await expect(page.getByTestId("plan-period")).toBeVisible();
   await expect(page.getByTestId("plan-period-focus")).toContainText("This period:");
-  await expect(page.getByTestId("plan-period-focus")).toContainText(
-    "This quarter: cut offer-to-Day-1 cycle time, not headcount.",
-  );
+  await expect(page.getByTestId("plan-period-focus")).toContainText(/Not drafted yet\.|none yet/);
+  await expect(page.getByTestId("plan-period-focus")).not.toContainText("cut offer-to-Day-1");
   await expect(page.getByTestId("plan-period-unowned")).toContainText(/unowned lines: \d+/);
   await expect(page.getByTestId("plan-period-guest")).toContainText(/looking only/i);
   await expect(page.getByTestId("plan-period").getByRole("button", { name: "Confirm as owner" })).toHaveCount(0);
@@ -539,6 +538,8 @@ test("Plan shows not measured plus 95 and 61.8", async ({ page }) => {
   await expect(page.getByText("61.8", { exact: true }).first()).toBeVisible();
   await expect(page.getByTestId("plan-period")).toBeVisible();
   await expect(page.getByTestId("plan-period-focus")).toContainText("This period:");
+  await expect(page.getByTestId("plan-period-focus")).toContainText(/Not drafted yet\.|none yet/);
+  await expect(page.getByTestId("plan-period-focus")).not.toContainText("cut offer-to-Day-1");
   await expect(page.getByTestId("plan-period-unowned")).toContainText(/unowned lines: \d+/);
   await expect(page.getByTestId("plan-outcome")).not.toContainText("62%");
   await expect(page.getByTestId("plan-outcome-measured")).not.toContainText("62");
@@ -827,6 +828,8 @@ test("guest census download contains 95, 61.8, and 'not a pass'", async ({ page 
   expect(content).toContain("61.8");
   expect(content).toContain("95 stated / 61.8 defended");
   expect(content).toContain("This period:");
+  expect(content).toMatch(/\*\*This period:\*\* (Not drafted yet\.|none yet)/);
+  expect(content).not.toContain("cut offer-to-Day-1");
   expect(content).toMatch(/unowned lines: \d+/);
   expect(content).toMatch(/not a pass/);
   expect(content).toContain("The hire is complete");
