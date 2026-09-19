@@ -14,8 +14,9 @@
  * once at ensure time alongside entry/exit/owner/outcome, confirm calls for
  * each, and a shared useWorkSystem() hook so Work Chart and Plan don't each
  * carry their own copy of the same ensure/loading/error/needsKey plumbing.
- * V10-9 adds the period-focus line on the same ensure payload, confirmed
- * from Plan via POST /work-systems/{id}/confirm-strategy-intent. */
+ * V10-9 adds the period-focus line on the same row, confirmed from Plan
+ * via POST /work-systems/{id}/confirm-strategy-intent. Ensure does not
+ * seed a fixture sentence — empty until a sitting drafts it. */
 import { useEffect, useState } from "react";
 import { apiFetch, NeedsApiKeyError } from "./apiFetch";
 import { useIsGuest } from "./guestMode";
@@ -44,7 +45,6 @@ const ENSURE_BODY = {
   function_intent_measure: FUNCTION_INTENT_DRAFT.measure,
   work_system_intent_purpose: WORK_SYSTEM_INTENT_DRAFT.purpose,
   work_system_intent_owner: WORK_SYSTEM_INTENT_DRAFT.owner,
-  strategy_intent_focus: STRATEGY_INTENT_DRAFT.focus,
   strategy_intent_owner: STRATEGY_INTENT_DRAFT.owner,
 } as const;
 
@@ -60,9 +60,10 @@ function intentDebtFromOwners(...owners: string[]): number {
   return owners.filter((owner) => !owner.trim()).length;
 }
 
-/** Guest / not-yet-ensured preview of both intents -- same draft text a
- * keyed tenant's first ensure call would persist, shown read-only. Never
- * looks confirmed: status is always "draft", confirmed_by/_at always empty. */
+/** Guest / not-yet-ensured preview of the three intents. Function and
+ * Work System lines reuse the sheet/sitting drafts. Strategy focus is
+ * empty — none yet / Not drafted yet — never the old ensure fixture.
+ * Never looks confirmed: status is always "draft", confirmed_by/_at empty. */
 const GUEST_FUNCTION_INTENT: IntentOut = {
   label: FUNCTION_INTENT_DRAFT.outcome,
   owner: FUNCTION_INTENT_DRAFT.owner,
@@ -82,7 +83,7 @@ const GUEST_WORK_SYSTEM_INTENT: IntentOut = {
 };
 
 const GUEST_STRATEGY_INTENT: IntentOut = {
-  label: STRATEGY_INTENT_DRAFT.focus,
+  label: "",
   owner: STRATEGY_INTENT_DRAFT.owner,
   measure: null,
   status: "draft",
