@@ -45,6 +45,7 @@ const ENSURE_BODY = {
   function_intent_measure: FUNCTION_INTENT_DRAFT.measure,
   work_system_intent_purpose: WORK_SYSTEM_INTENT_DRAFT.purpose,
   work_system_intent_owner: WORK_SYSTEM_INTENT_DRAFT.owner,
+  strategy_intent_focus: "",
   strategy_intent_owner: STRATEGY_INTENT_DRAFT.owner,
 } as const;
 
