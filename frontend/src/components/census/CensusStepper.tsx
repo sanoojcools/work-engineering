@@ -15,7 +15,7 @@ export const CENSUS_STEPS = [
   { path: "/census/capture", label: "2. Capture" },
   { path: "/census/evidence", label: "3. Evidence" },
   { path: "/census/gap", label: "4. Gap" },
-  { path: "/census/chart", label: "5. Work Chart" },
+  { path: "/census/chart", label: "5. Journey" },
   { path: "/census/plan", label: "6. Plan" },
 ] as const;
 

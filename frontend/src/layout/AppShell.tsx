@@ -1,21 +1,24 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useSearchParams } from "react-router-dom";
 import { OrgKeyControl } from "../components/OrgKeyControl";
 import { ProgressTracker } from "../components/ProgressTracker";
 import { useCompany } from "../company";
 import { api } from "../api";
 
-const SECTIONS = [
+/** Case-file walk. Spec stays on this list; everything else is Lab. */
+const WALK_LINKS = [
+  ["/", "Scope"],
+  ["/census/capture", "Capture"],
+  ["/census/evidence", "Evidence"],
+  ["/census/chart", "Journey"],
+  ["/census/plan", "Plan"],
+  ["/spec", "Spec"],
+] as const;
+
+const LAB_SECTIONS = [
   {
     label: "Work Census",
-    links: [
-      ["/", "1. Scope (Home)"],
-      ["/census/capture", "2. Capture"],
-      ["/census/evidence", "3. Evidence"],
-      ["/census/gap", "4. Gap"],
-      ["/census/chart", "5. Work Chart"],
-      ["/census/plan", "6. Plan"],
-    ],
+    links: [["/census/gap", "Gap"]],
   },
   {
     label: "Offer Desk depth",
@@ -72,7 +75,6 @@ const SECTIONS = [
       ["/projections", "Projections"],
     ],
   },
-  { label: "Integration", links: [["/spec", "Spec API"]] },
 ] as const;
 
 /** Render's free tier drops an idle service after ~15 minutes; the next
@@ -104,8 +106,17 @@ function WakingBanner() {
 
 export default function AppShell() {
   const { clients, client, keyClientId, setClientId, reload } = useCompany();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const labOpen = searchParams.get("lab") === "1";
   const keyMismatch = keyClientId !== null && client !== null && client.id !== keyClientId;
   const keyCompany = clients.find((c) => c.id === keyClientId);
+
+  function toggleLab() {
+    const next = new URLSearchParams(searchParams);
+    if (labOpen) next.delete("lab");
+    else next.set("lab", "1");
+    setSearchParams(next, { replace: true });
+  }
 
   return (
     <div className="shell">
@@ -157,16 +168,36 @@ export default function AppShell() {
         {!keyMismatch && client?.kind === "catalog" && (
           <p className="hint">Catalog is the test lab. Switch to Client A for the census.</p>
         )}
-        {SECTIONS.map((section) => (
-          <div key={section.label ?? "root"}>
-            {section.label && <div className="nav-section">{section.label}</div>}
-            {section.links.map(([to, label]) => (
-              <NavLink key={to} to={to} end={to === "/" || to === "/scout/offer-desk"} className={({ isActive }) => (isActive ? "active" : "")}>
-                {label}
-              </NavLink>
-            ))}
-          </div>
+        {WALK_LINKS.map(([to, label]) => (
+          <NavLink key={to} to={to} end={to === "/"} className={({ isActive }) => (isActive ? "active" : "")}>
+            {label}
+          </NavLink>
         ))}
+        <button
+          type="button"
+          className="company-new"
+          data-testid="lab-toggle"
+          aria-expanded={labOpen}
+          onClick={toggleLab}
+        >
+          Lab
+        </button>
+        {labOpen &&
+          LAB_SECTIONS.map((section) => (
+            <div key={section.label}>
+              <div className="nav-section">{section.label}</div>
+              {section.links.map(([to, label]) => (
+                <NavLink
+                  key={to}
+                  to={{ pathname: to, search: "?lab=1" }}
+                  end={to === "/scout/offer-desk"}
+                  className={({ isActive }) => (isActive ? "active" : "")}
+                >
+                  {label}
+                </NavLink>
+              ))}
+            </div>
+          ))}
       </nav>
       <div className="workspace">
         <WakingBanner />

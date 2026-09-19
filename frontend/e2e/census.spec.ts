@@ -286,6 +286,15 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Scope", exact: false }).first()).toBeVisible();
   await expect(stepCount(page)).toContainText("1 of 6");
+  const walkNav = page.locator("nav.nav");
+  await expect(walkNav.getByRole("link", { name: "Scope", exact: true })).toBeVisible();
+  await expect(walkNav.getByRole("link", { name: "Capture", exact: true })).toBeVisible();
+  await expect(walkNav.getByRole("link", { name: "Evidence", exact: true })).toBeVisible();
+  await expect(walkNav.getByRole("link", { name: "Journey", exact: true })).toBeVisible();
+  await expect(walkNav.getByRole("link", { name: "Plan", exact: true })).toBeVisible();
+  await expect(walkNav.getByRole("link", { name: "Spec", exact: true })).toBeVisible();
+  await expect(walkNav.getByRole("link", { name: "Gap" })).toHaveCount(0);
+  await expect(walkNav.getByRole("link", { name: "1. Function leader" })).toHaveCount(0);
   await expect(page.getByTestId("census-readiness")).toBeVisible();
   await expect(page.getByTestId("readiness-consent")).toBeVisible();
   await expect(page.getByTestId("readiness-three-people")).toBeVisible();
@@ -377,6 +386,8 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await page.getByRole("link", { name: "Next: Work Chart →" }).click();
   await expect(page).toHaveURL(/\/census\/chart$/);
   await expect(stepCount(page)).toContainText("5 of 6");
+  await expect(page.getByRole("button", { name: "5. Journey" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "5. Work Chart" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /18 pieces that make the hire complete/ })).toBeVisible();
   await expect(page.getByTestId("hire-leaves")).not.toContainText(/\bleaf\b/i);
   await expect(page.getByTestId("hire-leaves")).not.toContainText(/\bleaves\b/i);
@@ -1781,6 +1792,41 @@ test("guest Playback is empty when nothing was typed; Plan still 95 and 61.8; ne
   await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
   expect(sittingCalls, "guest must never call sitting-answers").toEqual([]);
+});
+
+test("guest walk nav is Scope–Spec; Lab stays behind Lab or ?lab=1; Plan still 95 and 61.8", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  const nav = page.locator("nav.nav");
+  await expect(nav.getByRole("link", { name: "Scope", exact: true })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Capture", exact: true })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Evidence", exact: true })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Journey", exact: true })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Plan", exact: true })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Spec", exact: true })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Gap" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "1. Function leader" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Enterprise" })).toHaveCount(0);
+
+  await page.getByTestId("lab-toggle").click();
+  await expect(page).toHaveURL(/\?lab=1/);
+  await expect(nav.getByRole("link", { name: "Gap" }).first()).toBeVisible();
+  await expect(nav.getByRole("link", { name: "1. Function leader" })).toBeVisible();
+
+  await page.goto("/census/chart");
+  await expect(stepCount(page)).toContainText("5 of 6");
+  await expect(page.getByRole("button", { name: "5. Journey" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "5. Work Chart" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "1. Function leader" })).toHaveCount(0);
+
+  await page.goto("/census/plan?lab=1");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  await expect(nav.getByRole("link", { name: "1. Function leader" })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 });
 
 
