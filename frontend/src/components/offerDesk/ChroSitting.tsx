@@ -5,6 +5,13 @@ import { IoPanes } from "../IoPanes";
 import { errorMessage } from "../../api";
 import { NeedsApiKeyError } from "../../lib/apiFetch";
 import { useCompany } from "../../company";
+import {
+  SAMPLE_FIELD_LABEL,
+  SAMPLE_FUNCTION_LEADER,
+  isFunctionLeaderSampleText,
+  isSampleSentence,
+  useDemoSampleOn,
+} from "../../lib/demoSampleSeats";
 import { useIsGuest } from "../../lib/guestMode";
 import { confirmStrategyIntent, ensureOfferToOnboardingWorkSystem } from "../../lib/workSystem";
 import {
@@ -31,6 +38,7 @@ import {
   type SittingStep,
 } from "../../lib/sittingAnswers";
 import type { HardAnchor, WorkSystem } from "../../types";
+import { PreworkCard } from "./PreworkCard";
 
 export function ChroSitting({
   sessionId,
@@ -43,8 +51,11 @@ export function ChroSitting({
 }) {
   const isGuest = useIsGuest();
   const { firstLoadPending } = useCompany();
+  const sampleOn = useDemoSampleOn();
+  const [prework, setPrework] = useState(sampleOn);
   const [step, setStep] = useState<SittingStep>("pain");
-  const [core, setCore] = useState(emptyCoreAnswers);
+  const [core, setCore] = useState(() => (sampleOn ? { ...SAMPLE_FUNCTION_LEADER } : emptyCoreAnswers()));
+  const [storedCore, setStoredCore] = useState(emptyCoreAnswers);
   const [anchors, setAnchors] = useState<Record<string, string>>({});
   const [packAnchors, setPackAnchors] = useState<HardAnchor[]>([]);
   const [draftLabel, setDraftLabel] = useState("");
@@ -88,10 +99,13 @@ export function ChroSitting({
       .then((body) => {
         if (cancelled) return;
         const split = splitAnswers(body.answers ?? []);
+        setStoredCore(split.core);
         setCore((prev) => {
-          const next = { ...split.core };
+          const next = { ...prev };
           for (const id of CORE_ANSWER_IDS) {
-            if (prev[id].trim()) next[id] = prev[id];
+            if (!split.core[id].trim()) continue;
+            const prevIsSample = sampleOn && isFunctionLeaderSampleText(id, prev[id]);
+            if (prevIsSample || !prev[id].trim()) next[id] = split.core[id];
           }
           return next;
         });
@@ -130,9 +144,25 @@ export function ChroSitting({
     setCore((prev) => ({ ...prev, [step]: value }));
   }
 
+  function persistableCore(nextCore: Record<CoreAnswerId, string>): Record<CoreAnswerId, string> {
+    const out = emptyCoreAnswers();
+    for (const id of CORE_ANSWER_IDS) {
+      const text = nextCore[id];
+      if (sampleOn && isFunctionLeaderSampleText(id, text)) out[id] = storedCore[id];
+      else out[id] = text;
+    }
+    return out;
+  }
+
+  function hasPersistableText(nextCore: Record<CoreAnswerId, string>, nextAnchors: Record<string, string>): boolean {
+    if (Object.values(nextAnchors).some((text) => text.trim())) return true;
+    return CORE_ANSWER_IDS.some((id) => persistableCore(nextCore)[id].trim());
+  }
+
   async function persist(nextCore = core, nextAnchors = anchors) {
     if (lookOnly || firstLoadPending || sessionId == null) return;
-    await putSittingAnswers(sessionId, joinAnswers(nextCore, nextAnchors));
+    if (!hasPersistableText(nextCore, nextAnchors)) return;
+    await putSittingAnswers(sessionId, joinAnswers(persistableCore(nextCore), nextAnchors));
   }
 
   async function goNext() {
@@ -174,7 +204,7 @@ export function ChroSitting({
         ? core
         : { ...core, this_period: sentence };
     if (nextCore !== core) setCore(nextCore);
-    if (lookOnly) {
+    if (lookOnly || isSampleSentence(sentence)) {
       setDraftLabel(sentence);
       setDraftStatus("draft");
       setEditing(false);
@@ -234,14 +264,32 @@ export function ChroSitting({
 
   const heard = isCoreStep && currentText.trim() ? currentText.trim() : "";
   const question = isCoreStep ? QUESTION_COPY[step as CoreAnswerId] : "These are on our HR pack. Confirm or not.";
-  const confirmDisabled = lookOnly || busy || confirmed || !confirmName.trim() || !shownDraft;
+  const sampleField =
+    isCoreStep && sampleOn && isFunctionLeaderSampleText(step as CoreAnswerId, currentText);
+  const sampleDraft = Boolean(shownDraft && isSampleSentence(shownDraft));
+  const confirmDisabled =
+    lookOnly || busy || confirmed || !confirmName.trim() || !shownDraft || sampleDraft;
 
   const ioOutput = shownDraft || NONE_YET;
   const understood =
     "The last hire that broke is the start. We play their words back. We do not add days they did not say.";
   const processed = lookOnly
     ? "Typing stays in this walk. Nothing is saved. Confirm stays off."
-    : "We save what they typed. The draft line is a sentence from those answers, not a made-up number.";
+    : "We save what they typed. The draft line is a sentence from those answers, not a made-up number. Sample text is not saved as a named sitting.";
+
+  if (prework) {
+    return (
+      <>
+        {needsKey && !lookOnly && <ApiKeyBanner onSaved={() => setNeedsKey(false)} />}
+        {error && (
+          <div className="banner error" data-testid="sitting-error">
+            {error}
+          </div>
+        )}
+        <PreworkCard onStart={() => setPrework(false)} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -301,6 +349,11 @@ export function ChroSitting({
             ))}
           </div>
         )}
+        {sampleField && (
+          <p className="hint" style={{ margin: "8px 0 0" }} data-testid="sample-field-label">
+            {SAMPLE_FIELD_LABEL}
+          </p>
+        )}
 
         {heard && (
           <p className="hint" style={{ marginBottom: 0 }} data-testid="sitting-heard">
@@ -357,6 +410,11 @@ export function ChroSitting({
           ) : (
             <p style={{ fontSize: 15, margin: "8px 0 0" }} data-testid="this-period-label">
               {shownDraft}
+            </p>
+          )}
+          {sampleDraft && !editing && (
+            <p className="hint" style={{ margin: "6px 0 0" }} data-testid="sample-draft-label">
+              {SAMPLE_FIELD_LABEL}
             </p>
           )}
           {confirmed ? (
