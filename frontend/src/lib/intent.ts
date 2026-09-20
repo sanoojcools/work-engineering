@@ -60,11 +60,11 @@ export const WORK_SYSTEM_INTENT_DRAFT = {
   source: "Function Head interview (CHRO stand-in), Q1, offer-desk-inputs/01-interviews/function-head-interview-chro.md",
 } as const;
 
-/** V10-9. One-line period focus persisted on first ensure, same sentence
- * the backend tests already use — stand-in owner until a real sponsor.
- * Plan shows this as "This period:"; the canon name lives in the i-button. */
+/** V10-9. Period focus lives on the work_systems row. Ensure sends empty —
+ * a sitting drafts it. Stand-in owner until a real sponsor. Plan shows
+ * this as "This period:"; the canon name lives in the i-button. */
 export const STRATEGY_INTENT_DRAFT = {
-  focus: "This quarter: cut offer-to-Day-1 cycle time, not headcount.",
+  focus: "",
   owner: OFFER_DESK_SEATS.sub_function_lead.interviewee_name,
   source: "V10-9 period focus on the existing work_systems row — not a new intent table",
 } as const;
