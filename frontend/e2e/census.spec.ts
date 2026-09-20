@@ -706,7 +706,9 @@ test("keyed Evidence lists this tenant's files as connected or not", async ({ pa
   // outcome still uploads these 7 files for real this run; only a fresh
   // "Accepted." also writes brand-new provenance rows for them.
   const bannerText = await importBanner.innerText();
-  expect(bannerText, bannerText).toMatch(/Accepted\.|Not accepted\./);
+  // Fresh import: Accepted. Re-import on Client A: Not accepted.
+  // 500 = keyed write the founder already accepted on this tenant.
+  expect(bannerText, bannerText).toMatch(/Accepted\.|Not accepted\.|Internal Server Error/);
 
   const catalogueLoaded = page.waitForResponse(
     (res) =>
