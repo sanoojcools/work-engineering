@@ -786,6 +786,71 @@ mark { background: #cfe0ee; padding: 0 2px; border-radius: 2px; }
 }
 .scout-completeness-summary { margin-left: auto; font-size: 12px; color: var(--muted); }
 
+/* ---------- Cut 3 Journey canvas (hand-rolled SVG) ---------- */
+.journey-canvas-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  background: var(--panel-sunk);
+}
+.journey-svg { display: block; min-width: 960px; width: 100%; height: auto; }
+.journey-lane-even { fill: var(--panel); }
+.journey-lane-odd { fill: var(--panel-sunk); }
+.journey-lane-label {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--ink-2);
+}
+.journey-step-label {
+  font-size: 11px;
+  fill: var(--muted);
+}
+.journey-node-fill { stroke-width: 1.25; }
+.journey-node-fill-bind { fill: var(--accent-wash); stroke: var(--accent); }
+.journey-node-fill-not { fill: var(--danger-wash); stroke: var(--danger); }
+.journey-node-fill-grey { fill: #e8e6e0; stroke: var(--line-strong); }
+.journey-node-name {
+  font-size: 9.5px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+.journey-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.journey-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.journey-swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--line-strong);
+  flex: none;
+}
+.journey-swatch-bind { background: var(--accent-wash); border-color: var(--accent); }
+.journey-swatch-not { background: var(--danger-wash); border-color: var(--danger); }
+.journey-swatch-grey { background: #e8e6e0; }
+.journey-legend-lock {
+  width: 10px;
+  height: 8px;
+  border: 1.5px solid var(--danger);
+  border-radius: 1px;
+  position: relative;
+  flex: none;
+}
+.journey-legend-lock::before {
+  content: "";
+  position: absolute;
+  left: 1.5px;
+  top: -5px;
+  width: 5px;
+  height: 5px;
+  border: 1.5px solid var(--danger);
+  border-bottom: 0;
+  border-radius: 5px 5px 0 0;
+}
+
 /* ---------- V10-4 Work Chart bands ---------- */
 .hire-bands {
   display: grid;

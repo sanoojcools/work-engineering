@@ -80,6 +80,21 @@ if (!HIRE_BANDS.includes("external")) {
   throw new Error("hire_leaves seed must include an external band");
 }
 
+/** Canvas node fill. Not a specification score. predicted stays grey (do not
+ * paint a guess). Dual-employment is a lock and is not bind-eligible. */
+export type JourneyFill = "bind" | "not" | "grey";
+
+export function journeyNodeFill(leaf: HireLeaf): JourneyFill {
+  if (leaf.stop === "dual_employment") return "not";
+  if (leaf.band === "human") return "not";
+  if (leaf.band === "automate") return "bind";
+  return "grey";
+}
+
+export function journeyNodeLocked(leaf: HireLeaf): boolean {
+  return leaf.stop === "dual_employment";
+}
+
 /** Stand-in names only. Never Rashmi, never a live applicant-tracking brand. */
 const CHECKED_BY: Record<HireLeaf["id"], string> = {
   "WU-HIRE-01": "Kiran P. (stand-in) — recruiter, outside this desk",
