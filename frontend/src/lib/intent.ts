@@ -15,6 +15,10 @@
  * stating an SLA would honestly fall back to "not stated" instead of a
  * stale hardcoded string silently drifting from the source.
  *
+ * Designed rooms (Cut 4) play no CHRO/Ops stand-in voice. Ops glass is
+ * OPS_HAS_NOT_SAT. That empty-room line is not an intent owner and must
+ * not replace OFFER_DESK_SEATS.sub_function_lead.interviewee_name here.
+ *
  * Work System intent -- what this journey is for, in sheet words -- is the
  * one new verbatim transcription this file adds: a direct quote from the
  * Function Head interview transcript (CHRO stand-in), Q1,
@@ -26,9 +30,10 @@
  * "verbatim, not paraphrased" discipline the rest of this codebase holds
  * itself to. Owner reuses the same Head of HR Ops stand-in, per that same
  * interview's Q3: "HR Operations reports through the Head of HR Ops, who
- * owns the desk's SLAs and escalation path." */
+ * owns the desk's SLAs and escalation path." Designed Function leader glass
+ * does not play this sentence as a sitting. */
 import { OFFER_DESK_META } from "./offerDeskData";
-import { OFFER_DESK_SEATS, PLAYBACK_ROWS } from "./offerDeskSeats";
+import { OFFER_DESK_SEATS, OPS_HAS_NOT_SAT, PLAYBACK_ROWS } from "./offerDeskSeats";
 
 const SLA_CLAUSE_RE = /SLA:[^.]+\./;
 
@@ -50,8 +55,12 @@ export const FUNCTION_INTENT_DRAFT = {
   outcome: WHAT_THE_WORK_IS.function_head,
   owner: OFFER_DESK_SEATS.sub_function_lead.interviewee_name,
   measure: extractSlaMeasure(OFFER_DESK_META.frequency),
-  source: "Function Head interview (CHRO stand-in), Q1 'good looks like' + PLAYBACK_ROWS · OFFER_DESK_META.frequency (T&M sheet)",
+  source: "PLAYBACK_ROWS · OFFER_DESK_META.frequency (T&M sheet). Not a Function leader sitting — designed rooms stay empty until they type.",
 } as const;
+
+if (FUNCTION_INTENT_DRAFT.owner === OPS_HAS_NOT_SAT) {
+  throw new Error("Ops empty-room copy must not become the function intent owner");
+}
 
 export const WORK_SYSTEM_INTENT_DRAFT = {
   purpose:

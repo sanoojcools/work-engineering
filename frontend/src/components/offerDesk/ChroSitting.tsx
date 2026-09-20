@@ -254,9 +254,11 @@ export function ChroSitting({
 
       <div className="card" style={{ marginBottom: 16 }} data-testid="chro-sitting">
         <h3 style={{ marginTop: 0 }}>Start sitting</h3>
-        <p className="hint" style={{ marginTop: 0 }}>
-          Question {stepIndex + 1} of {SITTING_STEPS.length}
-        </p>
+        {stepIndex > 0 && (
+          <p className="hint" style={{ marginTop: 0 }}>
+            Question {stepIndex + 1} of {SITTING_STEPS.length}
+          </p>
+        )}
         <p
           style={{ fontSize: 15, fontWeight: 600, margin: "0 0 10px" }}
           data-testid={step === "pain" ? "sitting-pain" : "sitting-question"}
