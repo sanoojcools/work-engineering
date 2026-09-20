@@ -180,6 +180,7 @@ export function JourneyCanvas() {
                 key={node.leaf.id}
                 data-testid="journey-node"
                 data-leaf-id={node.leaf.id}
+                data-name={node.leaf.name}
                 data-fill={node.fill}
                 data-band={node.leaf.band}
                 data-step={String(node.leaf.step)}

@@ -415,7 +415,9 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   expect(yamlLeaves, "packs/hr/hire_leaves.yaml must declare exactly 18 leaves").toHaveLength(18);
   for (const leaf of yamlLeaves) {
     await expect(page.getByTestId("hire-leaf").filter({ hasText: leaf.name })).toHaveCount(1);
-    await expect(page.getByTestId("journey-node").filter({ hasText: leaf.name })).toHaveCount(1);
+    const node = page.locator(`[data-testid="journey-node"][data-leaf-id="${leaf.id}"]`);
+    await expect(node).toHaveCount(1);
+    await expect(node).toHaveAttribute("data-name", leaf.name);
   }
   const chart = page.getByTestId("hire-leaves");
   await expect(chart).not.toContainText("Rashmi");
@@ -1420,6 +1422,8 @@ test("guest Chart shows 18 leaves, looking only, mints no key, never calls simul
   await expect(stepCount(page)).toContainText("5 of 6");
   await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
   await expect(page.getByTestId("hire-leaf")).toHaveCount(18);
+  await expect(page.getByTestId("journey-canvas")).toBeVisible();
+  await expect(page.getByTestId("journey-node")).toHaveCount(18);
   await expect(page.getByTestId("hire-leaves")).not.toContainText(/\bleaf\b/i);
   await expect(page.getByTestId("hire-leaves")).not.toContainText(/\bleaves\b/i);
   await expect(page.getByTestId("chart-sim-guest")).toHaveText(/looking only/i, { timeout: 15_000 });
