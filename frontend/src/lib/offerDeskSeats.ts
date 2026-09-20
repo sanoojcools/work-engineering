@@ -86,47 +86,18 @@ async function seedRashmiRows(session: ScoutSession): Promise<ScoutSession> {
   return latest;
 }
 
-/** Stand-in CHRO voice. Sourced from workbook policies / SLA / backup,
- * labelled stand-in until a real function-head sitting exists. Not a quote. */
-export const CHRO_STAND_IN = [
-  {
-    asked: "What must never slip?",
-    used: "No offer letter if documents or salary grid are wrong. Dual employment in UAN is a stop, not a shortcut.",
-    source: "Workbook policies: UAN dual employment, salary grid · exception 1",
-  },
-  {
-    asked: "What does good look like?",
-    used: "Two-hour SLA from recruiter request to offer letter release. One desk covers Bangalore, Hyderabad, Chennai. A backup exists.",
-    source: "Workbook: SLA, primary SPOC, backup",
-  },
-  {
-    asked: "What does the CHRO probably not see?",
-    used: "Excel as the real system of record. Rashmi as a single point of failure. Umesh already moved to payroll.",
-    source: "Workbook systems list, backup row, exception 9",
-  },
-];
+/** Designed empty Ops room. Not a stand-in sitting and not an intent owner. */
+export const OPS_HAS_NOT_SAT = "Ops has not sat";
 
-/** Stand-in Head of HR Ops voice. Sourced from handoff map + transition
- * state. Labelled stand-in. Not a recorded sitting. */
-export const HR_OPS_STAND_IN = [
-  {
-    asked: "Where does Offer Desk hand off?",
-    used: "Onboarding SPOC by city: Prerana (BLR), Sasikala (HYD), Tamil (CHN). IT for email IDs. Umesh for payroll on the 17th. Asset vendor for some contractors.",
-    source: "Workbook: location SPOC branches and handoff map",
-  },
-  {
-    asked: "What is already moving out of the desk?",
-    used: "Permanent offer letter already Zwayam → Zoho. EF/MJS and acknowledgement are being automated. Darwinbox is coming — not arrived.",
-    source: "Workbook: transition state (what is already moving)",
-  },
-  {
-    asked: "What remains the desk?",
-    used: "Document check. Salary grid. Master Joining Sheet. Contractor letters. Monthly bonus reports.",
-    source: "Workbook steps 2, 3, 4, 5 (contractor letters), 10",
-  },
-];
+export const OPS_EMPTY_SLOTS = [
+  { id: "trigger", label: "What starts this desk's work" },
+  { id: "end", label: "What counts as done" },
+  { id: "systems", label: "Systems on this tenant" },
+  { id: "cover", label: "Who covers when they are out" },
+] as const;
 
-/** Three-column playback. Disagreements stay in their own column. */
+/** Three-column playback constants. Playback glass reads stored answers;
+ * these rows stay the sheet-derived source for intent drafts only. */
 export const PLAYBACK_ROWS: { topic: string; function_head: string; sub_function_lead: string; sme: string }[] = [
   {
     topic: "What the work is",

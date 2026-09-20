@@ -1454,7 +1454,7 @@ function packQuestionText(id: string): string {
   return match[1];
 }
 
-test("guest Facilitator is empty line; sit-close Confirm disabled; never writes we-spec-key", async ({
+test("guest Facilitator stays off designed rooms; sit-close Confirm disabled; never writes we-spec-key", async ({
   page,
 }) => {
   const nextQuestionRequests: string[] = [];
@@ -1479,17 +1479,10 @@ test("guest Facilitator is empty line; sit-close Confirm disabled; never writes 
     "/scout/offer-desk/rashmi",
   ]) {
     await page.goto(path);
-    await expect(page.getByTestId("facilitator-guest")).toHaveText("No next questions in this walk.", {
-      timeout: 15_000,
-    });
+    await expect(page.getByTestId("designed-room")).toBeVisible();
+    await expect(page.getByTestId("facilitator")).toHaveCount(0);
+    await expect(page.getByTestId("facilitator-guest")).toHaveCount(0);
     await expect(page.getByTestId("facilitator-ask")).toHaveCount(0);
-    await expect(page.getByTestId("facilitator-guest")).not.toContainText(/pack|interrogation/i);
-    const info = page.getByRole("button", { name: "Info about Facilitator" });
-    await info.hover();
-    const pop = page.getByTestId("info-pop");
-    await expect(pop).toBeVisible();
-    await expect(pop).toContainText(/pack/);
-    await expect(pop).toContainText(/interrogation/);
     expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
   }
 
@@ -1700,6 +1693,11 @@ test("keyed Facilitator shows pack question verbatim; Plan still 95 and 61.8", a
   const f3 = packQuestionText("f3");
   await page.goto("/scout/offer-desk/function-leader");
   await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
+  await expect(page.getByTestId("designed-room")).toBeVisible();
+  await expect(page.getByTestId("facilitator")).toHaveCount(0);
+  await expect(page.getByText(/Open sitting #/)).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("link", { name: /Open sitting #/ }).click();
+  await expect(page).toHaveURL(/\/scout\/interview\/\d+/);
   await expect(page.getByTestId("facilitator-ask")).toHaveCount(1, { timeout: 20_000 });
   await expect(page.getByTestId("facilitator-question")).toHaveText(f3);
   await expect(page.getByTestId("facilitator")).toContainText("Ask this exact question");
@@ -1740,9 +1738,13 @@ test("guest Function leader shows pain question and This period (draft) after ty
   await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
 
   await page.goto("/scout/offer-desk/function-leader");
+  await expect(page.getByTestId("designed-room")).toBeVisible();
   await expect(page.getByTestId("sitting-pain")).toHaveText(PAIN_QUESTION, { timeout: 15_000 });
+  await expect(page.getByTestId("this-period-none")).toContainText("none yet");
+  await expect(page.getByTestId("facilitator")).toHaveCount(0);
   await expect(page.getByText("We asked · what we use as the CHRO voice for this demo")).toHaveCount(0);
   await expect(page.getByText(/47 days/i)).toHaveCount(0);
+  await expect(page.getByText(/cut offer-to-Day-1/i)).toHaveCount(0);
   await page.getByTestId("sitting-answer").fill(SITTING_LINE);
   await expect(page.getByTestId("this-period-draft")).toBeVisible();
   await expect(page.getByTestId("this-period-label")).toHaveText(SITTING_LINE);
@@ -1829,6 +1831,61 @@ test("guest walk nav is Scope–Spec; Lab stays behind Lab or ?lab=1; Plan still
   await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
   await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
   await expect(nav.getByRole("link", { name: "1. Function leader" })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+/** Cut 4. Designed empty rooms. One chrome. Voice off. Playback unchanged. */
+
+test("guest designed rooms: Function leader one question or none yet; Ops has not sat; Rashmi sheet first; Plan still 95 and 61.8; never writes we-spec-key", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  await expect(page.getByTestId("plan-period-focus")).not.toContainText("cut offer-to-Day-1");
+
+  await page.goto("/scout/offer-desk/function-leader");
+  await expect(page.getByTestId("designed-room")).toHaveAttribute("data-seat", "function_head");
+  await expect(page.getByTestId("sitting-pain")).toHaveText(PAIN_QUESTION, { timeout: 15_000 });
+  await expect(page.getByTestId("this-period-none")).toContainText("none yet");
+  await expect(page.getByTestId("sitting-question")).toHaveCount(0);
+  await expect(page.getByTestId("facilitator")).toHaveCount(0);
+  await expect(page.getByText("We asked · what we use as the CHRO voice for this demo")).toHaveCount(0);
+  await expect(page.getByText(/Raja/)).toHaveCount(0);
+  await expect(page.getByText(/cut offer-to-Day-1/i)).toHaveCount(0);
+  await expect(page.getByText(/47 days/i)).toHaveCount(0);
+
+  await page.goto("/scout/offer-desk/sub-function-lead");
+  await expect(page.getByTestId("designed-room")).toHaveAttribute("data-seat", "sub_function_lead");
+  await expect(page.getByTestId("ops-has-not-sat")).toHaveText("Ops has not sat");
+  await expect(page.getByTestId("ops-slot-trigger")).toHaveText("Ops has not sat");
+  await expect(page.getByTestId("ops-slot-end")).toHaveText("Ops has not sat");
+  await expect(page.getByTestId("ops-slot-systems")).toHaveText("Ops has not sat");
+  await expect(page.getByTestId("ops-slot-cover")).toHaveText("Ops has not sat");
+  await expect(page.getByText("We asked · what the workbook implies for this seat")).toHaveCount(0);
+  await expect(page.getByText("Prerana")).toHaveCount(0);
+  await expect(page.getByText("Darwinbox is coming")).toHaveCount(0);
+  await expect(page.getByTestId("facilitator")).toHaveCount(0);
+  await expect(page.getByText(/cut offer-to-Day-1/i)).toHaveCount(0);
+
+  await page.goto("/scout/offer-desk/rashmi");
+  await expect(page.getByTestId("designed-room")).toHaveAttribute("data-seat", "sme");
+  const room = page.getByTestId("designed-room");
+  await expect(room.getByTestId("rashmi-sheet")).toBeVisible();
+  await expect(page.getByTestId("rashmi-this-walk")).toContainText("Verify candidate documents");
+  await expect(page.getByText("Two steps the CHRO stand-in never named")).toHaveCount(0);
+  await expect(page.getByTestId("facilitator")).toHaveCount(0);
+  await expect(page.getByText(/cut offer-to-Day-1/i)).toHaveCount(0);
+
+  await page.goto("/scout/offer-desk/playback");
+  await expect(page.getByTestId("playback-empty")).toHaveText("none yet", { timeout: 15_000 });
+  await expect(page.getByTestId("designed-room")).toHaveCount(0);
+
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 });
 

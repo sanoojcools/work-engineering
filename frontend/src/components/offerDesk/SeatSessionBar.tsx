@@ -35,6 +35,8 @@ export function useOfferDeskSeat(seat: OfferDeskSeatKey) {
   return { session, needsKey, error, busy, retry: load };
 }
 
+export type OfferDeskSeatHook = ReturnType<typeof useOfferDeskSeat>;
+
 export function SeatSessionBar({ seat, session, needsKey, error, busy, onRetry, showKeyBanner = true }: {
   seat: OfferDeskSeatKey;
   session: ScoutSession | null;
