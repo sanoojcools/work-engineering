@@ -388,6 +388,18 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await expect(stepCount(page)).toContainText("5 of 6");
   await expect(page.getByRole("button", { name: "5. Journey" })).toBeVisible();
   await expect(page.getByRole("button", { name: "5. Work Chart" })).toHaveCount(0);
+  await expect(page.getByTestId("journey-canvas")).toBeVisible();
+  await expect(page.getByTestId("journey-node")).toHaveCount(18);
+  await expect(page.getByTestId("journey-lock")).toHaveCount(1);
+  const dualCanvas = page.locator('[data-testid="journey-node"][data-leaf-id="WU-HIRE-05"]');
+  await expect(dualCanvas).toHaveAttribute("data-lock", "true");
+  await expect(dualCanvas).toHaveAttribute("data-fill", "not");
+  await expect(dualCanvas).toHaveAttribute("data-band", "human");
+  await expect(dualCanvas).toHaveAttribute("data-step", "2");
+  await expect(page.locator('[data-testid="journey-node"][data-leaf-id="WU-HIRE-02"]')).toHaveAttribute("data-fill", "bind");
+  await expect(page.locator('[data-testid="journey-node"][data-leaf-id="WU-HIRE-01"]')).toHaveAttribute("data-fill", "grey");
+  await expect(page.locator('[data-testid="journey-node"]', { hasText: "61.8" })).toHaveCount(0);
+  await expect(page.locator('[data-testid="journey-node"]', { hasText: /^95$/ })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /18 pieces that make the hire complete/ })).toBeVisible();
   await expect(page.getByTestId("hire-leaves")).not.toContainText(/\bleaf\b/i);
   await expect(page.getByTestId("hire-leaves")).not.toContainText(/\bleaves\b/i);
@@ -403,6 +415,7 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   expect(yamlLeaves, "packs/hr/hire_leaves.yaml must declare exactly 18 leaves").toHaveLength(18);
   for (const leaf of yamlLeaves) {
     await expect(page.getByTestId("hire-leaf").filter({ hasText: leaf.name })).toHaveCount(1);
+    await expect(page.getByTestId("journey-node").filter({ hasText: leaf.name })).toHaveCount(1);
   }
   const chart = page.getByTestId("hire-leaves");
   await expect(chart).not.toContainText("Rashmi");
@@ -815,6 +828,46 @@ test("keyed Evidence click shows a real XLSX cell; a broken pointer is not a fac
 });
 
 /** CENSUS-PACK (docs/BUILD_PROGRAM.md P1/P2). */
+
+test("guest Journey canvas is 18 nodes with lock; Plan still 95 and 61.8; download has no cut phrase", async ({
+  page,
+}) => {
+  await page.goto("/census/chart");
+  await expect(stepCount(page)).toContainText("5 of 6");
+  await expect(page.getByRole("button", { name: "5. Journey" })).toBeVisible();
+  await expect(page.getByTestId("journey-canvas")).toBeVisible();
+  await expect(page.getByTestId("journey-node")).toHaveCount(18);
+  await expect(page.getByTestId("journey-lock")).toHaveCount(1);
+  await expect(page.locator('[data-testid="journey-node"][data-leaf-id="WU-HIRE-05"]')).toHaveAttribute(
+    "data-lock",
+    "true",
+  );
+  const first = page.locator('[data-testid="journey-node"][data-leaf-id="WU-HIRE-01"]');
+  const later = page.locator('[data-testid="journey-node"][data-leaf-id="WU-HIRE-17"]');
+  const auto = page.locator('[data-testid="journey-node"][data-leaf-id="WU-HIRE-02"]');
+  const human = page.locator('[data-testid="journey-node"][data-leaf-id="WU-HIRE-05"]');
+  const box1 = await first.boundingBox();
+  const box9 = await later.boundingBox();
+  const boxAuto = await auto.boundingBox();
+  const boxHuman = await human.boundingBox();
+  expect(box1 && box9 && boxAuto && boxHuman, "canvas nodes must have boxes").toBeTruthy();
+  expect(box9!.x, "x = step: later step sits to the right").toBeGreaterThan(box1!.x);
+  expect(boxHuman!.y, "lane = band: human sits below automate, not by parent").toBeGreaterThan(boxAuto!.y);
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+
+  await page.goto("/census/plan");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download census" }).first().click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  const content = readFileSync(path as string, "utf-8");
+  expect(content).toContain("95");
+  expect(content).toContain("61.8");
+  expect(content).not.toContain("cut offer-to-Day-1");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
 
 test("guest census download contains 95, 61.8, and 'not a pass'", async ({ page }) => {
   await page.goto("/census/plan");

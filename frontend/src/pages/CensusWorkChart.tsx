@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CensusStepper } from "../components/census/CensusStepper";
 import { HireLeavesChart } from "../components/census/HireLeavesChart";
+import { JourneyCanvas } from "../components/census/JourneyCanvas";
 import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
 import { ApiKeyBanner } from "../components/ApiKeyBanner";
@@ -285,6 +286,8 @@ export default function CensusWorkChart() {
       {!isGuest && (unitsApi.loading || verdictsApi.loading || simApi.loading) && (
         <p className="hint">Loading this tenant's real Work Units, VERDICT scores, and this case…</p>
       )}
+
+      <JourneyCanvas />
 
       <HireLeavesChart
         units={units}
