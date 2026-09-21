@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { IoPanes } from "../components/IoPanes";
+import { SamplePackBanner } from "../components/offerDesk/SamplePackBanner";
 import { SeatStepper } from "../components/offerDesk/SeatStepper";
+import { useDemoSampleOn } from "../lib/demoSampleSeats";
 import {
   OFFER_DESK_AUTOMATION_SUMMARY,
   OFFER_DESK_EXCEPTIONS,
@@ -11,6 +13,7 @@ import {
   splitOfferDeskDataFields as splitDataFields,
   type OfferDeskStep,
 } from "../lib/offerDeskData";
+import { PAIN_QUESTION } from "../lib/sittingAnswers";
 
 const AUTOMATION_COLOR: Record<string, string> = {
   "Fully automatable": "var(--good)",
@@ -113,6 +116,7 @@ function StepCard({ s }: { s: OfferDeskStep }) {
 
 export default function OfferDesk() {
   const meta = OFFER_DESK_META;
+  const sampleOn = useDemoSampleOn();
   return (
     <div>
       <p className="hint" style={{ marginBottom: 4 }}>
@@ -120,23 +124,44 @@ export default function OfferDesk() {
       </p>
       <h2>{meta.workflowName}</h2>
       <p className="lede">
-        Pre-onboarding: offer release, document check, payroll inputs. Every step below is the sheet language —
-        pulled from a real sitting, not summarized or guessed.
+        Pre-onboarding: offer release, document check, payroll inputs. Start with the Function leader
+        question. The desk as Rashmi sat it is behind the fold.
       </p>
 
       <SeatStepper />
 
-      <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent-edge)" }}>
-        <h3>Start the three conversations</h3>
-        <p style={{ fontSize: 13, marginBottom: 10 }}>
-          Function leader (CHRO) and Head of HR operations are labelled stand-ins until a real sitting exists.
-          Rashmi is the real Offer Desk SME — her rows come from this page&apos;s sheet, captured as a Scout SME session.
-          Playback lines the three up. It does not merge them.
+      <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent-edge)" }} data-testid="offer-desk-start">
+        {sampleOn && <SamplePackBanner />}
+        <h3>Function leader</h3>
+        <p style={{ fontSize: 15, fontWeight: 600, margin: "0 0 10px" }} data-testid="offer-desk-leader-question">
+          {PAIN_QUESTION}
         </p>
-        <Link to="/scout/offer-desk/function-leader" className="primary" style={{ display: "inline-block", textDecoration: "none", padding: "7px 14px", background: "var(--accent)", color: "#fff", border: "1px solid var(--accent)", fontWeight: 550 }}>
-          1. Function leader →
+        <p style={{ fontSize: 13, marginBottom: 10 }}>
+          One question at a time. Sample answers, if shown, stay labelled. They are not a named leader.
+        </p>
+        <Link
+          to="/scout/offer-desk/function-leader"
+          className="primary"
+          data-testid="offer-desk-start-sitting"
+          style={{
+            display: "inline-block",
+            textDecoration: "none",
+            padding: "7px 14px",
+            background: "var(--accent)",
+            color: "#fff",
+            border: "1px solid var(--accent)",
+            fontWeight: 550,
+          }}
+        >
+          Start sitting →
         </Link>
       </div>
+
+      <details style={{ marginBottom: 20 }} data-testid="desk-as-sat">
+        <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 14 }}>Desk as sat (Rashmi)</summary>
+        <p className="hint" style={{ marginTop: 8 }}>
+          Source: {meta.interviewSource}. Sheet language, not a scrape.
+        </p>
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="split" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
@@ -237,12 +262,13 @@ export default function OfferDesk() {
           ))}
         </div>
       </div>
+      </details>
 
       <IoPanes
         given="Workbook title, outcome, trigger, SLA, SPOC."
         understood="This is one desk, one owner, three cities, four hire types (permanent, contractor, intern, conversion)."
         processed="We freeze that as the intent of this walk: finish pre-onboarding without skipping the checklist, inside two hours. We do not invent Zwayam events."
-        output="A named desk ready for three seats: CHRO, Head of HR Ops, Rashmi."
+        output="A named desk ready for three seats: Function leader, Head of HR Ops, Rashmi."
       />
     </div>
   );

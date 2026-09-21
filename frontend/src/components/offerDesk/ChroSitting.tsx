@@ -5,8 +5,16 @@ import { IoPanes } from "../IoPanes";
 import { errorMessage } from "../../api";
 import { NeedsApiKeyError } from "../../lib/apiFetch";
 import { useCompany } from "../../company";
+import {
+  SAMPLE_FIELD_LABEL,
+  SAMPLE_FUNCTION_LEADER,
+  isFunctionLeaderSampleText,
+  isSampleSentence,
+  useDemoSampleOn,
+} from "../../lib/demoSampleSeats";
 import { useIsGuest } from "../../lib/guestMode";
 import { confirmStrategyIntent, ensureOfferToOnboardingWorkSystem } from "../../lib/workSystem";
+import { SamplePackBanner } from "./SamplePackBanner";
 import {
   CORE_ANSWER_IDS,
   DRAFT_FOCUS_MIN,
@@ -43,8 +51,10 @@ export function ChroSitting({
 }) {
   const isGuest = useIsGuest();
   const { firstLoadPending } = useCompany();
+  const sampleOn = useDemoSampleOn();
   const [step, setStep] = useState<SittingStep>("pain");
-  const [core, setCore] = useState(emptyCoreAnswers);
+  const [core, setCore] = useState(() => (sampleOn ? { ...SAMPLE_FUNCTION_LEADER } : emptyCoreAnswers()));
+  const [storedCore, setStoredCore] = useState(emptyCoreAnswers);
   const [anchors, setAnchors] = useState<Record<string, string>>({});
   const [packAnchors, setPackAnchors] = useState<HardAnchor[]>([]);
   const [draftLabel, setDraftLabel] = useState("");
@@ -63,7 +73,9 @@ export function ChroSitting({
   const isCoreStep = (CORE_ANSWER_IDS as readonly string[]).includes(step);
   const currentText = isCoreStep ? core[step as CoreAnswerId] : "";
   const liveDraft = lastUsableSentence(core, isCoreStep ? currentText : core.this_period);
-  const shownDraft = draftLabel || (lookOnly && liveDraft.length >= DRAFT_FOCUS_MIN ? liveDraft : "");
+  const sampleLive = sampleOn && isSampleSentence(liveDraft);
+  const shownDraft =
+    draftLabel || (lookOnly && liveDraft.length >= DRAFT_FOCUS_MIN && !sampleLive ? liveDraft : "");
   const confirmed = draftStatus === "confirmed";
   const given = typedGiven(core);
 
@@ -88,10 +100,13 @@ export function ChroSitting({
       .then((body) => {
         if (cancelled) return;
         const split = splitAnswers(body.answers ?? []);
+        setStoredCore(split.core);
         setCore((prev) => {
-          const next = { ...split.core };
+          const next = { ...prev };
           for (const id of CORE_ANSWER_IDS) {
-            if (prev[id].trim()) next[id] = prev[id];
+            if (!split.core[id].trim()) continue;
+            const prevIsSample = sampleOn && isFunctionLeaderSampleText(id, prev[id]);
+            if (prevIsSample || !prev[id].trim()) next[id] = split.core[id];
           }
           return next;
         });
@@ -105,7 +120,7 @@ export function ChroSitting({
     return () => {
       cancelled = true;
     };
-  }, [isGuest, firstLoadPending, sessionId]);
+  }, [isGuest, firstLoadPending, sessionId, sampleOn]);
 
   useEffect(() => {
     if (!workSystem) return;
@@ -130,9 +145,25 @@ export function ChroSitting({
     setCore((prev) => ({ ...prev, [step]: value }));
   }
 
+  function persistableCore(nextCore: Record<CoreAnswerId, string>): Record<CoreAnswerId, string> {
+    const out = emptyCoreAnswers();
+    for (const id of CORE_ANSWER_IDS) {
+      const text = nextCore[id];
+      if (sampleOn && isFunctionLeaderSampleText(id, text)) out[id] = storedCore[id];
+      else out[id] = text;
+    }
+    return out;
+  }
+
+  function hasPersistableText(nextCore: Record<CoreAnswerId, string>, nextAnchors: Record<string, string>): boolean {
+    if (Object.values(nextAnchors).some((text) => text.trim())) return true;
+    return CORE_ANSWER_IDS.some((id) => persistableCore(nextCore)[id].trim());
+  }
+
   async function persist(nextCore = core, nextAnchors = anchors) {
     if (lookOnly || firstLoadPending || sessionId == null) return;
-    await putSittingAnswers(sessionId, joinAnswers(nextCore, nextAnchors));
+    if (!hasPersistableText(nextCore, nextAnchors)) return;
+    await putSittingAnswers(sessionId, joinAnswers(persistableCore(nextCore), nextAnchors));
   }
 
   async function goNext() {
@@ -174,7 +205,7 @@ export function ChroSitting({
         ? core
         : { ...core, this_period: sentence };
     if (nextCore !== core) setCore(nextCore);
-    if (lookOnly) {
+    if (lookOnly || isSampleSentence(sentence)) {
       setDraftLabel(sentence);
       setDraftStatus("draft");
       setEditing(false);
@@ -234,14 +265,18 @@ export function ChroSitting({
 
   const heard = isCoreStep && currentText.trim() ? currentText.trim() : "";
   const question = isCoreStep ? QUESTION_COPY[step as CoreAnswerId] : "These are on our HR pack. Confirm or not.";
-  const confirmDisabled = lookOnly || busy || confirmed || !confirmName.trim() || !shownDraft;
+  const sampleField =
+    isCoreStep && sampleOn && isFunctionLeaderSampleText(step as CoreAnswerId, currentText);
+  const sampleDraft = Boolean(shownDraft && isSampleSentence(shownDraft));
+  const confirmDisabled =
+    lookOnly || busy || confirmed || !confirmName.trim() || !shownDraft || sampleDraft;
 
   const ioOutput = shownDraft || NONE_YET;
   const understood =
     "The last hire that broke is the start. We play their words back. We do not add days they did not say.";
   const processed = lookOnly
     ? "Typing stays in this walk. Nothing is saved. Confirm stays off."
-    : "We save what they typed. The draft line is a sentence from those answers, not a made-up number.";
+    : "We save what they typed. The draft line is a sentence from those answers, not a made-up number. Sample text is not saved as a named sitting.";
 
   return (
     <>
@@ -251,6 +286,8 @@ export function ChroSitting({
           {error}
         </div>
       )}
+
+      {sampleOn && <SamplePackBanner facts />}
 
       <div className="card" style={{ marginBottom: 16 }} data-testid="chro-sitting">
         <h3 style={{ marginTop: 0 }}>Start sitting</h3>
@@ -303,6 +340,11 @@ export function ChroSitting({
             ))}
           </div>
         )}
+        {sampleField && (
+          <p className="hint" style={{ margin: "8px 0 0" }} data-testid="sample-field-label">
+            {SAMPLE_FIELD_LABEL}
+          </p>
+        )}
 
         {heard && (
           <p className="hint" style={{ marginBottom: 0 }} data-testid="sitting-heard">
@@ -326,6 +368,7 @@ export function ChroSitting({
               busy ||
               firstLoadPending ||
               liveDraft.length < DRAFT_FOCUS_MIN ||
+              sampleLive ||
               confirmed ||
               (!lookOnly && sessionId == null)
             }
@@ -359,6 +402,11 @@ export function ChroSitting({
           ) : (
             <p style={{ fontSize: 15, margin: "8px 0 0" }} data-testid="this-period-label">
               {shownDraft}
+            </p>
+          )}
+          {sampleDraft && !editing && (
+            <p className="hint" style={{ margin: "6px 0 0" }} data-testid="sample-draft-label">
+              {SAMPLE_FIELD_LABEL}
             </p>
           )}
           {confirmed ? (

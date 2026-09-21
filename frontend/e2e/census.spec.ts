@@ -1207,6 +1207,8 @@ test("keyed sit close Confirm persists; cards are real or none yet", async ({ pa
 const PAIN_QUESTION =
   "Think of the last hire that went off the rails between offer and Day-1. What broke?";
 const SITTING_LINE = "The backup never saw dual employment on that hire.";
+const SAMPLE_PACK_BANNER = "Sample pack from Rashmi's sitting. Not a named leader.";
+const SAMPLE_FIELD_LABEL = "Sample — not a named sitting.";
 
 test("keyed Function leader POSTs draft line onto the same page; Plan still 95 and 61.8", async ({
   page,
@@ -1799,6 +1801,9 @@ test("guest Function leader shows pain question and This period (draft) after ty
   await page.goto("/scout/offer-desk/function-leader");
   await expect(page.getByTestId("designed-room")).toBeVisible();
   await expect(page.getByTestId("sitting-pain")).toHaveText(PAIN_QUESTION, { timeout: 15_000 });
+  await expect(page.getByTestId("sample-pack-banner")).toHaveText(SAMPLE_PACK_BANNER);
+  await expect(page.getByTestId("sitting-answer")).toHaveValue(/Dual employment/);
+  await expect(page.getByTestId("sample-field-label")).toHaveText(SAMPLE_FIELD_LABEL);
   await expect(page.getByTestId("this-period-none")).toContainText("none yet");
   await expect(page.getByTestId("facilitator")).toHaveCount(0);
   await expect(page.getByText("We asked · what we use as the CHRO voice for this demo")).toHaveCount(0);
@@ -1819,7 +1824,7 @@ test("guest Function leader shows pain question and This period (draft) after ty
 /** D-2 FRONTEND. Playback from stored answers, not PLAYBACK_ROWS.
  * Confirm/Correct stay on Sit close. Guest 1→6 and Plan 95 / 61.8 stay. */
 
-test("guest Playback is empty when nothing was typed; Plan still 95 and 61.8; never writes we-spec-key", async ({
+test("guest Playback shows sample labels when only sample exists; Plan still 95 and 61.8; never writes we-spec-key", async ({
   page,
 }) => {
   const sittingCalls: string[] = [];
@@ -1840,10 +1845,13 @@ test("guest Playback is empty when nothing was typed; Plan still 95 and 61.8; ne
 
   await page.goto("/scout/offer-desk/playback");
   await expect(page.getByTestId("playback")).toBeVisible();
-  await expect(page.getByTestId("playback-empty")).toHaveText("none yet", { timeout: 15_000 });
+  await expect(page.getByTestId("playback-empty")).toHaveCount(0);
+  await expect(page.getByTestId("playback-sample-only")).toHaveText(SAMPLE_FIELD_LABEL, { timeout: 15_000 });
   await expect(page.getByTestId("playback-guest")).toContainText(/looking only/i, { timeout: 15_000 });
-  await expect(page.getByTestId("playback-cell-function_head-pain")).toHaveText("none yet");
-  await expect(page.getByTestId("playback-cell-sub_function_lead-pain")).toHaveText("none yet");
+  await expect(page.getByTestId("playback-cell-function_head-pain")).toContainText(/Dual employment/);
+  await expect(page.getByTestId("playback-sample-function_head-pain")).toHaveText(SAMPLE_FIELD_LABEL);
+  await expect(page.getByTestId("playback-cell-sub_function_lead-trigger")).toContainText(/Zwayam/);
+  await expect(page.getByTestId("playback-sample-sub_function_lead-trigger")).toHaveText(SAMPLE_FIELD_LABEL);
   await expect(page.getByTestId("playback-cell-sme-pain")).toHaveText("none yet");
   await expect(page.getByTestId("playback")).not.toContainText("Safe offer, two-hour SLA");
   await expect(page.getByTestId("playback")).not.toContainText("Eleven steps, Excel at the centre");
@@ -1911,6 +1919,8 @@ test("guest designed rooms: Function leader one question or none yet; Ops has no
   await page.goto("/scout/offer-desk/function-leader");
   await expect(page.getByTestId("designed-room")).toHaveAttribute("data-seat", "function_head");
   await expect(page.getByTestId("sitting-pain")).toHaveText(PAIN_QUESTION, { timeout: 15_000 });
+  await expect(page.getByTestId("sample-field-label")).toHaveText(SAMPLE_FIELD_LABEL);
+  await expect(page.getByTestId("sitting-answer")).toHaveValue(/Dual employment/);
   await expect(page.getByTestId("this-period-none")).toContainText("none yet");
   await expect(page.getByTestId("sitting-question")).toHaveCount(0);
   await expect(page.getByTestId("facilitator")).toHaveCount(0);
@@ -1921,11 +1931,12 @@ test("guest designed rooms: Function leader one question or none yet; Ops has no
 
   await page.goto("/scout/offer-desk/sub-function-lead");
   await expect(page.getByTestId("designed-room")).toHaveAttribute("data-seat", "sub_function_lead");
-  await expect(page.getByTestId("ops-has-not-sat")).toHaveText("Ops has not sat");
-  await expect(page.getByTestId("ops-slot-trigger")).toHaveText("Ops has not sat");
-  await expect(page.getByTestId("ops-slot-end")).toHaveText("Ops has not sat");
-  await expect(page.getByTestId("ops-slot-systems")).toHaveText("Ops has not sat");
-  await expect(page.getByTestId("ops-slot-cover")).toHaveText("Ops has not sat");
+  await expect(page.getByTestId("ops-has-not-sat")).toHaveCount(0);
+  await expect(page.getByTestId("ops-slot-trigger")).toHaveValue(/Zwayam/);
+  await expect(page.getByTestId("ops-slot-end")).toHaveValue(/Onboarding SPOC/);
+  await expect(page.getByTestId("ops-slot-systems")).toHaveValue(/Zoho/);
+  await expect(page.getByTestId("ops-slot-cover")).toHaveValue(/Umesh/);
+  await expect(page.getByTestId("sample-field-label-trigger")).toHaveText(SAMPLE_FIELD_LABEL);
   await expect(page.getByText("We asked · what the workbook implies for this seat")).toHaveCount(0);
   await expect(page.getByText("Prerana")).toHaveCount(0);
   await expect(page.getByText("Darwinbox is coming")).toHaveCount(0);
@@ -1942,11 +1953,90 @@ test("guest designed rooms: Function leader one question or none yet; Ops has no
   await expect(page.getByText(/cut offer-to-Day-1/i)).toHaveCount(0);
 
   await page.goto("/scout/offer-desk/playback");
-  await expect(page.getByTestId("playback-empty")).toHaveText("none yet", { timeout: 15_000 });
+  await expect(page.getByTestId("playback-sample-only")).toHaveText(SAMPLE_FIELD_LABEL, { timeout: 15_000 });
+  await expect(page.getByTestId("playback-empty")).toHaveCount(0);
   await expect(page.getByTestId("designed-room")).toHaveCount(0);
 
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 });
 
+/** DEMO SAMPLE. Prefill from Rashmi's sheet, labelled. Empty + sample off = none yet.
+ * Guest 1→6 and Plan 95 / 61.8 stay. Never invent 47 days. Never PUT sample. */
 
+test("guest Playback with sample off is none yet; never writes we-spec-key", async ({ page }) => {
+  await page.goto("/scout/offer-desk/playback?sample=off");
+  await expect(page.getByTestId("playback-empty")).toHaveText("none yet", { timeout: 15_000 });
+  await expect(page.getByTestId("playback-cell-function_head-pain")).toHaveText("none yet");
+  await expect(page.getByTestId("playback-cell-sub_function_lead-pain")).toHaveText("none yet");
+  await expect(page.getByTestId("playback-cell-sme-pain")).toHaveText("none yet");
+  await expect(page.getByTestId("playback-sample-only")).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+test("Offer Desk home leads with Function leader question; 11-step poster is behind Desk as sat", async ({
+  page,
+}) => {
+  await page.goto("/scout/offer-desk");
+  await expect(page.getByTestId("offer-desk-leader-question")).toHaveText(PAIN_QUESTION);
+  await expect(page.getByTestId("sample-pack-banner")).toHaveText(SAMPLE_PACK_BANNER);
+  await expect(page.getByTestId("offer-desk-start-sitting")).toBeVisible();
+  await expect(page.getByTestId("desk-as-sat")).toHaveJSProperty("open", false);
+  await expect(page.getByRole("heading", { name: "The 11 micro-steps, end to end" })).not.toBeVisible();
+  await expect(page.getByRole("heading", { name: "Automation readiness — what the platform is worth here" })).not.toBeVisible();
+  await page.getByTestId("desk-as-sat").locator("summary").click();
+  await expect(page.getByTestId("desk-as-sat")).toHaveJSProperty("open", true);
+  await expect(page.getByRole("heading", { name: "The 11 micro-steps, end to end" })).toBeVisible();
+  await expect(page.getByText(/47 days/i)).toHaveCount(0);
+  await expect(page.getByText("Function leader (CHRO)")).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+test("Function leader with sample off skips sample prefill", async ({ page }) => {
+  await page.goto("/scout/offer-desk/function-leader?sample=off");
+  await expect(page.getByTestId("sitting-pain")).toHaveText(PAIN_QUESTION, { timeout: 15_000 });
+  await expect(page.getByTestId("sitting-answer")).toHaveValue("");
+  await expect(page.getByTestId("sample-field-label")).toHaveCount(0);
+  await expect(page.getByTestId("sample-pack-banner")).toHaveCount(0);
+  await expect(page.getByTestId("this-period-none")).toContainText("none yet");
+  await expect(page.getByText(/47 days/i)).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+test("Ops with sample off stays empty; never writes we-spec-key", async ({ page }) => {
+  await page.goto("/scout/offer-desk/sub-function-lead?sample=off");
+  await expect(page.getByTestId("ops-has-not-sat")).toHaveText("Ops has not sat");
+  await expect(page.getByTestId("ops-slot-trigger")).toHaveText("Ops has not sat");
+  await expect(page.getByTestId("ops-slot-end")).toHaveText("Ops has not sat");
+  await expect(page.getByTestId("ops-slot-systems")).toHaveText("Ops has not sat");
+  await expect(page.getByTestId("ops-slot-cover")).toHaveText("Ops has not sat");
+  await expect(page.getByTestId("sample-pack-banner")).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+test("keyed Function leader does not PUT sample as a confirmed sitting", async ({ page, request }) => {
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+  const samplePuts: string[] = [];
+  page.on("request", (req) => {
+    if (req.method() === "PUT" && req.url().includes("/sitting-answers")) {
+      samplePuts.push(req.postData() ?? "");
+    }
+    if (req.method() === "POST" && req.url().includes("draft-strategy-intent")) {
+      samplePuts.push(req.postData() ?? "");
+    }
+  });
+
+  await page.goto("/scout/offer-desk/function-leader");
+  await expect(page.getByText("Looking only — nothing is saved")).toHaveCount(0);
+  const answer = page.getByTestId("sitting-answer");
+  await expect(answer).toBeVisible({ timeout: 20_000 });
+  const value = await answer.inputValue();
+  const showingSample = value.includes("Dual employment detected in UAN");
+  await page.getByTestId("sitting-next").click();
+  await expect(page.getByTestId("sitting-question")).toBeVisible();
+  if (showingSample) {
+    expect(samplePuts.join("\n")).not.toContain("Dual employment detected in UAN: do NOT release offer");
+    expect(samplePuts.join("\n")).not.toContain("Gaps or dual employment = offer not released without deviation approval.");
+  }
+});
 
