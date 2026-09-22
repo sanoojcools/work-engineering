@@ -2093,6 +2093,56 @@ test("guest Trianz leaders: five names, Nagraj six guide answers, specialist car
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 });
 
+test("guest Onboarding walk shows Prerana and closed Desk as sat; opening shows the first sheet step; Journey stays 18; Plan stays 95 and 61.8; no key", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  await page.getByTestId("leader-strip-rajesh").getByRole("link", { name: "Onboarding", exact: true }).click();
+  await expect(page).toHaveURL(/\/hr\/operations\/onboarding$/);
+
+  const walk = page.getByTestId("onboarding-walk");
+  await expect(walk.getByTestId("onboarding-runners")).toHaveText("Prerana BLR / Sasikala HYD / Thamizh CHN");
+  await expect(walk.getByTestId("onboarding-backup")).toHaveText("Backup: Reshma");
+  await expect(walk.getByTestId("onboarding-boss")).toHaveText("Boss: Rajesh");
+  await expect(walk.getByTestId("onboarding-hours")).toContainText("~22 hrs/mo");
+  await expect(walk).not.toContainText("95");
+  await expect(walk).not.toContainText("61.8");
+  await expect(walk).not.toContainText("Sheet exists. Not sat here.");
+  await expect(walk.getByTestId("onboarding-guest")).toHaveText("Looking only.");
+
+  const who = walk.getByTestId("onboarding-who");
+  const sat = walk.getByTestId("desk-as-sat");
+  const firstStep = walk.getByTestId("onboarding-step").first();
+  await expect(sat).toHaveJSProperty("open", false);
+  await expect(sat.locator("summary")).toHaveText("Desk as sat (Prerana)");
+  await expect(firstStep).not.toBeVisible();
+  const whoBox = await who.boundingBox();
+  const satBox = await sat.boundingBox();
+  expect(whoBox && satBox && whoBox.y < satBox.y).toBeTruthy();
+
+  await sat.locator("summary").click();
+  await expect(sat).toHaveJSProperty("open", true);
+  await expect(walk.getByTestId("onboarding-step")).toHaveCount(23);
+  await expect(firstStep).toBeVisible();
+  await expect(firstStep).toContainText("Recruiter initiates onboarding");
+  await expect(walk).not.toContainText("95");
+  await expect(walk).not.toContainText("61.8");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+
+  await page.goto("/census/chart");
+  await expect(stepCount(page)).toContainText("5 of 6");
+  await expect(page.getByTestId("journey-node")).toHaveCount(18);
+  await expect(page.getByTestId("journey-canvas")).not.toContainText(/offboarding/i);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
 test("keyed leader room shows Nagraj's guide answers and does not PUT them", async ({ page, request }) => {
   test.setTimeout(60_000);
   await signInWithFreshDemoKey(page, request);
