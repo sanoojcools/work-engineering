@@ -1,6 +1,6 @@
-import { DeskWalk } from "../components/DeskWalk";
-import { HRBP_SPEC } from "../lib/desks/hrbp";
+import { SpecialistDoorCard } from "../components/trianz/SpecialistDoorCard";
+import { specialistById } from "../lib/trianzPc";
 
 export default function DeskHrbp() {
-  return <DeskWalk spec={HRBP_SPEC} />;
+  return <SpecialistDoorCard door={specialistById("hrbp")} />;
 }

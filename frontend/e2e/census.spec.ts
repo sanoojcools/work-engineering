@@ -286,6 +286,13 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Scope", exact: false }).first()).toBeVisible();
   await expect(stepCount(page)).toContainText("1 of 6");
+  const trianz = page.getByTestId("trianz-pc");
+  await expect(trianz).toBeVisible();
+  await expect(trianz.getByTestId("leader-link-raja")).toHaveText("Raja");
+  await expect(trianz.getByTestId("leader-link-rajesh")).toHaveText("Rajesh");
+  await expect(trianz.getByTestId("leader-link-sanuj")).toHaveText("Sanuj");
+  await expect(trianz.getByTestId("leader-link-chandana")).toHaveText("Chandana");
+  await expect(trianz.getByTestId("leader-link-nagraj")).toHaveText("Nagraj");
   const walkNav = page.locator("nav.nav");
   await expect(walkNav.getByRole("link", { name: "Scope", exact: true })).toBeVisible();
   await expect(walkNav.getByRole("link", { name: "Capture", exact: true })).toBeVisible();
@@ -390,6 +397,7 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await expect(page.getByRole("button", { name: "5. Work Chart" })).toHaveCount(0);
   await expect(page.getByTestId("journey-canvas")).toBeVisible();
   await expect(page.getByTestId("journey-node")).toHaveCount(18);
+  await expect(page.getByTestId("journey-canvas")).not.toContainText(/offboarding/i);
   await expect(page.getByTestId("journey-lock")).toHaveCount(1);
   const dualCanvas = page.locator('[data-testid="journey-node"][data-leaf-id="WU-HIRE-05"]');
   await expect(dualCanvas).toHaveAttribute("data-lock", "true");
@@ -841,6 +849,7 @@ test("guest Journey canvas is 18 nodes with lock; Plan still 95 and 61.8; downlo
   await expect(page.getByRole("button", { name: "5. Journey" })).toBeVisible();
   await expect(page.getByTestId("journey-canvas")).toBeVisible();
   await expect(page.getByTestId("journey-node")).toHaveCount(18);
+  await expect(page.getByTestId("journey-canvas")).not.toContainText(/offboarding/i);
   await expect(page.getByTestId("journey-lock")).toHaveCount(1);
   await expect(page.locator('[data-testid="journey-node"][data-leaf-id="WU-HIRE-05"]')).toHaveAttribute(
     "data-lock",
@@ -1428,6 +1437,7 @@ test("guest Chart shows 18 leaves, looking only, mints no key, never calls simul
   await expect(page.getByTestId("hire-leaf")).toHaveCount(18);
   await expect(page.getByTestId("journey-canvas")).toBeVisible();
   await expect(page.getByTestId("journey-node")).toHaveCount(18);
+  await expect(page.getByTestId("journey-canvas")).not.toContainText(/offboarding/i);
   await expect(page.getByTestId("hire-leaves")).not.toContainText(/\bleaf\b/i);
   await expect(page.getByTestId("hire-leaves")).not.toContainText(/\bleaves\b/i);
   await expect(page.getByTestId("chart-sim-guest")).toHaveText(/looking only/i, { timeout: 15_000 });
@@ -1999,6 +2009,116 @@ test("Function leader with sample off skips sample prefill", async ({ page }) =>
   await expect(page.getByTestId("this-period-none")).toContainText("none yet");
   await expect(page.getByText(/47 days/i)).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+const NAGRAJ_ANSWERS = [
+  "Internal is running about 15 to 20 percent of total placement volume.",
+  "No overlap, those are two separate groups.",
+  "It's roughly 65-35 — 65 on demand-to-fulfillment, sourcing, screening, matching, and 35 on mobility casework.",
+  "Mostly a skill-match problem, honestly.",
+  "If the person handling platform and tech sourcing is out, GTM assimilation hiring just stalls",
+  "I expect internal mobility's share to go up as delivery shifts partner-led",
+];
+
+test("guest Trianz leaders: five names, Nagraj six guide answers, specialist card, Journey 18 without offboarding, Plan 95 and 61.8, no key", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const writes: string[] = [];
+  page.on("request", (req) => {
+    if (req.method() === "PUT" || req.method() === "POST" || req.method() === "PATCH") {
+      if (/sitting-answers|draft-strategy-intent|strategy-intent/.test(req.url())) {
+        writes.push(`${req.method()} ${req.url()}`);
+      }
+    }
+  });
+
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  const trianz = page.getByTestId("trianz-pc");
+  for (const id of ["raja", "rajesh", "sanuj", "chandana", "nagraj"]) {
+    await expect(trianz.getByTestId(`leader-link-${id}`)).toBeVisible();
+  }
+  await expect(trianz.getByTestId("no-specialist-sheet")).toHaveCount(2);
+  await expect(trianz.getByTestId("no-specialist-sheet").first()).toHaveText("no specialist sheet on this walk");
+
+  await trianz.getByTestId("leader-link-nagraj").click();
+  await expect(page).toHaveURL(/\/trianz\/nagraj$/);
+  const room = page.getByTestId("leader-room");
+  await expect(room).toHaveAttribute("data-leader", "nagraj");
+  await expect(room.getByTestId("leader-room-name")).toHaveText("Nagraj");
+  await expect(room.getByTestId("leader-qa").locator("[data-testid^='leader-qa-']")).toHaveCount(6);
+  for (let i = 0; i < NAGRAJ_ANSWERS.length; i++) {
+    await expect(room.getByTestId(`leader-answer-${i + 1}`)).toContainText(NAGRAJ_ANSWERS[i]);
+  }
+  await expect(room).not.toContainText(/simulated/i);
+  await expect(room.getByTestId("leader-guest")).toHaveText("Looking only.");
+  await expect(page.getByTestId("this-period-confirm")).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+
+  await page.goto("/");
+  await page.getByTestId("leader-strip-rajesh").getByRole("link", { name: "Offboarding", exact: true }).click();
+  await expect(page).toHaveURL(/\/hr\/operations\/offboarding$/);
+  const card = page.getByTestId("specialist-card");
+  await expect(card.getByTestId("specialist-name")).toHaveText("Offboarding");
+  await expect(card.getByTestId("specialist-boss")).toHaveText("Rajesh");
+  await expect(card.getByTestId("specialist-status")).toHaveText("Sheet exists. Not sat here.");
+  await expect(page.getByText("Employee initiates separation")).toHaveCount(0);
+  await expect(page.getByText(/hrs\/week/)).toHaveCount(0);
+
+  await page.goto("/scout/offer-desk");
+  const leaderHeading = page.getByRole("heading", { name: "Function leader" });
+  const sat = page.getByTestId("desk-as-sat");
+  await expect(leaderHeading).toBeVisible();
+  await expect(sat).toBeVisible();
+  expect(await sat.evaluate((el) => (el as HTMLDetailsElement).open)).toBe(false);
+  await expect(sat).toContainText("The 11 micro-steps");
+  await expect(sat).toContainText("%");
+  const leaderBox = await leaderHeading.boundingBox();
+  const satBox = await sat.boundingBox();
+  expect(leaderBox && satBox && leaderBox.y < satBox.y).toBeTruthy();
+
+  await page.goto("/census/chart");
+  await expect(stepCount(page)).toContainText("5 of 6");
+  await expect(page.getByTestId("journey-node")).toHaveCount(18);
+  await expect(page.getByTestId("journey-canvas")).not.toContainText(/offboarding/i);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  await expect(page.getByText("95", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("61.8", { exact: true }).first()).toBeVisible();
+  expect(writes).toEqual([]);
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+test("keyed leader room shows Nagraj's guide answers and does not PUT them", async ({ page, request }) => {
+  test.setTimeout(60_000);
+  await signInWithFreshDemoKey(page, request);
+  const writes: string[] = [];
+  page.on("request", (req) => {
+    if (req.method() === "PUT" || req.method() === "POST" || req.method() === "PATCH") {
+      if (/sitting-answers|draft-strategy-intent|strategy-intent/.test(req.url())) {
+        writes.push(`${req.method()} ${req.url()}`);
+      }
+    }
+  });
+
+  await page.goto("/trianz/nagraj");
+  const room = page.getByTestId("leader-room");
+  await expect(room.getByTestId("leader-room-name")).toHaveText("Nagraj");
+  for (let i = 0; i < NAGRAJ_ANSWERS.length; i++) {
+    await expect(room.getByTestId(`leader-answer-${i + 1}`)).toContainText(NAGRAJ_ANSWERS[i]);
+  }
+  await expect(room).not.toContainText(/simulated/i);
+  await expect(page.getByRole("button", { name: "Confirm" })).toHaveCount(0);
+  await expect(page.getByTestId("this-period-confirm")).toHaveCount(0);
+  expect(writes).toEqual([]);
+
+  await page.goto("/census/plan");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
 });
 
 test("Ops with sample off stays empty; never writes we-spec-key", async ({ page }) => {
