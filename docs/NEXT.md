@@ -2,7 +2,7 @@
 
 Dated 22 Sep 2026. GitHub `main` + this file beat chat memory.
 
-**On `main`:** D-1…14, Cuts 1–4, #70 sample home, #71 Trianz five leaders, #72 T1 Onboarding sit.
+**On `main`:** D-1…14, Cuts 1–4, #70–#72, #74 T2 Offboarding sit.
 **Cloud factory: LOCKED.** GitHub Actions must not spend Claude credits on product code.
 
 Locks that never move: Offer Desk Journey = 18 leaves from `packs/hr/hire_leaves.yaml`.
@@ -33,9 +33,9 @@ Shared refuse for every T-row:
 - Do not invent steps; copy `frontend/src/lib/desks/<file>.ts` only.
 - Hours: only numbers already in that file. Never print 95 or 61.8 on this desk.
 - Guest looking only, no `we-spec-key`.
-- Playwright always: guest 1→6; Plan 95 and 61.8; Journey 18 nodes; **offboarding steps live only on the Offboarding walk, never as extra hire-canvas nodes.**
+- Playwright always: guest 1→6; Plan 95 and 61.8; Journey 18 nodes; offboarding/vendor steps only on their own walk.
 
-Walk shape for each desk (same as Offer Desk / T1):
+Walk shape for each desk (same as T1/T2):
 - Card on Trianz home opens the walk.
 - First screen: who runs it + boss (from the ts file).
 - Steps behind **Desk as sat (<SPOC>)**, closed by default.
@@ -43,8 +43,8 @@ Walk shape for each desk (same as Offer Desk / T1):
 | ID | Status | Branch | Source | SPOC / first step |
 |---|---|---|---|---|
 | T1 Onboarding | DONE (#72) | `cursor/t1-onboarding-sit` | `onboarding.ts` | Prerana |
-| T2 Offboarding | UNLOCKED | `cursor/t2-offboarding-sit` | `frontend/src/lib/desks/offboarding.ts` | Sasikala (Separation SPOC). Backup Reshma. Boss Rajesh. First step: Employee initiates separation. Hours: ~60 hrs/mo SPOC from that file |
-| T3 Vendor | LOCKED until T2 on `main` | `cursor/t3-vendor-sit` | `frontend/src/lib/desks/vendorMgmt.ts` | From that file only |
+| T2 Offboarding | DONE (#74) | `cursor/t2-offboarding-sit` | `offboarding.ts` | Sasikala |
+| T3 Vendor | UNLOCKED | `cursor/t3-vendor-sit` | `frontend/src/lib/desks/vendorMgmt.ts` | Reshma V. No formal backup. Boss Rajesh. First step: Invoice processing. Hours: ~9 hrs/day from that file. Sheet status is needs_follow_up — show that line, do not upgrade it to finalized |
 | T4 US HR | LOCKED until T3 on `main` | `cursor/t4-ushr-sit` | `frontend/src/lib/desks/usHr.ts` | From that file only |
 | T5 HRBP | LOCKED until T4 on `main` | `cursor/t5-hrbp-sit` | `frontend/src/lib/desks/hrbp.ts` | Under Sanuj. From that file only |
 
