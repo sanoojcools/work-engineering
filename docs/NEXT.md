@@ -2,7 +2,7 @@
 
 Dated 22 Sep 2026. GitHub `main` + this file beat chat memory.
 
-**On `main`:** D-1…14, Cuts 1–4, #70 sample home, #71 Trianz five leaders.
+**On `main`:** D-1…14, Cuts 1–4, #70 sample home, #71 Trianz five leaders, #72 T1 Onboarding sit.
 **Cloud factory: LOCKED.** GitHub Actions must not spend Claude credits on product code.
 
 Locks that never move: Offer Desk Journey = 18 leaves from `packs/hr/hire_leaves.yaml`.
@@ -33,17 +33,17 @@ Shared refuse for every T-row:
 - Do not invent steps; copy `frontend/src/lib/desks/<file>.ts` only.
 - Hours: only numbers already in that file. Never print 95 or 61.8 on this desk.
 - Guest looking only, no `we-spec-key`.
-- Playwright always: guest 1→6; Plan 95 and 61.8; Journey 18 nodes; no offboarding name on that canvas.
+- Playwright always: guest 1→6; Plan 95 and 61.8; Journey 18 nodes; **offboarding steps live only on the Offboarding walk, never as extra hire-canvas nodes.**
 
-Walk shape for each desk (same as Offer Desk):
+Walk shape for each desk (same as Offer Desk / T1):
 - Card on Trianz home opens the walk.
 - First screen: who runs it + boss (from the ts file).
 - Steps behind **Desk as sat (<SPOC>)**, closed by default.
 
 | ID | Status | Branch | Source | SPOC / first step |
 |---|---|---|---|---|
-| T1 Onboarding | UNLOCKED | `cursor/t1-onboarding-sit` | `frontend/src/lib/desks/onboarding.ts` | Prerana / Sasikala / Thamizh. First step: Recruiter initiates onboarding |
-| T2 Offboarding | LOCKED until T1 on `main` | `cursor/t2-offboarding-sit` | `frontend/src/lib/desks/offboarding.ts` | From that file only |
+| T1 Onboarding | DONE (#72) | `cursor/t1-onboarding-sit` | `onboarding.ts` | Prerana |
+| T2 Offboarding | UNLOCKED | `cursor/t2-offboarding-sit` | `frontend/src/lib/desks/offboarding.ts` | Sasikala (Separation SPOC). Backup Reshma. Boss Rajesh. First step: Employee initiates separation. Hours: ~60 hrs/mo SPOC from that file |
 | T3 Vendor | LOCKED until T2 on `main` | `cursor/t3-vendor-sit` | `frontend/src/lib/desks/vendorMgmt.ts` | From that file only |
 | T4 US HR | LOCKED until T3 on `main` | `cursor/t4-ushr-sit` | `frontend/src/lib/desks/usHr.ts` | From that file only |
 | T5 HRBP | LOCKED until T4 on `main` | `cursor/t5-hrbp-sit` | `frontend/src/lib/desks/hrbp.ts` | Under Sanuj. From that file only |
