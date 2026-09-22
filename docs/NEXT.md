@@ -1,41 +1,53 @@
 # NEXT — agents read this and execute their section
 
-D-1, D-2, D-3 are on `main`. #65 demo sample is a separate Ready PR — do not rebuild it.
-Do not rebuild Chart leaf count, Plan 95/61.8 math, or Gap buckets.
+Dated 22 Sep 2026. GitHub `main` + this file beat chat memory.
 
-**Cloud factory: LOCKED for feature PRs.** GitHub Actions must not spend Claude credits on product code.
+**On `main`:** D-1…14, Cuts 1–4, #70 sample home, #71 Trianz five leaders.
+**Cloud factory: LOCKED.** GitHub Actions must not spend Claude credits on product code.
 
-Canon: `docs/WEP_Discovery_Proposal.md` v2.
-Companion: `docs/WEP_PRODUCT_AND_BUILD.md`.
+Locks that never move: Offer Desk Journey = 18 leaves from `packs/hr/hire_leaves.yaml`.
+Plan **95** and **61.8** are Offer Desk only. Dual-employment stop unliftable.
+Guest mints no `we-spec-key`. No DarwinBox connector. No seventh census step.
 
-Founder accepted keyed CI 500s on the shared demo tenant for #60, #63, #64.
-409/422 writes = Claude-only after a named sitting.
+Canon: `docs/WEP_Discovery_Proposal.md` v2. Companion: `docs/WEP_PRODUCT_AND_BUILD.md`.
+
+409/422 writes = Claude-only after a named sitting. Founder accepted keyed CI 500s on the shared demo tenant.
 
 ---
 
 ## Claude
 
-**LOCKED for product code.** No D-4/D-5. No feature PR.
+**LOCKED for product code.** No D-4 persist. No feature PR. If you are a cloud run: stop.
 
 ---
 
-## Cursor
+## Cursor — desk queue (one unlocked row)
 
-**UNLOCKED — two parallel slices, different files. One PR each. Ready. Do not merge.**
+**How to run:** `git pull origin main`. Read this file. Do **only** the first row whose status is UNLOCKED. One branch, one Ready PR. Do not merge. Stop.
 
-### Cut 1 — seed kill
-Branch: `cursor/cut1-seed-kill`
-Delete `strategy_intent_focus` fixture from `ENSURE_BODY` and guest preview in `frontend/src/lib/workSystem.ts`.
-Empty → none yet / Not drafted yet. Download must not contain “cut offer-to-Day-1 cycle time”.
-Playwright: guest 1→6, no we-spec-key, Plan 95 and 61.8 as two numbers.
-Do not touch AppShell, CensusStepper, Chart, Plan math, handoff.py.
+If two UNLOCKED rows exist, you are reading a stale NEXT. Stop.
 
-### Cut 2 — case-file nav
-Branch: `cursor/cut2-case-file-nav`
-Walk nav = Scope, Capture, Evidence, Journey, Plan, Spec. Lab behind Lab or `?lab=1`.
-Rename stepper step 5 to Journey. Spec stays visible.
-Files: AppShell / nav / CensusStepper only. Do not touch `workSystem.ts`.
-Playwright: guest 1→6, no we-spec-key, Plan 95 and 61.8.
+Shared refuse for every T-row:
+- Do not edit `CensusPlan.tsx` 95/61.8 math, `hire_leaves.yaml` count, `handoff.py`.
+- Do not paint this desk's steps onto the Offer Desk Journey.
+- Do not invent steps; copy `frontend/src/lib/desks/<file>.ts` only.
+- Hours: only numbers already in that file. Never print 95 or 61.8 on this desk.
+- Guest looking only, no `we-spec-key`.
+- Playwright always: guest 1→6; Plan 95 and 61.8; Journey 18 nodes; no offboarding name on that canvas.
 
-**Still locked:** rooms persist (D-4), SME dump (D-5), canvas (Cut 3), Evidence upload (Cut 5), 409/422.
-Do not invent a CHRO voice. Do not start Cut 3 until Cut 1 and Cut 2 are Ready.
+Walk shape for each desk (same as Offer Desk):
+- Card on Trianz home opens the walk.
+- First screen: who runs it + boss (from the ts file).
+- Steps behind **Desk as sat (<SPOC>)**, closed by default.
+
+| ID | Status | Branch | Source | SPOC / first step |
+|---|---|---|---|---|
+| T1 Onboarding | UNLOCKED | `cursor/t1-onboarding-sit` | `frontend/src/lib/desks/onboarding.ts` | Prerana / Sasikala / Thamizh. First step: Recruiter initiates onboarding |
+| T2 Offboarding | LOCKED until T1 on `main` | `cursor/t2-offboarding-sit` | `frontend/src/lib/desks/offboarding.ts` | From that file only |
+| T3 Vendor | LOCKED until T2 on `main` | `cursor/t3-vendor-sit` | `frontend/src/lib/desks/vendorMgmt.ts` | From that file only |
+| T4 US HR | LOCKED until T3 on `main` | `cursor/t4-ushr-sit` | `frontend/src/lib/desks/usHr.ts` | From that file only |
+| T5 HRBP | LOCKED until T4 on `main` | `cursor/t5-hrbp-sit` | `frontend/src/lib/desks/hrbp.ts` | Under Sanuj. From that file only |
+
+After a T-row lands on `main`, Grok flips that row to DONE and the next to UNLOCKED. Cursor does not edit this table.
+
+**Still locked for everyone:** rooms persist (D-4), SME dump (D-5), DarwinBox API, #58 ingest as product work.
