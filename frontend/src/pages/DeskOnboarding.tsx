@@ -1,6 +1,6 @@
-import { DeskWalk } from "../components/DeskWalk";
-import { ONBOARDING_SPEC } from "../lib/desks/onboarding";
+import { SpecialistDoorCard } from "../components/trianz/SpecialistDoorCard";
+import { specialistById } from "../lib/trianzPc";
 
 export default function DeskOnboarding() {
-  return <DeskWalk spec={ONBOARDING_SPEC} />;
+  return <SpecialistDoorCard door={specialistById("onboarding")} />;
 }

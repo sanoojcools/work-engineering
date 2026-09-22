@@ -4,15 +4,16 @@ import { StartCensus } from "../components/census/StartCensus";
 import { DemoSetup } from "../components/DemoSetup";
 import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
+import { TrianzStrip } from "../components/trianz/TrianzStrip";
 
 /** CENSUS-v0 Part A, step 1: Scope. Home IS this step, guest or keyed --
  * not a separate landing page ahead of the six-step census. Content is the
  * existing Enterprise -> HR map -> Function Scope pages, relabelled: what
  * this build used to call "blast radius" is customer-facing "Scope" here
  * (docs/BUILD_PROGRAM.md CENSUS-v0's own copy rule). V10-1 adds Start
- * census + an honest readiness strip from GET /api/censuses. Offer Desk is
- * deliberately NOT linked from this page: it is Capture depth, reachable
- * from step 2, not from Home. */
+ * census + an honest readiness strip from GET /api/censuses. Trianz P&C
+ * sits on this page: five leaders, Offer Desk as the deep specialist,
+ * other specialist doors as one card. */
 export default function Start() {
   return (
     <>
@@ -25,6 +26,8 @@ export default function Start() {
         Today's HR map: what's live, what's still on the map, and who owns each sub-function. You can look without
         a key — every screen on this walk renders read-only. Writes stay denied until you sign in for real.
       </p>
+
+      <TrianzStrip />
 
       <StartCensus />
 

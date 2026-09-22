@@ -1,6 +1,6 @@
-import { DeskWalk } from "../components/DeskWalk";
-import { VENDOR_MGMT_SPEC } from "../lib/desks/vendorMgmt";
+import { SpecialistDoorCard } from "../components/trianz/SpecialistDoorCard";
+import { specialistById } from "../lib/trianzPc";
 
 export default function DeskVendorMgmt() {
-  return <DeskWalk spec={VENDOR_MGMT_SPEC} />;
+  return <SpecialistDoorCard door={specialistById("vendor")} />;
 }

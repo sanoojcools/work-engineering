@@ -46,6 +46,7 @@ import Projections from "./pages/Projections";
 import ScoutInterview from "./pages/ScoutInterview";
 import Spec from "./pages/Spec";
 import Start from "./pages/Start";
+import TrianzLeader from "./pages/TrianzLeader";
 import Verdict from "./pages/Verdict";
 import Verification from "./pages/Verification";
 import WorkGraph from "./pages/WorkGraph";
@@ -58,6 +59,7 @@ export default function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<Start />} />
+          <Route path="/trianz/:leaderId" element={<TrianzLeader />} />
           <Route path="/census/capture" element={<CensusCapture />} />
           <Route path="/census/evidence" element={<CensusEvidence />} />
           <Route path="/census/gap" element={<CensusGap />} />
