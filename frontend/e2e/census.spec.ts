@@ -2057,13 +2057,13 @@ test("guest Trianz leaders: five names, Nagraj six guide answers, specialist car
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 
   await page.goto("/");
-  await page.getByTestId("leader-strip-rajesh").getByRole("link", { name: "Offboarding", exact: true }).click();
-  await expect(page).toHaveURL(/\/hr\/operations\/offboarding$/);
+  await page.getByTestId("leader-strip-rajesh").getByRole("link", { name: "Vendor", exact: true }).click();
+  await expect(page).toHaveURL(/\/hr\/operations\/vendor-mgmt$/);
   const card = page.getByTestId("specialist-card");
-  await expect(card.getByTestId("specialist-name")).toHaveText("Offboarding");
+  await expect(card.getByTestId("specialist-name")).toHaveText("Vendor");
   await expect(card.getByTestId("specialist-boss")).toHaveText("Rajesh");
   await expect(card.getByTestId("specialist-status")).toHaveText("Sheet exists. Not sat here.");
-  await expect(page.getByText("Employee initiates separation")).toHaveCount(0);
+  await expect(page.getByText("Invoice processing")).toHaveCount(0);
   await expect(page.getByText(/hrs\/week/)).toHaveCount(0);
 
   await page.goto("/scout/offer-desk");
@@ -2127,6 +2127,56 @@ test("guest Onboarding walk shows Prerana and closed Desk as sat; opening shows 
   await expect(walk.getByTestId("onboarding-step")).toHaveCount(23);
   await expect(firstStep).toBeVisible();
   await expect(firstStep).toContainText("Recruiter initiates onboarding");
+  await expect(walk).not.toContainText("95");
+  await expect(walk).not.toContainText("61.8");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+
+  await page.goto("/census/chart");
+  await expect(stepCount(page)).toContainText("5 of 6");
+  await expect(page.getByTestId("journey-node")).toHaveCount(18);
+  await expect(page.getByTestId("journey-canvas")).not.toContainText(/offboarding/i);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+test("guest Offboarding walk shows Sasikala and closed Desk as sat; opening shows the first sheet step; Journey stays 18; Plan stays 95 and 61.8; no key", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  await page.getByTestId("leader-strip-rajesh").getByRole("link", { name: "Offboarding", exact: true }).click();
+  await expect(page).toHaveURL(/\/hr\/operations\/offboarding$/);
+
+  const walk = page.getByTestId("offboarding-walk");
+  await expect(walk.getByTestId("offboarding-runners")).toHaveText("Sasikala (Separation SPOC)");
+  await expect(walk.getByTestId("offboarding-backup")).toHaveText("Backup: Reshma");
+  await expect(walk.getByTestId("offboarding-boss")).toHaveText("Boss: Rajesh");
+  await expect(walk.getByTestId("offboarding-hours")).toContainText("~60 hrs/month");
+  await expect(walk).not.toContainText("95");
+  await expect(walk).not.toContainText("61.8");
+  await expect(walk).not.toContainText("Sheet exists. Not sat here.");
+  await expect(walk.getByTestId("offboarding-guest")).toHaveText("Looking only.");
+
+  const who = walk.getByTestId("offboarding-who");
+  const sat = walk.getByTestId("desk-as-sat");
+  const firstStep = walk.getByTestId("offboarding-step").first();
+  await expect(sat).toHaveJSProperty("open", false);
+  await expect(sat.locator("summary")).toHaveText("Desk as sat (Sasikala)");
+  await expect(firstStep).not.toBeVisible();
+  const whoBox = await who.boundingBox();
+  const satBox = await sat.boundingBox();
+  expect(whoBox && satBox && whoBox.y < satBox.y).toBeTruthy();
+
+  await sat.locator("summary").click();
+  await expect(sat).toHaveJSProperty("open", true);
+  await expect(walk.getByTestId("offboarding-step")).toHaveCount(26);
+  await expect(firstStep).toBeVisible();
+  await expect(firstStep).toContainText("Employee initiates separation");
   await expect(walk).not.toContainText("95");
   await expect(walk).not.toContainText("61.8");
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
