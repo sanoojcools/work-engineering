@@ -2,7 +2,7 @@
 
 Dated 27 Sep 2026. GitHub `main` + this file beat chat memory.
 
-**On `main`:** D-1…14, Cuts 1–4, #70–#72, #74 T2 Offboarding, #75 T3 Vendor.
+**On `main`:** D-1…14, Cuts 1–4, #70–#72, #74–#76 (T2 Offboarding, T3 Vendor, T4 US HR).
 **Cloud factory: LOCKED.** GitHub Actions must not spend Claude credits on product code.
 
 Locks that never move: Offer Desk Journey = 18 leaves from `packs/hr/hire_leaves.yaml`.
@@ -35,7 +35,7 @@ Shared refuse for every T-row:
 - Guest looking only, no `we-spec-key`.
 - Playwright always: guest 1→6; Plan 95 and 61.8; Journey 18 nodes; other desks only on their own walk.
 
-Walk shape for each desk (same as T1–T3):
+Walk shape for each desk (same as T1–T4):
 - Card on Trianz home opens the walk.
 - First screen: who runs it + boss (from the ts file).
 - Steps behind **Desk as sat (<SPOC>)**, closed by default.
@@ -45,9 +45,9 @@ Walk shape for each desk (same as T1–T3):
 | T1 Onboarding | DONE (#72) | `cursor/t1-onboarding-sit` | `onboarding.ts` | Prerana |
 | T2 Offboarding | DONE (#74) | `cursor/t2-offboarding-sit` | `offboarding.ts` | Sasikala |
 | T3 Vendor | DONE (#75) | `cursor/t3-vendor-sit` | `vendorMgmt.ts` | Reshma V |
-| T4 US HR | UNLOCKED | `cursor/t4-ushr-sit` | `frontend/src/lib/desks/usHr.ts` | Rashmi KN (same person as Offer Desk — two desks, do not merge the walks). Backup: none formal (Nanditha knows it). Onboarding session owned by Jayanthi. Boss Rajesh. First step: Recruiter sends BGV request. Hours: ~4 hrs/day from that file. Status needs_follow_up — keep that label |
-| T5 HRBP | LOCKED until T4 on `main` | `cursor/t5-hrbp-sit` | `frontend/src/lib/desks/hrbp.ts` | Under Sanuj. From that file only |
+| T4 US HR | DONE (#76) | `cursor/t4-ushr-sit` | `usHr.ts` | Rashmi KN |
+| T5 HRBP | UNLOCKED | `cursor/t5-hrbp-sit` | `frontend/src/lib/desks/hrbp.ts` | Under Sanuj. SPOCs: Thamizh + Rajitha (session). First step id OB-1 Meet & greet. Keep three lists: OB- / OFF- / GR- — not one fake chain. Hours: ~30-50 hrs/mo per HRBP (~90-150 team) from that file. Status needs_follow_up. Handoffs array in the file is empty — do not invent a handoff table |
 
-After a T-row lands on `main`, Grok flips that row to DONE and the next to UNLOCKED. Cursor does not edit this table.
+After T5 lands on `main`, Grok marks T5 DONE. Cursor does not start Family map unless NEXT says so.
 
-**Still locked for everyone:** rooms persist (D-4), SME dump (D-5), DarwinBox API, #58 ingest as product work.
+**Still locked for everyone:** rooms persist (D-4), SME dump (D-5), DarwinBox API, #58 ingest as product work, Family map until T5 is DONE.
