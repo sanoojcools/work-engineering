@@ -1,8 +1,8 @@
 # NEXT — agents read this and execute their section
 
-Dated 22 Sep 2026. GitHub `main` + this file beat chat memory.
+Dated 27 Sep 2026. GitHub `main` + this file beat chat memory.
 
-**On `main`:** D-1…14, Cuts 1–4, #70–#72, #74 T2 Offboarding sit.
+**On `main`:** D-1…14, Cuts 1–4, #70–#72, #74 T2 Offboarding, #75 T3 Vendor.
 **Cloud factory: LOCKED.** GitHub Actions must not spend Claude credits on product code.
 
 Locks that never move: Offer Desk Journey = 18 leaves from `packs/hr/hire_leaves.yaml`.
@@ -33,9 +33,9 @@ Shared refuse for every T-row:
 - Do not invent steps; copy `frontend/src/lib/desks/<file>.ts` only.
 - Hours: only numbers already in that file. Never print 95 or 61.8 on this desk.
 - Guest looking only, no `we-spec-key`.
-- Playwright always: guest 1→6; Plan 95 and 61.8; Journey 18 nodes; offboarding/vendor steps only on their own walk.
+- Playwright always: guest 1→6; Plan 95 and 61.8; Journey 18 nodes; other desks only on their own walk.
 
-Walk shape for each desk (same as T1/T2):
+Walk shape for each desk (same as T1–T3):
 - Card on Trianz home opens the walk.
 - First screen: who runs it + boss (from the ts file).
 - Steps behind **Desk as sat (<SPOC>)**, closed by default.
@@ -44,8 +44,8 @@ Walk shape for each desk (same as T1/T2):
 |---|---|---|---|---|
 | T1 Onboarding | DONE (#72) | `cursor/t1-onboarding-sit` | `onboarding.ts` | Prerana |
 | T2 Offboarding | DONE (#74) | `cursor/t2-offboarding-sit` | `offboarding.ts` | Sasikala |
-| T3 Vendor | UNLOCKED | `cursor/t3-vendor-sit` | `frontend/src/lib/desks/vendorMgmt.ts` | Reshma V. No formal backup. Boss Rajesh. First step: Invoice processing. Hours: ~9 hrs/day from that file. Sheet status is needs_follow_up — show that line, do not upgrade it to finalized |
-| T4 US HR | LOCKED until T3 on `main` | `cursor/t4-ushr-sit` | `frontend/src/lib/desks/usHr.ts` | From that file only |
+| T3 Vendor | DONE (#75) | `cursor/t3-vendor-sit` | `vendorMgmt.ts` | Reshma V |
+| T4 US HR | UNLOCKED | `cursor/t4-ushr-sit` | `frontend/src/lib/desks/usHr.ts` | Rashmi KN (same person as Offer Desk — two desks, do not merge the walks). Backup: none formal (Nanditha knows it). Onboarding session owned by Jayanthi. Boss Rajesh. First step: Recruiter sends BGV request. Hours: ~4 hrs/day from that file. Status needs_follow_up — keep that label |
 | T5 HRBP | LOCKED until T4 on `main` | `cursor/t5-hrbp-sit` | `frontend/src/lib/desks/hrbp.ts` | Under Sanuj. From that file only |
 
 After a T-row lands on `main`, Grok flips that row to DONE and the next to UNLOCKED. Cursor does not edit this table.
