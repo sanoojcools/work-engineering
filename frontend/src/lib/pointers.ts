@@ -110,6 +110,10 @@ export type EvidenceClaim = {
   guest: boolean;
   pointer: FieldPointer | null;
   fileName: string | null;
+  /** True only when the pointer's file is on GET /files for this tenant —
+   * the same set Evidence catalogue lists. A missing file is pointed at,
+   * never painted onto the Journey as a 19th piece. */
+  inCatalogue: boolean;
 };
 
 export const GUEST_EVIDENCE_CLAIMS: EvidenceClaim[] = [
@@ -123,6 +127,7 @@ export const GUEST_EVIDENCE_CLAIMS: EvidenceClaim[] = [
     guest: true,
     pointer: null,
     fileName: null,
+    inCatalogue: false,
   },
   {
     id: "guest-current",
@@ -134,6 +139,7 @@ export const GUEST_EVIDENCE_CLAIMS: EvidenceClaim[] = [
     guest: true,
     pointer: null,
     fileName: null,
+    inCatalogue: false,
   },
   {
     id: "guest-evidence",
@@ -145,6 +151,7 @@ export const GUEST_EVIDENCE_CLAIMS: EvidenceClaim[] = [
     guest: true,
     pointer: null,
     fileName: null,
+    inCatalogue: false,
   },
 ];
 
@@ -153,7 +160,12 @@ export async function listPointers(workUnitId: number): Promise<FieldPointer[]> 
   return page.items;
 }
 
-function claimFromPointer(unit: WorkUnit, pointer: FieldPointer, fileName: string | null): EvidenceClaim {
+function claimFromPointer(
+  unit: WorkUnit,
+  pointer: FieldPointer,
+  fileName: string | null,
+  inCatalogue: boolean,
+): EvidenceClaim {
   return {
     id: `${unit.code}-${pointer.field_name}`,
     workUnitCode: unit.code,
@@ -164,6 +176,7 @@ function claimFromPointer(unit: WorkUnit, pointer: FieldPointer, fileName: strin
     guest: false,
     pointer,
     fileName,
+    inCatalogue,
   };
 }
 
@@ -262,7 +275,8 @@ export function useEvidenceClaims() {
         if (!(POINTERABLE_FIELDS as readonly string[]).includes(pointer.field_name)) continue;
         const fileName =
           pointer.file_id != null ? (filesById.get(Number(pointer.file_id)) ?? null) : null;
-        out.push(claimFromPointer(unit, pointer, fileName));
+        const inCatalogue = pointer.file_id != null && filesById.has(Number(pointer.file_id));
+        out.push(claimFromPointer(unit, pointer, fileName, inCatalogue));
       }
     }
     out.sort((a, b) => a.id.localeCompare(b.id));

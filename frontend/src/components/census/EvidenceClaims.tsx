@@ -70,7 +70,13 @@ function ClaimDetail({ claim }: { claim: EvidenceClaim }) {
           opened, so it is not a fact.
         </p>
       )}
-      {asFact && opened && pointer ? (
+      {pointer && pointer.file_id != null && !claim.inCatalogue ? (
+        <p data-testid="evidence-point-at-file" style={{ fontSize: 13, margin: 0 }}>
+          Point at the file
+          {claim.fileName ? `: ${claim.fileName}` : ` ${pointer.file_id}`}. It is not in this walk's files, and it
+          is not a new piece of work on the Journey.
+        </p>
+      ) : asFact && opened && pointer ? (
         <div data-testid="evidence-pointer">
           <p style={{ fontSize: 13, margin: "0 0 4px" }}>
             File: <span data-testid="evidence-pointer-file">{claim.fileName ?? `file ${pointer.file_id}`}</span>

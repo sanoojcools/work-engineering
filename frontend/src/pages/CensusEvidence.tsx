@@ -5,6 +5,7 @@ import { IoPanes } from "../components/IoPanes";
 import { InfoTooltip } from "../components/InfoTooltip";
 import { DOCUMENT_CHECK_RECORD } from "../lib/offerDeskWorkRecord";
 import { GUEST_REGISTER_COUNTS, REGISTERS, REGISTER_COPY, countRegisters } from "../lib/gapRegisters";
+import { SAMPLE_FABRICATED_LABEL, isSamplePackFileName } from "../lib/samplePack";
 import { useApi } from "../hooks";
 import { useIsGuest } from "../lib/guestMode";
 import { withClient } from "../lib/withClient";
@@ -32,10 +33,7 @@ function FilesSection() {
       </h3>
       {isGuest && !firstLoadPending ? (
         <p className="hint" data-testid="evidence-catalogue-empty" style={{ marginBottom: 0 }}>
-          No files in this walk — a guest has no tenant to upload into. Sign in (Home → Set up the demo) to see this
-          tenant's own uploads, or try{" "}
-          <Link to="/scout/offer-desk/evidence-pack">With evidence (sample)</Link> to upload real files and come
-          back.
+          None yet.
         </p>
       ) : waiting ? (
         <p className="hint">Loading this tenant's files…</p>
@@ -43,12 +41,15 @@ function FilesSection() {
         <div className="banner error">{error}</div>
       ) : items.length === 0 ? (
         <p className="hint" data-testid="evidence-catalogue-empty" style={{ marginBottom: 0 }}>
-          No files uploaded yet for this tenant — a true empty state, not a placeholder. Try{" "}
-          <Link to="/scout/offer-desk/evidence-pack">With evidence (sample)</Link> to upload real files, or{" "}
-          <Link to="/scout/offer-desk/document-check">Document check</Link> to upload one by hand.
+          None yet.
         </p>
       ) : (
         <>
+          {items.some((f) => isSamplePackFileName(f.file_name)) && (
+            <p className="hint" data-testid="sample-fabricated-label" style={{ marginTop: 0 }}>
+              {SAMPLE_FABRICATED_LABEL}
+            </p>
+          )}
           <p className="hint" data-testid="evidence-catalogue-totals" style={{ marginTop: 0 }}>
             {data?.connected ?? 0} connected · {data?.not ?? 0} not
           </p>
@@ -63,7 +64,14 @@ function FilesSection() {
               <tbody>
                 {items.map((f) => (
                   <tr key={f.id} data-testid={`evidence-catalogue-row-${f.id}`}>
-                    <td>{f.file_name}</td>
+                    <td>
+                      {f.file_name}
+                      {isSamplePackFileName(f.file_name) ? (
+                        <span className="hint" style={{ display: "block", marginTop: 2 }}>
+                          {SAMPLE_FABRICATED_LABEL}
+                        </span>
+                      ) : null}
+                    </td>
                     <td data-testid={`evidence-catalogue-coverage-${f.id}`}>
                       {f.coverage === "connected" ? "connected" : "not"}
                     </td>
@@ -125,7 +133,8 @@ function RegistersSection() {
 
 /** CENSUS-v0 Part A, step 3. V10-10: this tenant's files as connected or
  * not (GET /evidence/catalogue). Click a claim: file + cell/page, or cannot
- * open. Guest: "No files in this walk." Never invent a pack. No coverage %. */
+ * open. Guest / empty catalogue: "None yet." Sample pack files stay labelled
+ * fabricated. Never invent a pack name. No coverage %. */
 export default function CensusEvidence() {
   const rec = DOCUMENT_CHECK_RECORD;
   return (
@@ -149,15 +158,14 @@ export default function CensusEvidence() {
         <p style={{ fontSize: 13 }}>
           <Link to="/scout/offer-desk/document-check">Document check</Link> — this unit's current/desired condition,
           acceptance criteria, and an optional real upload.{" "}
-          <Link to="/scout/offer-desk/evidence-pack">With evidence (sample)</Link> — uploads 7 real files and imports
-          the genome that cites them.{" "}
+          <Link to="/scout/offer-desk/evidence-pack">With evidence (sample)</Link> — a labelled fabricated test pack,
+          not this walk's files.{" "}
           <Link to="/scout/offer-desk/spec-deny">Ask Spec without a pass</Link> — an empty evidence token still
           denies by contract.
         </p>
         <p className="hint" style={{ marginBottom: 0 }}>
-          The evidence pack above is fabricated on purpose — not Rashmi's production month, and not a real Zwayam or
-          Zoho connector. That page carries its own banner saying so; nothing on this page merges its numbers into
-          this tenant's real files above.
+          Sample files stay labelled {SAMPLE_FABRICATED_LABEL} — not Rashmi's production month, and not a real Zwayam
+          or Zoho connector. Nothing on this page merges that pack into the files list above, or onto the Journey.
         </p>
       </div>
 

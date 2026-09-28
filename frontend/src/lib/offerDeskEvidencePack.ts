@@ -1,6 +1,8 @@
 import { apiFetch } from "./apiFetch";
 import pack from "./offerDeskEvidencePack.json";
 
+export { SAMPLE_FABRICATED_LABEL, isSamplePackFileName } from "./samplePack";
+
 /** offer-desk-inputs/ — the fabricated (invented candidates, invented
  * transcripts, invented system-of-record exports) evidence set built to
  * prove the observed-evidence path works end to end, not Rashmi's real

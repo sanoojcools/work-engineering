@@ -347,13 +347,12 @@ test("guest walks Scope through Plan (1 of 6 .. 6 of 6); Work Chart shows 18 lea
   await page.getByRole("link", { name: "Next: Evidence →" }).click();
   await expect(page).toHaveURL(/\/census\/evidence$/);
   await expect(stepCount(page)).toContainText("3 of 6");
-  // F1: a real screen, not a link farm -- files this tenant actually has
-  // (empty, honestly, for a guest) and three registers with counts, all
-  // rendered with no key ever minted just by looking.
-  await expect(page.getByText("No files in this walk")).toBeVisible();
+  // T7: empty catalogue is None yet — not a fake pack name. Guest looking
+  // does not mint a key. Sample pack lives on its own labelled page.
+  await expect(page.getByTestId("evidence-catalogue-empty")).toHaveText("None yet.");
   await expect(page.getByTestId("evidence-catalogue")).toBeVisible();
-  await expect(page.getByTestId("evidence-catalogue-empty")).toContainText("No files in this walk");
   await expect(page.locator("[data-testid^='evidence-catalogue-row-']")).toHaveCount(0);
+  await expect(page.getByText("No files in this walk")).toHaveCount(0);
   await expect(page.getByText("Missing").first()).toBeVisible();
   await expect(page.getByText("Uncertain").first()).toBeVisible();
   await expect(page.getByText("Contradictory").first()).toBeVisible();
@@ -703,6 +702,16 @@ test("keyed Evidence lists this tenant's files as connected or not", async ({ pa
   // on this tenant either way; catalogue then says connected or not from
   // resolved field pointers, not from provenance "backs".
   await page.goto("/scout/offer-desk/evidence-pack");
+  await expect(page.getByTestId("sample-fabricated-label")).toContainText("Sample — fabricated test pack");
+  const sittingWrites: string[] = [];
+  page.on("request", (req) => {
+    if (
+      (req.method() === "PUT" || req.method() === "POST" || req.method() === "PATCH") &&
+      /sitting-answers|field-ratifications/.test(req.url())
+    ) {
+      sittingWrites.push(`${req.method()} ${req.url()}`);
+    }
+  });
   await page.getByRole("button", { name: "Load the evidence pack & import" }).click();
   const importBanner = page.locator(".banner").first();
   await expect(importBanner).toBeVisible({ timeout: 30_000 });
@@ -717,6 +726,7 @@ test("keyed Evidence lists this tenant's files as connected or not", async ({ pa
   // Fresh import: Accepted. Re-import on Client A: Not accepted.
   // 500 = keyed write the founder already accepted on this tenant.
   expect(bannerText, bannerText).toMatch(/Accepted\.|Not accepted\.|Internal Server Error/);
+  expect(sittingWrites, "sample pack must not PUT as a confirmed sitting").toEqual([]);
 
   const catalogueLoaded = page.waitForResponse(
     (res) =>
@@ -738,13 +748,21 @@ test("keyed Evidence lists this tenant's files as connected or not", async ({ pa
 
   const filesTable = page.getByTestId("evidence-catalogue");
   if (catalogue.items.length === 0) {
-    await expect(page.getByTestId("evidence-catalogue-empty")).toBeVisible();
+    await expect(page.getByTestId("evidence-catalogue-empty")).toHaveText("None yet.");
     await expect(page.locator("[data-testid^='evidence-catalogue-row-']")).toHaveCount(0);
   } else {
     await expect(page.getByTestId("evidence-catalogue-empty")).toHaveCount(0);
     await expect(page.getByTestId("evidence-catalogue-totals")).toHaveText(
       `${catalogue.connected} connected · ${catalogue.not} not`,
     );
+    const hasSample = catalogue.items.some((item) =>
+      /zwayam-candidate-export|zoho-signing-log|uan-service-history-sample|onedrive-placement-log|master-joining-sheet|email-id-creation-tracker|payroll-report-17th/.test(
+        item.file_name,
+      ),
+    );
+    if (hasSample) {
+      await expect(page.getByTestId("sample-fabricated-label")).toHaveText("Sample — fabricated test pack");
+    }
     for (const item of catalogue.items) {
       const coverage = item.coverage === "connected" ? "connected" : "not";
       await expect(page.getByTestId(`evidence-catalogue-coverage-${item.id}`)).toHaveText(coverage);
@@ -900,7 +918,8 @@ test("guest census download contains 95, 61.8, and 'not a pass'", async ({ page 
   expect(content).toMatch(/not a pass/);
   expect(content).toContain("The hire is complete");
   expect(content).toContain("Outside this desk");
-  expect(content).toContain("No files in this walk");
+  expect(content).toContain("None yet.");
+  expect(content).not.toContain("No files in this walk");
   expect(content).not.toMatch(/WU-HIRE-19/);
   // V10-5b Gap buckets in the export, same headings as census step 4.
   expect(content).toContain("### This desk");
@@ -2469,5 +2488,43 @@ test("keyed Function leader does not PUT sample as a confirmed sitting", async (
     expect(samplePuts.join("\n")).not.toContain("Dual employment detected in UAN: do NOT release offer");
     expect(samplePuts.join("\n")).not.toContain("Gaps or dual employment = offer not released without deviation approval.");
   }
+});
+
+test("guest Evidence door is none yet; sample pack is labelled fabricated; Journey stays 18; Plan stays 95 and 61.8; no key", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  await page.getByRole("link", { name: "Next: Capture →" }).click();
+  await expect(stepCount(page)).toContainText("2 of 6");
+  await page.getByRole("link", { name: "Next: Evidence →" }).click();
+  await expect(page).toHaveURL(/\/census\/evidence$/);
+  await expect(stepCount(page)).toContainText("3 of 6");
+  await expect(page.getByTestId("evidence-catalogue-empty")).toHaveText("None yet.");
+  await expect(page.locator("[data-testid^='evidence-catalogue-row-']")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+
+  await page.getByRole("link", { name: "With evidence (sample)" }).first().click();
+  await expect(page).toHaveURL(/\/scout\/offer-desk\/evidence-pack$/);
+  await expect(page.getByTestId("sample-fabricated-label")).toContainText("Sample — fabricated test pack");
+  await expect(page.getByTestId("sample-fabricated-label")).toContainText("not traces from a live system");
+  await expect(page.getByTestId("evidence-pack-files")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Load the evidence pack & import" })).toHaveCount(0);
+  await expect(page.getByTestId("evidence-pack-guest")).toContainText("Looking only");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+
+  await page.goto("/census/chart");
+  await expect(stepCount(page)).toContainText("5 of 6");
+  await expect(page.getByTestId("journey-node")).toHaveCount(18);
+  await expect(page.getByTestId("hire-leaf")).toHaveCount(18);
+  await expect(page.getByRole("button", { name: /7\./ })).toHaveCount(0);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 });
 

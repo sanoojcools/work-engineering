@@ -18,6 +18,7 @@ import { LANE_DESK_IDS, buildRows } from "./workSystemUnits";
 import { HIRE_BANDS, HIRE_BAND_LABEL, HIRE_COMPOSITE, PARENT_HOURS_NOTE, buildHireLeafRows } from "./hireLeaves";
 import { DOCUMENT_CHECK_RECORD, GAP_ROWS } from "./offerDeskWorkRecord";
 import { GUEST_REGISTER_COUNTS, REGISTERS, REGISTER_COPY, countRegisters } from "./gapRegisters";
+import { SAMPLE_FABRICATED_LABEL, isSamplePackFileName } from "./samplePack";
 import { CANNOT_SEE_CONNECTOR_NOTE, CANNOT_SEE_JUDGMENT_NOTE, GATE_KINDS, isGateKind, KIND_COPY } from "./gapGateKinds";
 import { GAP_TIERS, TIER_COPY, gapsInTier } from "./gapTiers";
 import { unitReadiness } from "./handoffReadiness";
@@ -32,21 +33,6 @@ export const GQS_REMINDER_PRE =
 export const GQS_REMINDER_BOLD = "~30/90 is not a pass.";
 export const GQS_REMINDER_POST =
   "Planning against it as if it were governed would misrepresent what the gate actually found.";
-
-// Known filenames from the one fabricated sample pack this build ships
-// (lib/offerDeskEvidencePack.json's own `files` array) -- checked against a
-// tenant's real file list so the banner's "fabricated pack" line only
-// appears when that pack is actually the source of what's being exported,
-// not printed unconditionally.
-const SAMPLE_PACK_FILENAMES = new Set([
-  "zwayam-candidate-export.csv",
-  "zoho-signing-log.csv",
-  "uan-service-history-sample.csv",
-  "onedrive-placement-log.csv",
-  "master-joining-sheet.xlsx",
-  "email-id-creation-tracker.xlsx",
-  "payroll-report-17th.xlsx",
-]);
 
 export type CensusExportInput =
   | { mode: "guest" }
@@ -128,14 +114,15 @@ function evidenceSection(
 
   let filesBlock: string;
   if (isGuest) {
-    filesBlock = "No files in this walk — a guest has no tenant to upload into.";
+    filesBlock = "None yet.";
   } else if (!files || files.length === 0) {
-    filesBlock = "No files uploaded yet for this tenant — a true empty state, not a placeholder.";
+    filesBlock = "None yet.";
   } else {
     filesBlock = files
       .map((f) => {
         const coverage = f.coverage === "connected" ? "connected" : "not";
-        return `- \`${escapeCell(f.file_name)}\` — ${coverage}`;
+        const sample = isSamplePackFileName(f.file_name) ? ` — ${SAMPLE_FABRICATED_LABEL}` : "";
+        return `- \`${escapeCell(f.file_name)}\` — ${coverage}${sample}`;
       })
       .join("\n");
   }
@@ -285,12 +272,12 @@ export function buildCensusMarkdown(input: CensusExportInput, generatedAt: Date 
         "visitor of this walk, not one company's data.",
     );
   } else {
-    const hasSamplePack = (files ?? []).some((f) => SAMPLE_PACK_FILENAMES.has(f.file_name));
+    const hasSamplePack = (files ?? []).some((f) => isSamplePackFileName(f.file_name));
     if (hasSamplePack) {
       bannerLines.push(
-        '> **Sample evidence pack.** This tenant\'s files include the "With evidence (sample)" pack — that pack ' +
-          "is fabricated on purpose for this build. It is not Rashmi KN's real production data, and not a real " +
-          "Zwayam or Zoho connector.",
+        `> **${SAMPLE_FABRICATED_LABEL}.** This tenant's files include the fabricated test pack from ` +
+          "offer-desk-inputs/. It is not Rashmi KN's real production data, and not a real Zwayam or Zoho " +
+          "connector. These are invented files for this build, not traces from a live system.",
       );
     }
   }
