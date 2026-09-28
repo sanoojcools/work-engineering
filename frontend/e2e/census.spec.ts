@@ -2020,7 +2020,7 @@ const NAGRAJ_ANSWERS = [
   "I expect internal mobility's share to go up as delivery shifts partner-led",
 ];
 
-test("guest Trianz leaders: five names, Nagraj six guide answers, specialist card, Journey 18 without offboarding, Plan 95 and 61.8, no key", async ({
+test("guest Trianz leaders: five names, Nagraj six guide answers, Journey 18 without offboarding, Plan 95 and 61.8, no key", async ({
   page,
 }) => {
   test.setTimeout(60_000);
@@ -2055,16 +2055,6 @@ test("guest Trianz leaders: five names, Nagraj six guide answers, specialist car
   await expect(room.getByTestId("leader-guest")).toHaveText("Looking only.");
   await expect(page.getByTestId("this-period-confirm")).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
-
-  await page.goto("/");
-  await page.getByTestId("leader-strip-sanuj").getByRole("link", { name: "HRBP desk", exact: true }).click();
-  await expect(page).toHaveURL(/\/hr\/hrbp$/);
-  const card = page.getByTestId("specialist-card");
-  await expect(card.getByTestId("specialist-name")).toHaveText("HRBP desk");
-  await expect(card.getByTestId("specialist-boss")).toHaveText("Sanuj");
-  await expect(card.getByTestId("specialist-status")).toHaveText("Sheet exists. Not sat here.");
-  await expect(page.getByText("Meet & greet")).toHaveCount(0);
-  await expect(page.getByText(/hrs\/week/)).toHaveCount(0);
 
   await page.goto("/scout/offer-desk");
   const leaderHeading = page.getByRole("heading", { name: "Function leader" });
@@ -2295,6 +2285,71 @@ test("guest US HR walk shows Rashmi KN and closed Desk as sat; opening shows the
   await expect(page.getByTestId("journey-node")).toHaveCount(18);
   await expect(page.getByTestId("journey-canvas")).not.toContainText(/offboarding/i);
   await expect(page.getByTestId("journey-canvas")).not.toContainText(/recruiter sends bgv request/i);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
+test("guest HRBP walk shows Thamizh and Rajitha and closed Desk as sat; three sheet lists; Journey stays 18; Plan stays 95 and 61.8; no key", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  await page.getByTestId("leader-strip-sanuj").getByRole("link", { name: "HRBP desk", exact: true }).click();
+  await expect(page).toHaveURL(/\/hr\/hrbp$/);
+
+  const walk = page.getByTestId("hrbp-walk");
+  await expect(walk.getByTestId("hrbp-runners")).toHaveText("Thamizh + Rajitha");
+  await expect(walk.getByTestId("hrbp-boss")).toHaveText("Boss: Sanuj");
+  await expect(walk.getByTestId("hrbp-hours")).toContainText("~30-50 hrs/mo per HRBP");
+  await expect(walk.getByTestId("hrbp-hours")).toContainText("~90-150");
+  await expect(walk.getByTestId("hrbp-status")).toHaveText("Needs follow-up");
+  await expect(walk).not.toContainText("95");
+  await expect(walk).not.toContainText("61.8");
+  await expect(walk).not.toContainText(/finalized/i);
+  await expect(walk).not.toContainText("Sheet exists. Not sat here.");
+  await expect(walk).not.toContainText("Backup:");
+  await expect(walk.getByTestId("hrbp-handoff")).toHaveCount(0);
+  await expect(walk.getByRole("heading", { name: /handoff/i })).toHaveCount(0);
+  await expect(walk.getByTestId("hrbp-guest")).toHaveText("Looking only.");
+
+  const who = walk.getByTestId("hrbp-who");
+  const sat = walk.getByTestId("desk-as-sat");
+  const firstStep = walk.getByTestId("hrbp-step").first();
+  await expect(sat).toHaveJSProperty("open", false);
+  await expect(sat.locator("summary")).toHaveText("Desk as sat (Thamizh + Rajitha)");
+  await expect(firstStep).not.toBeVisible();
+  const whoBox = await who.boundingBox();
+  const satBox = await sat.boundingBox();
+  expect(whoBox && satBox && whoBox.y < satBox.y).toBeTruthy();
+
+  await sat.locator("summary").click();
+  await expect(sat).toHaveJSProperty("open", true);
+  await expect(walk.getByTestId("hrbp-step")).toHaveCount(11);
+  await expect(walk.getByRole("heading", { name: "The 11 steps" })).toHaveCount(0);
+  const ob = walk.getByTestId("hrbp-list-ob");
+  const off = walk.getByTestId("hrbp-list-off");
+  const gr = walk.getByTestId("hrbp-list-gr");
+  await expect(ob.getByTestId("hrbp-step")).toHaveCount(3);
+  await expect(off.getByTestId("hrbp-step")).toHaveCount(5);
+  await expect(gr.getByTestId("hrbp-step")).toHaveCount(3);
+  await expect(ob.getByTestId("hrbp-step").first()).toContainText("OB-1");
+  await expect(ob.getByTestId("hrbp-step").first()).toContainText("Meet & greet");
+  await expect(off.getByTestId("hrbp-step").first()).toContainText("OFF-1");
+  await expect(gr.getByTestId("hrbp-step").first()).toContainText("GR-1");
+  await expect(walk).not.toContainText("95");
+  await expect(walk).not.toContainText("61.8");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+
+  await page.goto("/census/chart");
+  await expect(stepCount(page)).toContainText("5 of 6");
+  await expect(page.getByTestId("journey-node")).toHaveCount(18);
+  await expect(page.getByTestId("journey-canvas")).not.toContainText(/offboarding/i);
+  await expect(page.getByTestId("journey-canvas")).not.toContainText(/meet & greet/i);
 
   await page.goto("/census/plan");
   await expect(stepCount(page)).toContainText("6 of 6");
