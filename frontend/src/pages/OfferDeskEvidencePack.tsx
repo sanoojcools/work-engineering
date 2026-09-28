@@ -9,6 +9,7 @@ import { useIsGuest } from "../lib/guestMode";
 import { ApiError } from "../api";
 import {
   EVIDENCE_FILE_NAMES,
+  SAMPLE_FABRICATED_LABEL,
   buildGenomePayload,
   packDisclaimer,
   uploadEvidencePack,
@@ -36,6 +37,8 @@ export default function OfferDeskEvidencePack() {
   const [error, setError] = useState<string | null>(null);
 
   async function run() {
+    // POST /files/upload + POST /genome/import only. Never PUT sitting-answers
+    // or field-ratifications — this pack is not a confirmed sitting.
     setError(null);
     setResult(null);
     setUploaded([]);
@@ -87,23 +90,26 @@ export default function OfferDeskEvidencePack() {
       <h2>
         What if the evidence existed?{" "}
         <InfoTooltip
-          term="Observed"
-          simple="Backed by an uploaded, server-hashed file — a system log, not an interview claim. The opposite of declared."
+          term="Sample pack"
+          simple="Invented files so a colleague can see the upload path. Not a sitting, and not traces from a live system."
+          technical="offer-desk-inputs/ embedded in lib/offerDeskEvidencePack.json. POST /files/upload then POST /genome/import. Never PUT sitting-answers. Guest never uploads."
         />
       </h2>
       <p className="lede">
         This is a different question from Save talk-only, on different data. Rashmi's real sitting is untouched —
-        nothing on this page writes into it or changes its result. This imports a separate, clearly-labeled genome
+        nothing on this page writes into it or changes its result. This imports a separate, clearly-labelled genome
         built from <code>offer-desk-inputs/</code>: nine invented candidates, invented Zwayam/Zoho/UAN/OneDrive exports,
-        built to answer one question — if the observed-side evidence this platform is usually missing actually
+        built to answer one question — if the system-of-record files this platform is usually missing actually
         existed, would the pipeline work end to end?
       </p>
       <SeatStepper />
 
-      <div className="card" style={{ marginBottom: 16, borderColor: "#b8860b" }}>
-        <strong>
-          Fabricated data, on purpose — not Rashmi's production month, and not a real Zwayam, Zoho, or UAN connector.
-        </strong>
+      <div className="card" style={{ marginBottom: 16, borderColor: "#b8860b" }} data-testid="sample-fabricated-label">
+        <strong>{SAMPLE_FABRICATED_LABEL}</strong>
+        <p style={{ fontSize: 13, marginTop: 6, marginBottom: 0 }}>
+          Not Rashmi's production month, and not a real Zwayam, Zoho, or UAN connector. These are invented files for
+          this build, not traces from a live system.
+        </p>
         <p style={{ fontSize: 13, marginTop: 6, marginBottom: 0 }}>{packDisclaimer()}</p>
       </div>
 
@@ -119,8 +125,9 @@ export default function OfferDeskEvidencePack() {
           <code>declared</code>, not padded.
         </p>
         {isGuest ? (
-          <p className="hint" style={{ marginBottom: 0 }}>
-            Sign in (Home → Set up the demo) to actually upload and import this — it needs a real tenant.
+          <p className="hint" style={{ marginBottom: 0 }} data-testid="evidence-pack-guest">
+            Looking only. Sign in (Home → Set up the demo) to upload — looking does not mint a key, and this pack is
+            never saved as a confirmed sitting.
           </p>
         ) : (
           <button type="button" className="primary" disabled={stage === "uploading" || stage === "importing"} onClick={() => void run()}>
@@ -133,6 +140,18 @@ export default function OfferDeskEvidencePack() {
                   : "Load the evidence pack & import"}
           </button>
         )}
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3 style={{ marginTop: 0 }}>{SAMPLE_FABRICATED_LABEL}</h3>
+        <p className="hint" style={{ marginTop: 0 }}>
+          Files in this pack. They are not on the Journey as extra hire pieces. Point at the file here.
+        </p>
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }} data-testid="evidence-pack-files">
+          {EVIDENCE_FILE_NAMES.map((name) => (
+            <li key={name}>{name}</li>
+          ))}
+        </ul>
       </div>
 
       {uploaded.length > 0 && (
