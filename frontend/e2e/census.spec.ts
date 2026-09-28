@@ -2358,6 +2358,53 @@ test("guest HRBP walk shows Thamizh and Rajitha and closed Desk as sat; three sh
   expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
 });
 
+test("guest Family map shows six desks and named connections only; Journey stays 18; Plan stays 95 and 61.8; no key", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.goto("/");
+  await expect(stepCount(page)).toContainText("1 of 6");
+  await page.getByTestId("family-map-link").click();
+  await expect(page).toHaveURL(/\/hr\/family-map$/);
+
+  const map = page.getByTestId("family-map");
+  await expect(map.getByRole("heading", { name: "How the desks connect" })).toBeVisible();
+  const desks = map.getByTestId("family-desk");
+  await expect(desks).toHaveCount(6);
+  for (const name of ["Offer Desk", "Onboarding", "Offboarding", "Vendor Mgmt", "US HR", "HRBP"]) {
+    await expect(desks.getByRole("heading", { name, exact: true })).toHaveCount(1);
+  }
+  await expect(map.getByTestId("family-desk-hours")).toHaveCount(6);
+  await expect(map.getByTestId("family-us-hr")).toContainText("Job Vite");
+  await expect(map.getByTestId("family-us-hr")).toContainText("two desks, not one");
+
+  const handoffs = map.getByTestId("family-handoff");
+  await expect(handoffs).toHaveCount(4);
+  await expect(handoffs.filter({ hasText: "Offer Desk → Onboarding" })).toHaveCount(1);
+  await expect(handoffs.filter({ hasText: "Offboarding → HRBP" })).toHaveCount(1);
+  await expect(handoffs.filter({ hasText: "HRBP → Offboarding" })).toHaveCount(1);
+  await expect(handoffs.filter({ hasText: "Vendor Mgmt → Offer Desk" })).toHaveCount(1);
+  const named = map.getByTestId("family-handoffs");
+  await expect(named).not.toContainText("US HR →");
+  await expect(named).not.toContainText("→ US HR");
+  await expect(named).not.toContainText("Onboarding → Offboarding");
+  await expect(named).not.toContainText("Offer Desk → US HR");
+  await expect(map).not.toContainText("61.8");
+  await expect(map.getByTestId("family-guest")).toHaveText("Looking only.");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+
+  await page.goto("/census/chart");
+  await expect(stepCount(page)).toContainText("5 of 6");
+  await expect(page.getByTestId("journey-node")).toHaveCount(18);
+  await expect(page.getByTestId("journey-canvas")).not.toContainText(/offboarding/i);
+
+  await page.goto("/census/plan");
+  await expect(stepCount(page)).toContainText("6 of 6");
+  await expect(page.getByTestId("plan-hours-stated")).toHaveText("95");
+  await expect(page.getByTestId("plan-hours-defended")).toHaveText("61.8");
+  expect(await page.evaluate(() => localStorage.getItem("we-spec-key"))).toBeNull();
+});
+
 test("keyed leader room shows Nagraj's guide answers and does not PUT them", async ({ page, request }) => {
   test.setTimeout(60_000);
   await signInWithFreshDemoKey(page, request);

@@ -45,6 +45,7 @@ const LAB_SECTIONS = [
       ["/hr/operations/vendor-mgmt", "Vendor Mgmt"],
       ["/hr/operations/us-hr", "US HR"],
       ["/hr/hrbp", "HRBP"],
+      ["/hr/family-map", "How the desks connect"],
       ["/hr/function-graph", "HR function graph"],
     ],
   },

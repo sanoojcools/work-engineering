@@ -15,6 +15,7 @@ import DeskVendorMgmt from "./pages/DeskVendorMgmt";
 import Discovery from "./pages/Discovery";
 import Economics from "./pages/Economics";
 import Enterprise from "./pages/Enterprise";
+import FamilyMap from "./pages/FamilyMap";
 import Genome from "./pages/Genome";
 import GenomeVersions from "./pages/GenomeVersions";
 import HrFamilyGenome from "./pages/HrFamilyGenome";
@@ -73,6 +74,7 @@ export default function App() {
           <Route path="/hr/operations/vendor-mgmt" element={<DeskVendorMgmt />} />
           <Route path="/hr/operations/us-hr" element={<DeskUsHr />} />
           <Route path="/hr/hrbp" element={<DeskHrbp />} />
+          <Route path="/hr/family-map" element={<FamilyMap />} />
           <Route path="/hr/function-graph" element={<HrFunctionGraph />} />
           <Route path="/hr/family-genome" element={<HrFamilyGenome />} />
           <Route path="/hr/objects/:objectId" element={<HrObjectCard />} />
