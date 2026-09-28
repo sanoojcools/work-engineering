@@ -29,6 +29,12 @@ export default function Start() {
 
       <TrianzStrip />
 
+      <p style={{ marginBottom: 16 }}>
+        <Link to="/hr/family-map" data-testid="family-map-link">
+          How the desks connect
+        </Link>
+      </p>
+
       <StartCensus />
 
       <div className="split" style={{ gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
