@@ -2,7 +2,7 @@
 
 Dated 28 Sep 2026. GitHub `main` + this file beat chat memory.
 
-**On `main`:** D-1…14, Cuts 1–4, #70–#72, #74–#77. Desk queue T1–T5 DONE.
+**On `main`:** D-1…14, Cuts 1–4, #70–#72, #74–#78. Desk queue + Family map DONE.
 **Cloud factory: LOCKED.** GitHub Actions must not spend Claude credits on product code.
 
 Locks that never move: Offer Desk Journey = 18 leaves from `packs/hr/hire_leaves.yaml`.
@@ -35,25 +35,20 @@ Shared refuse:
 
 | ID | Status | Branch | What |
 |---|---|---|---|
-| T1 Onboarding | DONE (#72) | | Prerana |
-| T2 Offboarding | DONE (#74) | | Sasikala |
-| T3 Vendor | DONE (#75) | | Reshma V |
-| T4 US HR | DONE (#76) | | Rashmi KN |
-| T5 HRBP | DONE (#77) | | Thamizh + Rajitha |
-| T6 Family map | UNLOCKED | `cursor/t6-family-map` | See below |
-| T7 Evidence door | LOCKED until T6 on `main` | `cursor/t7-evidence-door` | Offer Desk sample files + empty stays empty |
+| T1–T5 desks | DONE | | Six specialist sits |
+| T6 Family map | DONE (#78) | | How the desks connect |
+| T7 Evidence door | UNLOCKED | `cursor/t7-evidence-door` | See below |
 
-### T6 Family map
+### T7 Evidence door
 
-One page a colleague can read in two minutes: six desks, who runs each, stated hours from each `desks/*.ts` file (labelled stated, never defended except Offer Desk 95/61.8 which stay on Plan only), and **only** the edges already in `frontend/src/lib/desks/functionGraph.ts`:
-- Offer Desk → Onboarding
-- Offboarding ↔ HRBP (both ways)
-- Vendor → Offer Desk
+Census step 3 (Evidence) + Offer Desk evidence pack already exist. This slice makes the door honest for a colleague:
 
-US HR is a parallel cluster (Job Vite), not a new edge. Rashmi on Offer Desk and US HR is two desks, not one node.
+1. Guest / empty catalogue = **None yet.** Not a fake pack name.
+2. Sample files from `offer-desk-inputs/` (or the existing evidence-pack page) stay labelled **Sample — fabricated test pack** if that is already the HONESTY line. Do not call them observed traces.
+3. A file that is not in the catalogue is **not** on the Journey as a new leaf. Point at the file. Do not invent a 19th hire piece.
+4. Keyed: do not PUT sample files as a confirmed sitting. Guest mints no key.
+5. Reuse `CensusEvidence.tsx` / `OfferDeskEvidencePack.tsx`. Do not add a seventh census step.
 
-Reuse `HrFunctionGraph.tsx` / existing family pages if they already render this. Put a clear link on Trianz home: **How the desks connect**. Do not invent a 4th handoff. Do not add a seventh census step. Do not sum hours into one fake total on Plan.
+Playwright: guest 1→6; Plan 95 and 61.8; Journey 18; Evidence empty state says none yet when the catalogue is empty; sample label present if sample pack is shown.
 
-Playwright: guest 1→6; Plan 95 and 61.8; Journey 18; Family map shows six desk names and does not show a 4th invented handoff.
-
-**Still locked:** D-4 persist, D-5 SME dump, DarwinBox API, #58 ingest, Evidence door until T6 DONE.
+**Still locked:** D-4 persist, D-5 SME dump, DarwinBox API, #58 ingest.
